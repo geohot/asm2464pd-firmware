@@ -519,6 +519,244 @@ void usb_set_done_flag(void)
     G_STATE_FLAG_06E6 = 1;
 }
 
+/*
+ * usb_set_transfer_active_flag - Set transfer flag and USB mode bit
+ * Address: 0x312a-0x3139 (16 bytes)
+ *
+ * Sets transfer flag at 0x0AF2 to 1, then sets bit 0 of USB EP0 config.
+ *
+ * Original disassembly:
+ *   312a: mov dptr, #0x0af2
+ *   312d: mov a, #0x01
+ *   312f: movx @dptr, a       ; XDATA[0x0AF2] = 1
+ *   3130: mov dptr, #0x9006
+ *   3133: movx a, @dptr
+ *   3134: anl a, #0xfe        ; clear bit 0
+ *   3136: orl a, #0x01        ; set bit 0
+ *   3138: movx @dptr, a
+ *   3139: ret
+ */
+void usb_set_transfer_active_flag(void)
+{
+    uint8_t val;
+
+    G_TRANSFER_FLAG_0AF2 = 1;
+
+    val = REG_USB_EP0_CONFIG;
+    val = (val & 0xFE) | 0x01;
+    REG_USB_EP0_CONFIG = val;
+}
+
+/*
+ * usb_copy_status_to_buffer - Copy USB status regs to buffer area
+ * Address: 0x3147-0x3167 (33 bytes)
+ *
+ * Copies 4 bytes from USB status registers 0x911F-0x9122 to buffer
+ * area 0xD804-0xD807.
+ *
+ * Original disassembly:
+ *   3147: mov dptr, #0x911f
+ *   314a: movx a, @dptr
+ *   314b: mov dptr, #0xd804
+ *   314e: movx @dptr, a       ; D804 = [911F]
+ *   314f: mov dptr, #0x9120
+ *   3152: movx a, @dptr
+ *   3153: mov dptr, #0xd805
+ *   3156: movx @dptr, a       ; D805 = [9120]
+ *   3157: mov dptr, #0x9121
+ *   315a: movx a, @dptr
+ *   315b: mov dptr, #0xd806
+ *   315e: movx @dptr, a       ; D806 = [9121]
+ *   315f: mov dptr, #0x9122
+ *   3162: movx a, @dptr
+ *   3163: mov dptr, #0xd807
+ *   3166: movx @dptr, a       ; D807 = [9122]
+ *   3167: ret
+ */
+void usb_copy_status_to_buffer(void)
+{
+    XDATA8(0xD804) = REG_USB_STATUS_1F;
+    XDATA8(0xD805) = REG_USB_STATUS_20;
+    XDATA8(0xD806) = REG_USB_STATUS_21;
+    XDATA8(0xD807) = REG_USB_STATUS_22;
+}
+
+/*
+ * usb_clear_idata_indexed - Clear indexed IDATA location
+ * Address: 0x3168-0x3180 (25 bytes)
+ *
+ * Calculates address 0x00C2 + IDATA[0x38] and clears that XDATA location,
+ * then returns pointer to 0x00E5 + IDATA[0x38].
+ *
+ * Original disassembly:
+ *   3168: mov a, #0xc2
+ *   316a: add a, 0x38         ; A = 0xC2 + IDATA[0x38]
+ *   316c: mov 0x82, a         ; DPL = A
+ *   316e: clr a
+ *   316f: addc a, #0x00       ; DPH = carry
+ *   3171: mov 0x83, a
+ *   3173: clr a
+ *   3174: movx @dptr, a       ; clear XDATA[0x00C2 + offset]
+ *   3175: mov a, #0xe5
+ *   3177: add a, 0x38         ; A = 0xE5 + IDATA[0x38]
+ *   3179: mov 0x82, a
+ *   317b: clr a
+ *   317c: addc a, #0x00
+ *   317e: mov 0x83, a
+ *   3180: ret
+ */
+__xdata uint8_t *usb_clear_idata_indexed(void)
+{
+    uint8_t offset = *(__idata uint8_t *)0x38;
+
+    /* Clear at 0x00C2 + offset */
+    XDATA8(0x00C2 + offset) = 0;
+
+    /* Return pointer to 0x00E5 + offset */
+    return (__xdata uint8_t *)(0x00E5 + offset);
+}
+
+/*===========================================================================
+ * USB Status Read Functions
+ *===========================================================================*/
+
+/*
+ * usb_read_status_pair - Read 16-bit status from USB registers
+ * Address: 0x3181-0x3188 (8 bytes)
+ *
+ * Reads USB status registers 0x910D and 0x910E as a 16-bit value.
+ * Returns high byte in R6, low byte in A.
+ *
+ * Original disassembly:
+ *   3181: mov dptr, #0x910d
+ *   3184: movx a, @dptr       ; R6 = [0x910D]
+ *   3185: mov r6, a
+ *   3186: inc dptr
+ *   3187: movx a, @dptr       ; A = [0x910E]
+ *   3188: ret
+ */
+uint16_t usb_read_status_pair(void)
+{
+    uint8_t hi = REG_USB_STATUS_0D;
+    uint8_t lo = REG_USB_STATUS_0E;
+    return ((uint16_t)hi << 8) | lo;
+}
+
+/*
+ * usb_read_transfer_params - Read transfer parameters
+ * Address: 0x31a5-0x31ac (8 bytes)
+ *
+ * Reads 16-bit value from transfer params at 0x0AFA-0x0AFB.
+ * Returns high byte in R6, low byte in A.
+ *
+ * Original disassembly:
+ *   31a5: mov dptr, #0x0afa
+ *   31a8: movx a, @dptr       ; R6 = [0x0AFA]
+ *   31a9: mov r6, a
+ *   31aa: inc dptr
+ *   31ab: movx a, @dptr       ; A = [0x0AFB]
+ *   31ac: ret
+ */
+uint16_t usb_read_transfer_params(void)
+{
+    uint8_t hi = G_TRANSFER_PARAMS_HI;
+    uint8_t lo = G_TRANSFER_PARAMS_LO;
+    return ((uint16_t)hi << 8) | lo;
+}
+
+/*===========================================================================
+ * Address Calculation Functions
+ *===========================================================================*/
+
+/*
+ * usb_calc_queue_addr - Calculate queue element address
+ * Address: 0x176b-0x1778 (14 bytes)
+ *
+ * Calculates DPTR = 0x0478 + (A * 4) where A is input.
+ * Used for accessing 4-byte queue elements.
+ *
+ * Original disassembly:
+ *   176b: add a, 0xe0         ; A = A * 2 (add A to itself via ACC register)
+ *   176d: add a, 0xe0         ; A = A * 2 again (so A * 4)
+ *   176f: add a, #0x78
+ *   1771: mov 0x82, a         ; DPL = result
+ *   1773: clr a
+ *   1774: addc a, #0x04       ; DPH = 0x04 + carry
+ *   1776: mov 0x83, a
+ *   1778: ret
+ */
+__xdata uint8_t *usb_calc_queue_addr(uint8_t index)
+{
+    uint16_t offset = (uint16_t)index * 4;
+    return (__xdata uint8_t *)(0x0478 + offset);
+}
+
+/*
+ * usb_calc_queue_addr_next - Calculate next queue element address
+ * Address: 0x1779-0x1786 (14 bytes)
+ *
+ * Calculates DPTR = 0x0479 + (A * 4) where A is input.
+ * Similar to usb_calc_queue_addr but starts at 0x0479.
+ *
+ * Original disassembly:
+ *   1779: add a, 0xe0         ; A = A * 2
+ *   177b: add a, 0xe0         ; A = A * 4
+ *   177d: add a, #0x79
+ *   177f: mov 0x82, a         ; DPL
+ *   1781: clr a
+ *   1782: addc a, #0x04       ; DPH = 0x04 + carry
+ *   1784: mov 0x83, a
+ *   1786: ret
+ */
+__xdata uint8_t *usb_calc_queue_addr_next(uint8_t index)
+{
+    uint16_t offset = (uint16_t)index * 4;
+    return (__xdata uint8_t *)(0x0479 + offset);
+}
+
+/*
+ * usb_store_idata_16 - Store 16-bit value to IDATA
+ * Address: 0x1d32-0x1d38 (7 bytes)
+ *
+ * Stores 16-bit value (R6:A) to IDATA[0x16:0x17].
+ * High byte to [0x16], low byte to [0x17].
+ *
+ * Original disassembly:
+ *   1d32: mov r1, #0x17
+ *   1d34: mov @r1, a          ; IDATA[0x17] = A (low)
+ *   1d35: mov a, r6
+ *   1d36: dec r1
+ *   1d37: mov @r1, a          ; IDATA[0x16] = R6 (high)
+ *   1d38: ret
+ */
+void usb_store_idata_16(uint8_t hi, uint8_t lo)
+{
+    *(__idata uint8_t *)0x17 = lo;
+    *(__idata uint8_t *)0x16 = hi;
+}
+
+/*
+ * usb_add_masked_counter - Add to counter with 5-bit mask
+ * Address: 0x1d39-0x1d42 (10 bytes)
+ *
+ * Reads value from 0x014E, adds input, masks to 5 bits, writes back.
+ * Used for circular buffer index management.
+ *
+ * Original disassembly:
+ *   1d39: mov r7, a           ; save A
+ *   1d3a: mov dptr, #0x014e
+ *   1d3d: movx a, @dptr       ; A = [0x014E]
+ *   1d3e: add a, r7           ; A += original A
+ *   1d3f: anl a, #0x1f        ; mask to 0-31
+ *   1d41: movx @dptr, a       ; write back
+ *   1d42: ret
+ */
+void usb_add_masked_counter(uint8_t value)
+{
+    uint8_t current = XDATA8(0x014E);
+    XDATA8(0x014E) = (current + value) & 0x1F;
+}
+
 /*===========================================================================
  * Table-Driven Endpoint Dispatch
  *===========================================================================*/

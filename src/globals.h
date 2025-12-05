@@ -59,6 +59,8 @@
 #define G_EP_QUEUE_STATUS       XDATA_VAR8(0x0565)  /* Endpoint queue status */
 #define G_BUF_OFFSET_HI         XDATA_VAR8(0x0568)  /* Buffer offset result high */
 #define G_BUF_OFFSET_LO         XDATA_VAR8(0x0569)  /* Buffer offset result low */
+#define G_PCIE_TXN_COUNT_LO     XDATA_VAR8(0x05A6)  /* PCIe transaction count low */
+#define G_PCIE_TXN_COUNT_HI     XDATA_VAR8(0x05A7)  /* PCIe transaction count high */
 #define G_EP_CONFIG_05A8        XDATA_VAR8(0x05A8)  /* EP config 0x05A8 */
 #define G_EP_CONFIG_05F8        XDATA_VAR8(0x05F8)  /* EP config 0x05F8 */
 
@@ -88,7 +90,10 @@
 #define G_STATE_COUNTER_LO      XDATA_VAR8(0x0AA4)  /* State counter low */
 #define G_SYSTEM_STATE_0AE2     XDATA_VAR8(0x0AE2)  /* System state */
 #define G_STATE_FLAG_0AE3       XDATA_VAR8(0x0AE3)  /* System state flag */
+#define G_TRANSFER_FLAG_0AF2    XDATA_VAR8(0x0AF2)  /* Transfer flag 0x0AF2 */
 #define G_EP_DISPATCH_OFFSET    XDATA_VAR8(0x0AF5)  /* Endpoint dispatch offset */
+#define G_TRANSFER_PARAMS_HI    XDATA_VAR8(0x0AFA)  /* Transfer params high byte */
+#define G_TRANSFER_PARAMS_LO    XDATA_VAR8(0x0AFB)  /* Transfer params low byte */
 #define G_USB_TRANSFER_FLAG     XDATA_VAR8(0x0B2E)  /* USB transfer flag */
 
 //=============================================================================

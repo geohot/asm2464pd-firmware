@@ -180,6 +180,12 @@
 #define REG_USB_EP_CFG2         XDATA_REG8(0x9094)  // Endpoint config 2 (RW)
 #define REG_USB_EP_STATUS       XDATA_REG8(0x9118)  // Endpoint status (RO)
 #define REG_USB_BUFFER_ALT      XDATA_REG8(0x911B)  // USB buffer alt (RW)
+#define REG_USB_STATUS_0D       XDATA_REG8(0x910D)  // USB status 0D (RO)
+#define REG_USB_STATUS_0E       XDATA_REG8(0x910E)  // USB status 0E (RO)
+#define REG_USB_STATUS_1F       XDATA_REG8(0x911F)  // USB status 1F (RO)
+#define REG_USB_STATUS_20       XDATA_REG8(0x9120)  // USB status 20 (RO)
+#define REG_USB_STATUS_21       XDATA_REG8(0x9121)  // USB status 21 (RO)
+#define REG_USB_STATUS_22       XDATA_REG8(0x9122)  // USB status 22 (RO)
 
 // USB status bits
 #define USB_CONNECTED           0x80
@@ -465,12 +471,14 @@
 // Transaction Layer Packet (TLP) operations
 //=============================================================================
 #define REG_PCIE_FMT_TYPE       XDATA_REG8(0xB210)  // Format/type (RW)
+#define REG_PCIE_TLP_LENGTH     XDATA_REG8(0xB216)  // TLP length/mode (RW)
 #define REG_PCIE_BYTE_EN        XDATA_REG8(0xB217)  // Byte enables (RW)
 #define REG_PCIE_ADDR_LOW       XDATA_REG8(0xB218)  // Address low (RW, 4 bytes)
 #define REG_PCIE_ADDR_HIGH      XDATA_REG8(0xB21C)  // Address high (RW, 4 bytes)
 #define REG_PCIE_DATA           XDATA_REG8(0xB220)  // Data register (RW, 4 bytes)
 #define REG_PCIE_TLP_CPL_HEADER XDATA_REG32(0xB224) // TLP completion header (RW, 4 bytes)
 #define REG_PCIE_LINK_STATUS    XDATA_REG16(0xB22A) // Link status (RO, 2 bytes)
+#define REG_PCIE_CPL_DATA       XDATA_REG8(0xB22C)  // Completion data (RO)
 #define REG_PCIE_NVME_DOORBELL  XDATA_REG32(0xB250) // NVMe doorbell SQT/CQH (RW, 4 bytes)
 #define REG_PCIE_TRIGGER        XDATA_REG8(0xB254)  // Trigger/start (WO)
 #define REG_PCIE_PM_ENTER       XDATA_REG8(0xB255)  // PM enter (WO)
