@@ -27,12 +27,19 @@ LDFLAGS += --stack-loc 0x72
 
 # Directories
 SRC_DIR = src
+DRIVERS_DIR = $(SRC_DIR)/drivers
 BUILD_DIR = build
 OBJ_DIR = $(BUILD_DIR)/obj
 
 # Source files
-SRCS = $(SRC_DIR)/main.c $(SRC_DIR)/uart.c
-OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.rel,$(SRCS))
+MAIN_SRCS = $(SRC_DIR)/main.c $(SRC_DIR)/utils.c
+DRIVER_SRCS = $(wildcard $(DRIVERS_DIR)/*.c)
+SRCS = $(MAIN_SRCS) $(DRIVER_SRCS)
+
+# Object files
+MAIN_OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.rel,$(MAIN_SRCS))
+DRIVER_OBJS = $(patsubst $(DRIVERS_DIR)/%.c,$(OBJ_DIR)/drivers/%.rel,$(DRIVER_SRCS))
+OBJS = $(MAIN_OBJS) $(DRIVER_OBJS)
 
 # Output files
 TARGET = $(BUILD_DIR)/firmware
@@ -49,12 +56,17 @@ all: $(BIN)
 # Create directories
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
+	mkdir -p $(OBJ_DIR)/drivers
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-# Compile C files to relocatable object files
+# Compile main source files
 $(OBJ_DIR)/%.rel: $(SRC_DIR)/%.c | $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Compile driver source files
+$(OBJ_DIR)/drivers/%.rel: $(DRIVERS_DIR)/%.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Link object files to Intel HEX
@@ -128,6 +140,8 @@ clean:
 	rm -rf $(BUILD_DIR)
 	rm -f $(SRC_DIR)/*.asm $(SRC_DIR)/*.lst $(SRC_DIR)/*.sym
 	rm -f $(SRC_DIR)/*.rel $(SRC_DIR)/*.rst $(SRC_DIR)/*.map
+	rm -f $(DRIVERS_DIR)/*.asm $(DRIVERS_DIR)/*.lst $(DRIVERS_DIR)/*.sym
+	rm -f $(DRIVERS_DIR)/*.rel $(DRIVERS_DIR)/*.rst $(DRIVERS_DIR)/*.map
 	rm -f *.lk *.mem *.map
 
 # Show help

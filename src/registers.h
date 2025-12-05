@@ -113,8 +113,10 @@
 #define REG_INT_PCIE_NVME       XDATA_REG8(0xC80A)  // PCIe/NVMe interrupt status (RW)
 
 //=============================================================================
-// Event Flags (internal XDATA)
+// Event Flags and Loop State (internal XDATA)
 //=============================================================================
+#define REG_LOOP_STATE          XDATA_REG8(0x0A59)  // Main loop state flag (RW)
+#define REG_SYSTEM_STATE_0AE2   XDATA_REG8(0x0AE2)  // System state (RW)
 #define REG_EVENT_FLAGS         XDATA_REG8(0x09F9)  // Event flags (RW)
 
 //=============================================================================

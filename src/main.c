@@ -23,6 +23,7 @@ void main_loop(void);
 void nvme_util_get_status_flags(uint16_t reg_addr);
 void nvme_util_get_error_flags(uint16_t reg_addr);
 void reg_set_bit_0(uint16_t reg_addr);
+void reg_set_bit_0_cpu_exec(void);
 
 /* Main loop handler stubs */
 void handler_04d0(void);
@@ -37,6 +38,7 @@ void handler_0525(void);
 
 /* External functions */
 extern void uart_init(void);
+extern void usb_ep_dispatch_loop(void);
 
 /*===========================================================================
  * Main Entry Point
@@ -135,23 +137,24 @@ void main(void)
 void main_loop(void)
 {
     uint8_t events;
+    uint8_t state;
 
     /* Clear loop state flag */
-    XDATA8(0x0A59) = 0x00;
+    REG_LOOP_STATE = 0x00;
 
     while (1) {
-        /* Set bit 0 of REG_CPU_EXEC_CTRL (0xCC32) - timer/system handler */
-        reg_set_bit_0(0xCC32);
+        /* Set bit 0 of REG_CPU_EXEC_STATUS - timer/system handler */
+        reg_set_bit_0_cpu_exec();
 
-        /* Call dispatch stubs */
+        /* Call dispatch stubs and handlers */
         handler_04d0();
         phy_config_link_params();
         handler_04b2();
         handler_4fb6();
         handler_0327();
 
-        /* Check event flags at 0x09f9 */
-        events = XDATA8(0x09F9);
+        /* Check event flags */
+        events = REG_EVENT_FLAGS;
         if (events & 0x83) {
             if (events & 0x81) {
                 handler_0494();
@@ -161,13 +164,10 @@ void main_loop(void)
             handler_0525();
         }
 
-        /* Interrupt priority manipulation */
-        /* clr 0xb8.0 (PX0 - external int 0 priority) */
-        /* clr 0xb8.2 (PX1 - external int 1 priority) */
-        /* setb 0xa8.0 (EX0 - external int 0 enable) */
-        /* setb 0xa8.2 (EX1 - external int 1 enable) */
-        /* setb/clr 0xa8.7 (EA - global interrupt enable) */
+        /* Clear interrupt priority for EXT0 and EXT1 */
         IP &= ~0x05;    /* Clear PX0, PX1 */
+
+        /* Enable external interrupts */
         EX0 = 1;
         EX1 = 1;
         EA = 1;
@@ -175,8 +175,14 @@ void main_loop(void)
         /* Temporarily disable interrupts for critical section */
         EA = 0;
 
-        /* Check more state at 0x0ae2 */
-        /* ... additional processing ... */
+        /* Check system state at 0x0AE2 */
+        state = REG_SYSTEM_STATE_0AE2;
+        if (state != 0 && state != 0x10) {
+            /* Process based on state - see firmware at 0x2fc5 */
+            if (REG_LOOP_STATE == 0) {
+                /* Additional state machine processing */
+            }
+        }
 
         /* Re-enable interrupts */
         EA = 1;
@@ -264,6 +270,19 @@ void reg_set_bit_0(uint16_t reg_addr)
     uint8_t val = XDATA8(reg_addr);
     val = (val & 0xFE) | 0x01;
     XDATA8(reg_addr) = val;
+}
+
+/*
+ * reg_set_bit_0_cpu_exec - Set bit 0 of REG_CPU_EXEC_STATUS
+ * Address: Inline of 0x5418 call pattern
+ *
+ * Called from main_loop at 0x2f85-0x2f88:
+ *   2f85: mov dptr, #0xcc32
+ *   2f88: lcall 0x5418
+ */
+void reg_set_bit_0_cpu_exec(void)
+{
+    REG_CPU_EXEC_STATUS = (REG_CPU_EXEC_STATUS & 0xFE) | 0x01;
 }
 
 /*===========================================================================
@@ -515,7 +534,7 @@ void ext0_isr(void) __interrupt(INT_EXT0) __using(1)
     }
 
     /* USB endpoint processing loop */
-    /* TODO: Implement table-driven endpoint dispatch */
+    usb_ep_dispatch_loop();
     return;
 
 usb_master_handler:
@@ -537,12 +556,9 @@ endpoint_handler:
 
 /*
  * Timer 0 Interrupt Handler
- * Address: needs identification
+ * Address: 0x4486-0x4531 (172 bytes)
+ * Implemented in src/drivers/timer.c
  */
-void timer0_isr(void) __interrupt(INT_TIMER0) __using(1)
-{
-    /* Placeholder */
-}
 
 /*
  * External Interrupt 1 Handler

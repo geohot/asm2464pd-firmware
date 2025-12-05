@@ -17,3 +17,5 @@ usb.py is tinygrad's library that talks to this chip.
 Every function you write should match one to one with a function in real firmware. Include the address range of the real function in a comment before our function.
 
 Our firmware needs to have all the functionality of the real firmware, with all edge cases, state machines, and methods correctly implemented to match the behavior of the stock firmware.
+
+Comparing the size of our compiled firmware and the stock firmware is a good way to check progress.
