@@ -1723,3 +1723,455 @@ void nvme_func_1cf0(void)
     G_PCIE_TXN_COUNT_LO = 0;     /* 0x05A6 */
     G_PCIE_TXN_COUNT_HI = 0;     /* 0x05A7 */
 }
+
+/*
+ * nvme_calc_dptr_0100_base - Calculate DPTR = 0x0100 + A (with carry)
+ * Address: 0x31d8-0x31df (8 bytes)
+ *
+ * Sets DPTR to 0x0100 + A. If carry is set from previous operation,
+ * it will be added to the high byte.
+ *
+ * Original disassembly:
+ *   31d8: mov 0x82, a           ; DPL = A
+ *   31da: clr a                 ; A = 0
+ *   31db: addc a, #0x01         ; A = 1 + carry
+ *   31dd: mov 0x83, a           ; DPH = A
+ *   31df: ret
+ */
+__xdata uint8_t *nvme_calc_dptr_0100_base(uint8_t val)
+{
+    return (__xdata uint8_t *)(0x0100 + val);
+}
+
+/*
+ * nvme_process_queue_entries - Process NVMe queue entries
+ * Address: 0x488f-0x4903 (117 bytes)
+ *
+ * Main NVMe queue processing loop. Sets error flag, then iterates through
+ * up to 32 queue entries, processing each one based on link status.
+ *
+ * Key registers used:
+ * - 0x06E6: G_STATE_FLAG_06E6 - Error/processing flag (set to 1 at start)
+ * - 0xC520: REG_NVME_LINK_STATUS - Bit 1 indicates link ready
+ * - 0x0464: G_SYS_STATUS_PRIMARY - Cleared when link not ready
+ * - 0x0465: G_SYS_STATUS_SECONDARY - Cleared when link not ready
+ * - 0x0AF8: G_POWER_INIT_FLAG - Power state check
+ * - 0xC51A: REG_NVME_QUEUE_TRIGGER - Queue trigger
+ * - 0xC51E: REG_NVME_QUEUE_STATUS - Queue status (bits 0-5 = queue index)
+ * - IDATA 0x38: Local queue index
+ * - IDATA 0x39: Loop counter
+ * - IDATA 0x3A: Flags register
+ *
+ * Algorithm:
+ * 1. Set G_STATE_FLAG_06E6 = 1
+ * 2. Loop counter = 0
+ * 3. While counter < 32:
+ *    a. Check REG_NVME_LINK_STATUS bit 1
+ *    b. If not set, clear statuses and exit
+ *    c. If G_POWER_INIT_FLAG != 0:
+ *       - Read from 0xC51A, call 0x4b25
+ *       - Get queue index from REG_NVME_QUEUE_STATUS (& 0x3F)
+ *    d. Else:
+ *       - Get queue index from REG_NVME_QUEUE_STATUS (& 0x3F)
+ *       - Call 0x3da1 with index
+ *    e. Build flags at IDATA 0x3A = 0x75
+ *    f. Calculate address 0x0171 + queue_index
+ *    g. If value at that address != 0, set bit 7 of flags
+ *    h. Calculate address 0x0108 + queue_index
+ *    i. Write flags there
+ *    j. Calculate address 0x0517 + queue_index
+ *    k. Increment value there
+ *    l. Write 0xFF to REG_NVME_QUEUE_TRIGGER
+ *    m. Increment counter
+ * 4. Return
+ *
+ * Original disassembly summary:
+ *   488f: mov dptr, #0x06e6    ; G_STATE_FLAG_06E6
+ *   4892: mov a, #0x01
+ *   4894: movx @dptr, a        ; Set flag = 1
+ *   4895: clr a
+ *   4896: mov 0x39, a          ; Counter = 0
+ *   4898: mov dptr, #0xc520    ; Loop start - REG_NVME_LINK_STATUS
+ *   489b: movx a, @dptr
+ *   489c: jnb 0xe0.1, 0x4903   ; If bit 1 not set, exit
+ *   489f: clr a
+ *   48a0-48a7: Clear 0x0464 and 0x0465
+ *   48a8-48ac: Check G_POWER_INIT_FLAG
+ *   ... (queue processing)
+ *   48fa: inc 0x39             ; counter++
+ *   48fc-4901: if counter < 32, loop back to 4898
+ *   4903: ret
+ */
+void nvme_process_queue_entries(void)
+{
+    __idata uint8_t *counter = (__idata uint8_t *)0x39;
+    __idata uint8_t *queue_idx = (__idata uint8_t *)0x38;
+    __idata uint8_t *flags = (__idata uint8_t *)0x3A;
+    uint8_t status;
+    __xdata uint8_t *ptr;
+
+    /* Set error/processing flag */
+    G_STATE_FLAG_06E6 = 0x01;
+
+    /* Initialize counter */
+    *counter = 0;
+
+    /* Process up to 32 queue entries */
+    while (*counter < 0x20) {
+        /* Check NVMe link status - bit 1 must be set */
+        status = REG_NVME_LINK_STATUS;
+        if (!(status & 0x02)) {
+            /* Link not ready - exit loop */
+            return;
+        }
+
+        /* Clear system status when processing */
+        G_SYS_STATUS_PRIMARY = 0;
+        G_SYS_STATUS_SECONDARY = 0;
+
+        /* Check power init flag */
+        if (G_POWER_INIT_FLAG != 0) {
+            /* Power initialized - read trigger and call 0x4b25 */
+            uint8_t trigger_val = REG_NVME_QUEUE_TRIGGER;
+            (void)trigger_val;  /* TODO: call nvme_helper_4b25(trigger_val) */
+
+            /* Get queue index from status register */
+            *queue_idx = REG_NVME_QUEUE_STATUS & 0x3F;
+        } else {
+            /* Not initialized - get index and call 0x3da1 */
+            *queue_idx = REG_NVME_QUEUE_STATUS & 0x3F;
+            /* TODO: call nvme_helper_3da1(*queue_idx) */
+        }
+
+        /* Build flags: start with 0x75 */
+        *flags = 0x75;
+
+        /* Check address 0x0171 + queue_index (IDATA region via XDATA) */
+        ptr = nvme_calc_dptr_0100_base(0x71 + *queue_idx);
+        if (*ptr != 0) {
+            /* Set bit 7 of flags if value is non-zero */
+            *flags |= 0x80;
+        }
+
+        /* Write flags to address 0x0108 + queue_index */
+        ptr = nvme_calc_dptr_0100_base(0x08 + *queue_idx);
+        *ptr = *flags;
+
+        /* Increment value at 0x0517 + queue_index */
+        ptr = nvme_calc_dptr_0500_base(0x17 + *queue_idx);
+        (*ptr)++;
+
+        /* Write 0xFF to queue trigger to acknowledge */
+        REG_NVME_QUEUE_TRIGGER = 0xFF;
+
+        /* Increment counter */
+        (*counter)++;
+    }
+}
+
+/*
+ * nvme_state_handler - Handle NVMe state based on device mode
+ * Address: 0x4784-0x47f1 (110 bytes)
+ *
+ * Handles different NVMe states based on device mode. Reads IDATA 0x6A
+ * for state, then handles based on G_IO_CMD_TYPE value:
+ * - State 3: Initialize if G_IO_CMD_TYPE == 5
+ * - State 4: Link check/restart if G_IO_CMD_TYPE == 7
+ * - State 3 with G_IO_CMD_TYPE == 3: Check USB status
+ *
+ * Original disassembly:
+ *   4784: mov r0, #0x6a         ; Get state from IDATA 0x6A
+ *   4786: mov a, @r0
+ *   4787: add a, #0xfd          ; a = state - 3
+ *   4789: jz 0x47be             ; if state == 3, goto handle_state_3
+ *   478b: dec a                 ; a = state - 4
+ *   478c: jz 0x47af             ; if state == 4, goto handle_state_4
+ *   478e: dec a                 ; a = state - 5
+ *   478f: jnz 0x47f2            ; if state != 5, goto error
+ *   ... (state 5 handling = initialization)
+ *   47f1: ret
+ */
+void nvme_state_handler(void)
+{
+    __idata uint8_t *state_ptr = (__idata uint8_t *)0x6A;
+    uint8_t state = *state_ptr;
+    uint8_t cmd_type;
+
+    if (state == 3) {
+        /* State 3 - Check command type for mode */
+        cmd_type = G_IO_CMD_TYPE;
+        if (cmd_type == 3) {
+            /* Mode 3: Check USB status bit 0 */
+            if (REG_USB_STATUS & 0x01) {
+                /* USB active - call status handlers */
+                nvme_call_and_signal();
+                /* TODO: call 0x0206 */
+            } else {
+                /* USB not active - call alternative handler */
+                /* TODO: call 0x3219 */
+            }
+        } else {
+            /* Other modes - call error handler */
+            /* TODO: call 0x312a, 0x31ce */
+        }
+        /* Set state to 5 (done) */
+        *state_ptr = 0x05;
+        return;
+    }
+
+    if (state == 4) {
+        /* State 4 - Check for mode 7 (link restart) */
+        cmd_type = G_IO_CMD_TYPE;
+        if (cmd_type == 7) {
+            /* Mode 7 - jump to 0x53d4 (link restart) */
+            /* TODO: call nvme_link_restart */
+            return;
+        }
+        /* Other modes - fall through to error */
+    }
+
+    if (state == 5) {
+        /* State 5 - Initialization */
+        cmd_type = G_IO_CMD_TYPE;
+        if (cmd_type != 5) {
+            /* Wrong mode - error */
+            goto handle_error;
+        }
+
+        /* Mode 5 initialization */
+        /* Set up NVMe doorbell register */
+        REG_NVME_DOORBELL = (REG_NVME_DOORBELL & 0xF7) | 0x08;  /* Set bit 3 */
+        REG_NVME_DOORBELL &= 0xFE;  /* Clear bit 0 */
+        REG_NVME_DOORBELL &= 0xF7;  /* Clear bit 3 */
+
+        /* Jump to common exit */
+        goto common_exit;
+    }
+
+handle_error:
+    /* Error path - call error handlers */
+    /* TODO: call 0x312a, 0x31ce */
+
+common_exit:
+    /* Check USB status and handle */
+    if (REG_USB_STATUS & 0x01) {
+        /* USB active */
+        nvme_call_and_signal();
+        /* TODO: call 0x0206 */
+    } else {
+        /* USB not active */
+        /* TODO: call 0x3219 */
+    }
+
+    /* Set state to 5 */
+    *state_ptr = 0x05;
+}
+
+/*
+ * nvme_queue_sync - Synchronize NVMe queue state
+ * Address: 0x49e9-0x4a56 (110 bytes)
+ *
+ * Synchronizes NVMe queue state between controller and firmware.
+ * Reads queue index from 0xC512, writes 0xFF to it (acknowledge),
+ * then checks sync counters and handles pending operations.
+ *
+ * Key registers:
+ * - 0xC512: REG_NVME_QUEUE_INDEX - Current queue index
+ * - 0x009F: Queue sync reference
+ * - 0x0517: Queue counter
+ * - 0x00C2: Init state (G_INIT_STATE_00C2)
+ * - 0x00E5: Init state 2 (G_INIT_STATE_00E5)
+ * - 0xCEF3: REG_CPU_LINK_CEF3 - Link control register
+ * - 0x0171: G_SCSI_CTRL - SCSI control
+ * - 0x0B01: G_USB_INIT_0B01 - USB init state
+ *
+ * Original disassembly:
+ *   49e9: mov dptr, #0xc512     ; REG_NVME_QUEUE_INDEX
+ *   49ec: movx a, @dptr
+ *   49ed: mov 0x38, a           ; Save index to IDATA 0x38
+ *   49ef: mov a, #0xff
+ *   49f1: movx @dptr, a         ; Acknowledge by writing 0xFF
+ *   49f2: mov dptr, #0x009f     ; Read sync reference
+ *   49f5: movx a, @dptr
+ *   49f6: mov r7, a
+ *   49f7: mov dptr, #0x0517     ; Read queue counter
+ *   49fa: movx a, @dptr
+ *   49fb: inc a                 ; Increment
+ *   49fc: movx @dptr, a         ; Store back
+ *   49fd: xrl a, r7             ; Compare with reference
+ *   49fe: jnz 0x4a36            ; If not equal, skip main processing
+ *   4a00: ... (main processing loop)
+ *   4a56: ret
+ */
+void nvme_queue_sync(void)
+{
+    __idata uint8_t *queue_idx = (__idata uint8_t *)0x38;
+    uint8_t sync_ref, counter_val;
+    __xdata uint8_t *ptr;
+
+    /* Read queue index and acknowledge */
+    *queue_idx = REG_NVME_QUEUE_INDEX;
+    REG_NVME_QUEUE_INDEX = 0xFF;
+
+    /* Read sync reference from 0x009F */
+    sync_ref = *(__xdata uint8_t *)0x009F;
+
+    /* Increment queue counter at 0x0517 */
+    ptr = (__xdata uint8_t *)0x0517;
+    (*ptr)++;
+    counter_val = *ptr;
+
+    /* If counter doesn't match reference, skip main processing */
+    if (counter_val != sync_ref) {
+        goto check_scsi;
+    }
+
+    /* Main processing loop - check init state and process */
+    while (1) {
+        sync_ref = *(__xdata uint8_t *)0x00C2;  /* G_INIT_STATE_00C2 */
+        counter_val = *(__xdata uint8_t *)0x0517;
+
+        if (counter_val != sync_ref) {
+            /* Check G_INIT_STATE_00E5 */
+            if (G_INIT_STATE_00E5 != 0) {
+                /* Call helper with params: R3=0x03, R5=0x47, R7=0x0B */
+                /* TODO: call helper_523c(0x03, 0x47, 0x0B) */
+            }
+            goto call_state_handler;
+        }
+
+        /* Check REG_CPU_LINK_CEF3 bit 3 */
+        if (REG_CPU_LINK_CEF3 & 0x08) {
+            /* Set CEF3 to 0x08 and call handler_2608 */
+            REG_CPU_LINK_CEF3 = 0x08;
+            /* TODO: call handler_2608() */
+            continue;  /* Loop back */
+        }
+
+        /* Call helper 0x0395 and check result */
+        /* TODO: result = call_0395() */
+        /* if (result == 0) continue; else break; */
+        break;
+    }
+    return;
+
+call_state_handler:
+    /* Call nvme_state_handler */
+    nvme_state_handler();
+    goto check_scsi;
+
+check_scsi:
+    /* Check G_SCSI_CTRL (0x0171) for pending operations */
+    if (G_SCSI_CTRL > 0) {
+        /* Decrement SCSI control */
+        G_SCSI_CTRL--;
+
+        /* Check G_USB_INIT_0B01 */
+        if (G_USB_INIT_0B01 != 0) {
+            /* Call helper with queue index */
+            /* TODO: call helper_4eb3(0, *queue_idx) */
+        } else {
+            /* Call alternative helper */
+            /* TODO: call helper_46f8(0, *queue_idx) */
+        }
+    }
+}
+
+/*
+ * nvme_queue_process_pending - Process pending NVMe queue operations
+ * Address: 0x3e81-0x3f2b (171 bytes)
+ *
+ * Processes pending queue operations. Reads queue status from 0xC516,
+ * increments queue counters, and handles completion based on various
+ * state flags.
+ *
+ * Key registers:
+ * - 0xC516: REG_NVME_QUEUE_C516 - Queue status (bits 0-5: index)
+ * - 0x009F: Queue reference base
+ * - 0x00C2: Init state comparison
+ * - 0x00E5: Secondary state flag
+ * - 0xCEF3: REG_CPU_LINK_CEF3 - Link control
+ * - 0xCEF2: REG_CPU_LINK_CEF2 - Link status
+ * - 0x05AC: Buffer state flag
+ *
+ * Original disassembly:
+ *   3e81: mov dptr, #0xc516     ; REG_NVME_QUEUE_C516
+ *   3e84: movx a, @dptr
+ *   3e85: anl a, #0x3f          ; Mask to 6 bits
+ *   3e87: mov 0x38, a           ; Store to IDATA 0x38
+ *   3e89: add a, #0x17          ; A = index + 0x17
+ *   3e8b: lcall 0x3257          ; calc_dptr_0500_base
+ *   3e8e: movx a, @dptr         ; Read queue counter
+ *   3e8f: inc a                 ; Increment
+ *   3e90: movx @dptr, a         ; Store back
+ *   3e91: mov 0x39, a           ; Save new counter to IDATA 0x39
+ *   3e93: mov a, #0x9f          ; Calculate 0x009F + index
+ *   3e95: add a, 0x38
+ *   3e97-3e9e: Read value and compare with counter
+ *   ... (processing logic)
+ *   3f2b: ret
+ */
+void nvme_queue_process_pending(void)
+{
+    __idata uint8_t *queue_idx = (__idata uint8_t *)0x38;
+    __idata uint8_t *counter = (__idata uint8_t *)0x39;
+    uint8_t status, ref_val;
+    __xdata uint8_t *ptr;
+
+    /* Read queue status and get index */
+    status = REG_NVME_QUEUE_C516;
+    *queue_idx = status & 0x3F;
+
+    /* Increment counter at 0x0517 + index */
+    ptr = nvme_calc_dptr_0500_base(0x17 + *queue_idx);
+    (*ptr)++;
+    *counter = *ptr;
+
+    /* Calculate reference address: 0x009F + index */
+    ptr = (__xdata uint8_t *)(0x009F + *queue_idx);
+    ref_val = *ptr;
+
+    /* Compare counter with reference */
+    if (*counter != ref_val) {
+        /* Not matched - jump to error handling */
+        goto handle_mismatch;
+    }
+
+    /* Counter matches - check init state at 0x00C2 + index */
+    ptr = (__xdata uint8_t *)(0x00C2 + *queue_idx);
+    if (*ptr != *counter) {
+        /* Check secondary state at 0x00E5 + index */
+        ptr = (__xdata uint8_t *)(0x00E5 + *queue_idx);
+        if (*ptr != 0) {
+            /* Non-zero secondary state - call helper with params */
+            /* TODO: call helper_523c(0x03, 0x47, 0x0B) */
+        }
+        goto done;
+    }
+
+    /* Check link control register bit 3 */
+    if (!(REG_CPU_LINK_CEF3 & 0x08)) {
+        /* Bit 3 not set - check buffer state at 0x05AC */
+        ptr = (__xdata uint8_t *)0x05AC;
+        if (*ptr == 0) {
+            goto done;
+        }
+
+        /* Check REG_CPU_LINK_CEF2 bit 7 */
+        if (REG_CPU_LINK_CEF2 & 0x80) {
+            goto done;
+        }
+    }
+
+    /* Set link control bit 3 and call handler */
+    REG_CPU_LINK_CEF3 = 0x08;
+    /* TODO: call handler_2608() */
+    return;
+
+handle_mismatch:
+    /* Handle counter mismatch - typically retry or error */
+    /* TODO: Additional error handling */
+
+done:
+    return;
+}

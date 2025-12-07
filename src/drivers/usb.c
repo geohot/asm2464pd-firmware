@@ -157,6 +157,12 @@ extern void handler_039a(void);
 /* External from state_helpers.c */
 extern void nvme_func_04da(uint8_t param);
 
+/* External NVMe queue functions from nvme.c */
+extern void nvme_process_queue_entries(void);  /* 0x488f */
+extern void nvme_state_handler(void);          /* 0x4784 */
+extern void nvme_queue_sync(void);             /* 0x49e9 */
+extern void nvme_queue_process_pending(void);  /* 0x3e81 */
+
 /* Forward declaration - USB master handler (0x10e0)
  * Called at end of endpoint dispatch loop */
 void usb_master_handler(void);
@@ -1379,7 +1385,7 @@ void usb_master_handler(void)
             status = REG_NVME_LINK_STATUS;
             if (status & 0x02) {
                 /* Call handler at 0x488f */
-                /* TODO: Implement FUN_CODE_488f */
+                nvme_process_queue_entries();
             }
         }
 
@@ -1403,24 +1409,24 @@ void usb_master_handler(void)
         status = REG_NVME_LINK_STATUS;
         if (status & 0x01) {
             /* Call 0x3E81 */
-            /* TODO: Implement FUN_CODE_3e81 */
+            nvme_queue_process_pending();
         }
         status = REG_NVME_LINK_STATUS;
         if (status & 0x02) {
             /* Call 0x488f */
-            /* TODO: Implement FUN_CODE_488f */
+            nvme_process_queue_entries();
         }
     } else {
         /* USB status bit 0 clear path */
         status = REG_NVME_LINK_STATUS;
         if (status & 0x02) {
             /* Call 0x4784 */
-            /* TODO: Implement FUN_CODE_4784 */
+            nvme_state_handler();
         }
         status = REG_NVME_LINK_STATUS;
         if (status & 0x01) {
             /* Call 0x49e9 */
-            /* TODO: Implement FUN_CODE_49e9 */
+            nvme_queue_sync();
         }
     }
 
@@ -1428,7 +1434,7 @@ void usb_master_handler(void)
     status = REG_USB_MSC_CTRL;
     if (status & 0x01) {
         /* Call 0x4784 */
-        /* TODO: Implement FUN_CODE_4784 */
+        nvme_state_handler();
         REG_USB_MSC_CTRL = 0x01;  /* Clear bit by writing 1 */
     }
 }

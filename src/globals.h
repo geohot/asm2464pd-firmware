@@ -174,6 +174,11 @@ __idata __at(0x55) extern uint8_t I_WORK_55;   /* Work variable 0x55 */
 #define G_USB_INIT_0B01         XDATA_VAR8(0x0B01)  /* USB init state flag */
 #define G_USB_TRANSFER_FLAG     XDATA_VAR8(0x0B2E)  /* USB transfer flag */
 #define G_USB_STATE_0B41        XDATA_VAR8(0x0B41)  /* USB state check */
+#define G_BUFFER_STATE_0AA6     XDATA_VAR8(0x0AA6)  /* Buffer state flags */
+#define G_BUFFER_STATE_0AA7     XDATA_VAR8(0x0AA7)  /* Buffer state control */
+#define G_STATE_CTRL_0B3E       XDATA_VAR8(0x0B3E)  /* State control 0x0B3E */
+#define G_STATE_CTRL_0B3F       XDATA_VAR8(0x0B3F)  /* State control 0x0B3F */
+#define G_DMA_ENDPOINT_0578     XDATA_VAR8(0x0578)  /* DMA endpoint control */
 
 //=============================================================================
 // USB/SCSI Buffer Area Control (0xD800-0xDFFF)
