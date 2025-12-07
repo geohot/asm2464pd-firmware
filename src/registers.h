@@ -189,6 +189,9 @@
 #define REG_PCIE_PM_ENTER       XDATA_REG8(0xB255)
 #define REG_PCIE_COMPL_STATUS   XDATA_REG8(0xB284)
 #define REG_PCIE_STATUS         XDATA_REG8(0xB296)
+#define   PCIE_STATUS_ERROR       0x01  // Bit 0: Error flag
+#define   PCIE_STATUS_COMPLETE    0x02  // Bit 1: Completion status
+#define   PCIE_STATUS_BUSY        0x04  // Bit 2: Busy flag
 #define REG_PCIE_CTRL_B402      XDATA_REG8(0xB402)
 #define REG_PCIE_LANE_COUNT     XDATA_REG8(0xB424)
 #define REG_PCIE_LINK_STATUS_ALT XDATA_REG16(0xB4AE)
@@ -319,6 +322,7 @@
 #define REG_FLASH_DATA_LEN_HI   XDATA_REG8(0xC8A4)
 #define REG_FLASH_DIV           XDATA_REG8(0xC8A6)
 #define REG_FLASH_CSR           XDATA_REG8(0xC8A9)
+#define   FLASH_CSR_BUSY          0x01  // Bit 0: Flash controller busy
 #define REG_FLASH_CMD           XDATA_REG8(0xC8AA)
 #define REG_FLASH_ADDR_HI       XDATA_REG8(0xC8AB)
 #define REG_FLASH_ADDR_LEN      XDATA_REG8(0xC8AC)
@@ -361,6 +365,7 @@
 //=============================================================================
 #define REG_TIMER0_DIV          XDATA_REG8(0xCC10)
 #define REG_TIMER0_CSR          XDATA_REG8(0xCC11)
+#define   TIMER_CSR_EXPIRED       0x02  // Bit 1: Timer expired flag
 #define REG_TIMER0_THRESHOLD    XDATA_REG16(0xCC12)
 #define REG_TIMER1_DIV          XDATA_REG8(0xCC16)
 #define REG_TIMER1_CSR          XDATA_REG8(0xCC17)
@@ -489,6 +494,7 @@
 //=============================================================================
 #define REG_NVME_EVENT_ACK      XDATA_REG8(0xEC04)
 #define REG_NVME_EVENT_STATUS   XDATA_REG8(0xEC06)
+#define   NVME_EVENT_PENDING      0x01  // Bit 0: NVMe event pending
 
 //=============================================================================
 // System Control (0xEF00-0xEFFF)
@@ -496,249 +502,18 @@
 #define REG_CRITICAL_CTRL       XDATA_REG8(0xEF4E)
 
 //=============================================================================
-// Bit Definitions
+// PCIe TLP Format/Type Codes (for REG_PCIE_FMT_TYPE)
 //=============================================================================
-
-// USB status bits
-#define USB_CONNECTED           0x80
-#define USB_READY               0x80
-#define USB_LINK_ACTIVE         0x40
-#define USB_TRANSFER_DONE       0x20
-#define USB_SPEED_MASK          0x30
-#define USB_SUSPENDED           0x08
-#define USB_RESET_DET           0x04
-#define USB_ERROR               0x02
-#define USB_INT_PEND            0x01
-#define USB_ACTIVITY            0x01
-
-// USB speed values
-#define USB_SPEED_DISC          0x00
-#define USB_SPEED_USB2          0x10
-#define USB_SPEED_USB3          0x20
-#define USB_SPEED_USB4          0x30
-#define USB_SPEED_UNKNOWN       0x00
-#define USB_SPEED_LOW           0x01
-#define USB_SPEED_FULL          0x02
-#define USB_SPEED_HIGH          0x03
-#define USB_SPEED_SUPER         0x04
-
-// USB control bits
-#define USB_ENABLE              0x80
-#define USB_INT_EN              0x40
-#define USB_CLR_ERR             0x20
-#define USB_RECONNECT           0x10
-#define USB_CONNECT             0x10
-#define USB_DISCONNECT          0x20
-#define USB_TX_READY            0x04
-#define USB_RX_READY            0x08
-
-// Power control bits
-#define PWR_CORE_EN             0x01
-#define PWR_PHY_EN              0x02
-#define PWR_USB_EN              0x04
-#define PWR_NVME_EN             0x08
-#define PWR_DMA_EN              0x10
-#define PWR_PLL_EN              0x20
-#define PWR_CLK_EN              0x40
-
-// Power status bits
-#define PWR_ST_OFF              0x00
-#define PWR_ST_INIT             0x40
-#define PWR_ST_READY            0x80
-#define PWR_ST_ERROR            0xC0
-
-// Power state constants
-#define POWER_ACTIVE            0x03
-#define POWER_LOW               0x02
-#define POWER_SUSPEND           0x01
-#define POWER_RESUME            0x04
-
-// Link control bits
-#define LINK_ENABLE             0x80
-#define LINK_RESET              0x40
-#define LINK_MODE_MASK          0x30
-#define LINK_AUTO_NEG           0x08
-#define LINK_TRAIN_EN           0x04
-#define LINK_PHY_EN             0x02
-#define LINK_CLR_ERR            0x01
-
-// Link modes
-#define LINK_MODE_USB3          0x00
-#define LINK_MODE_USB4G2        0x10
-#define LINK_MODE_USB4G3        0x20
-#define LINK_MODE_TB            0x30
-
-// Link status bits
-#define LINK_TRAINED            0x80
-#define LINK_PHY_RDY            0x40
-#define LINK_ERROR              0x20
-#define LINK_SPEED_MASK         0x0F
-
-// PHY status bits
-#define PHY_READY               0x80
-#define PHY_PLL_LOCK            0x40
-#define PHY_RX_DETECT           0x20
-#define PHY_TX_EN               0x10
-#define PHY_LANE_MASK           0x0F
-#define PHY_TRAIN_START         0x01
-#define PHY_TRAIN_DONE          0x80
-#define PHY_LINK_UP             0x40
-#define PHY_LINK_DOWN           0x00
-
-// NVMe control/status bits
-#define NVME_ENABLE             0x80
-#define NVME_RESET              0x40
-#define NVME_SHUTDOWN           0x20
-#define NVME_ERROR              0x10
-#define NVME_STATE_MASK         0x0F
-#define NVME_INT_EN             0x08
-#define NVME_CLR_ERR            0x04
-#define NVME_START              0x01
-#define NVME_COMPLETE           0x80
-
-// NVMe states
-#define NVME_ST_INIT            0x01
-#define NVME_ST_READY           0x02
-#define NVME_ST_ACTIVE          0x04
-#define NVME_ST_ERROR           0x08
-
-// NVMe status bits
-#define NVME_READY              0x80
-#define NVME_CMD_DONE           0x40
-#define NVME_INT_PEND           0x20
-#define NVME_CQ_READY           0x10
-
-// NVMe device status bits
-#define NVME_DEV_PRESENT        0x80
-#define NVME_DEV_READY          0x40
-#define NVME_DEV_TYPE_MASK      0x30
-
-// NVMe doorbell bits
-#define NVME_QUEUE_AVAIL        0x80
-#define NVME_COMPL_AVAIL        0x40
-#define NVME_CMD_READY          0x20
-#define NVME_CLR_CQ             0x10
-#define NVME_QUEUE_ADVANCE      0x08
-#define NVME_FLUSH              0x04
-
-// DMA control bits
-#define DMA_ENABLE              0x80
-#define DMA_DIR_N2U             0x40
-#define DMA_ACTIVE              0x20
-#define DMA_ERROR               0x10
-#define DMA_CHAN_MASK           0x0F
-#define DMA_START               0x01
-#define DMA_USB_TO_BUF          0x02
-#define DMA_BUF_TO_USB          0x04
-#define DMA_RESET               0x80
-#define DMA_CLR_ERR             0x40
-#define DMA_ABORT               0x20
-
-// DMA configuration
-#define DMA_BURST_MASK          0xC0
-#define DMA_PRIO_MASK           0x30
-#define DMA_MODE_MASK           0x0F
-#define DMA_MODE_BURST          0x01
-#define DMA_MODE_INCREMENT      0x02
-
-// DMA status bits
-#define DMA_COMPLETE            0x80
-#define DMA_IN_PROGRESS         0x40
-#define DMA_ERR_MASK            0x30
-#define DMA_ERROR_FLAG          0x01
-#define DMA_DONE_FLAG           0x02
-#define DMA_INT_EN              0x04
-#define DMA_CH_EN               0x80
-#define DMA_CH_USB_SRC          0x00
-#define DMA_CH_NVME_SRC         0x40
-#define DMA_CH_START            0x01
-#define DMA_CH_ABORT            0x02
-#define DMA_CH_CLR_ERR          0x04
-#define DMA_CH_ERROR            0x80
-#define DMA_CH_DONE             0x40
-#define DMA_CH_BUSY             0x20
-
-// Buffer status bits
-#define BUF_FULL                0x80
-#define BUF_EMPTY               0x40
-#define BUF_LEVEL_MASK          0x3F
-#define BUF_FLUSH               0x80
-#define BUF_BUSY                0x40
-#define BUF_ALLOCATED           0x01
-#define BUF_CLEAR               0x02
-#define BUF_WRITE_EN            0x04
-#define BUF_READ_EN             0x08
-#define BUF_DMA_EN              0x10
-#define BUF_OVERFLOW            0x20
-#define BUF_RESET_ALL           0x80
-#define BUF_DIRECTION_READ      0x00
-#define BUF_DIRECTION_WRITE     0x04
-#define BUF_CLR_OVERFLOW        0x20
-#define BUF_FLOW_PAUSE          0x01
-
-// PCIe status bits
-#define PCIE_STATUS_ERROR       0x01
-#define PCIE_STATUS_COMPLETE    0x02
-#define PCIE_STATUS_BUSY        0x04
-
-// PCIe format/type codes
-#define PCIE_FMT_MEM_READ       0x20
-#define PCIE_FMT_MEM_WRITE      0x60
+#define PCIE_FMT_MEM_READ       0x00
+#define PCIE_FMT_MEM_WRITE      0x40
 #define PCIE_FMT_CFG_READ_0     0x04
 #define PCIE_FMT_CFG_WRITE_0    0x44
 #define PCIE_FMT_CFG_READ_1     0x05
 #define PCIE_FMT_CFG_WRITE_1    0x45
 
-// Command status bits
-#define CMD_COMPLETE            0x80
-#define CMD_IN_PROGRESS         0x40
-#define CMD_ERROR               0x20
-#define CMD_RESULT_MASK         0x1F
-#define CMD_PENDING             0x01
-#define CMD_BUSY                0x02
-#define CMD_ABORT               0x04
-#define CMD_ENABLE              0x80
-#define CMD_RESET               0x01
-#define CMD_START               0x01
-#define CMD_STOP                0x02
-#define CMD_ABORTED             0x08
-#define CMD_RESP_SUCCESS        0x00
-#define CMD_RESP_ERROR          0x01
-#define CMD_RESP_READY          0x01
-#define CMD_TIMEOUT_FLAG        0x80
-
-// Interrupt status bits
-#define INT_SYS_EVENT           0x01
-#define INT_SYS_TIMER           0x10
-#define INT_SYS_LINK            0x20
-#define INT_PCIE_NVME_COMPLETE  0x10
-#define INT_PCIE_LINK_EVENT     0x20
-#define INT_PCIE_NVME_QUEUE     0x40
-#define INT_USB_PENDING         0x01
-#define INT_TIMER               0x01
-#define INT_DMA                 0x02
-#define INT_NVME                0x04
-#define INT_USB                 0x08
-
-// System status bits
-#define SYS_READY               0x80
-#define SYS_ERROR               0x40
-#define SYS_BUSY                0x20
-#define SYS_SOFT_RESET          0x20
-#define SYS_LINK_UP             0x10
-#define SYS_NVME_READY          0x08
-#define SYS_USB_READY           0x04
-#define SYS_ENABLE              0x04
-#define SYS_INIT                0x02
-#define SYS_RESET               0x01
-
-// UART configuration
-#define UART_BAUD_RATE          921600
-#define UART_DATA_BITS          8
-#define UART_PARITY             0
-#define UART_STOP_BITS          1
-
+//=============================================================================
 // Timeouts (milliseconds)
+//=============================================================================
 #define TIMEOUT_NVME            5000
 #define TIMEOUT_DMA             10000
 

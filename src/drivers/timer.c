@@ -384,11 +384,11 @@ void timer0_csr_ack(void)
 void timer0_wait_done(void)
 {
     /* Wait for done flag (bit 1) */
-    while (!(REG_TIMER0_CSR & 0x02))
+    while (!(REG_TIMER0_CSR & TIMER_CSR_EXPIRED))
         ;
 
     /* Acknowledge by writing 0x02 */
-    REG_TIMER0_CSR = 0x02;
+    REG_TIMER0_CSR = TIMER_CSR_EXPIRED;
 }
 
 /*
@@ -410,9 +410,9 @@ void timer0_wait_done(void)
 void timer1_check_and_ack(void)
 {
     /* Check if Timer1 done flag is set */
-    if (REG_TIMER1_CSR & 0x02) {
+    if (REG_TIMER1_CSR & TIMER_CSR_EXPIRED) {
         /* Acknowledge by writing 0x02 */
-        REG_TIMER1_CSR = 0x02;
+        REG_TIMER1_CSR = TIMER_CSR_EXPIRED;
         /* Call dispatch handler - 0x04D5 */
         /* lcall 0x04d5 would go here */
     }

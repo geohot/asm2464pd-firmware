@@ -229,7 +229,7 @@ void flash_write_r1_xdata_word(uint8_t r1_addr, uint16_t val)
  */
 void flash_poll_busy(void)
 {
-    while (REG_FLASH_CSR & 0x01) {
+    while (REG_FLASH_CSR & FLASH_CSR_BUSY) {
         /* Wait for busy bit to clear */
     }
 }
@@ -580,10 +580,10 @@ void flash_run_transaction(uint8_t cmd)
 uint8_t flash_wait_and_poll(void)
 {
     /* Start transaction */
-    REG_FLASH_CSR = 0x01;
+    REG_FLASH_CSR = FLASH_CSR_BUSY;
 
     /* Poll until not busy */
-    while (REG_FLASH_CSR & 0x01) {
+    while (REG_FLASH_CSR & FLASH_CSR_BUSY) {
         /* Wait */
     }
 

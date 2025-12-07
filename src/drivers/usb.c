@@ -2317,11 +2317,13 @@ uint8_t usb_func_1c90(void)
  *   1c9f: lcall 0x4ff2      ; core_handler_4ff2
  *   1ca2: lcall 0x4e6d      ; helper function
  */
+extern void helper_4e6d(void);  /* 0x4e6d - Buffer configuration helper */
+
 void usb_func_1c9f(void)
 {
     /* Calls core handler and nvme helper */
     core_handler_4ff2(0);
-    /* helper_4e6d();        TODO: link when implemented */
+    helper_4e6d();
 }
 
 /*
@@ -2777,6 +2779,8 @@ void usb_func_523c(uint8_t mode, uint8_t size, uint8_t flags)
  *   526a: lcall 0x1709
  *   526d: sjmp done
  */
+extern void transfer_helper_1709(void);  /* 0x1709 - SCSI buffer control init */
+
 void usb_func_5260(uint8_t param)
 {
     uint8_t status;
@@ -2788,7 +2792,7 @@ void usb_func_5260(uint8_t param)
     status = REG_SCSI_DMA_COMPL;
     if (status & 0x01) {
         /* Call transfer helper at 0x1709 */
-        /* transfer_helper_1709();  TODO: link when implemented */
+        transfer_helper_1709();
     }
 }
 
@@ -4210,7 +4214,7 @@ void usb_wait_ce89_and_init(void)
     REG_XFER_CTRL_CE88 = val;
 
     /* Wait for bit 0 of CE89 */
-    while ((REG_XFER_READY & 0x01) == 0);
+    while ((REG_XFER_READY & XFER_READY_BIT) == 0);
 
     *(__idata uint8_t *)0x39 = 1;
 }

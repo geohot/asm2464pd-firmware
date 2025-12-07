@@ -601,7 +601,7 @@ void handler_04d0(void)
             break;
         }
         /* Check bit 1 of timer CSR - if not set, continue polling */
-    } while ((REG_TIMER0_CSR & 0x02) == 0);
+    } while ((REG_TIMER0_CSR & TIMER_CSR_EXPIRED) == 0);
 
     /* Final handlers - would call 0xE8EF, 0xDD42, then jump to 0xD996 */
     /* These handle completion of the timer/link setup */
@@ -1546,13 +1546,13 @@ void ext1_isr(void) __interrupt(INT_EXT1) __using(1)
         }
 
         /* Check NVMe event status */
-        if (REG_NVME_EVENT_STATUS & 0x01) {
-            REG_NVME_EVENT_ACK = 0x01;  /* Acknowledge */
+        if (REG_NVME_EVENT_STATUS & NVME_EVENT_PENDING) {
+            REG_NVME_EVENT_ACK = NVME_EVENT_PENDING;  /* Acknowledge */
             /* Additional NVMe processing */
         }
 
         /* Check for additional PCIe events (inside event flags block) */
-        status = REG_INT_PCIE_NVME & 0x0F;
+        status = REG_INT_PCIE_NVME & INT_PCIE_NVME_EVENTS;
         if (status != 0) {
             handler_0570();
         }

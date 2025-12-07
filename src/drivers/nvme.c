@@ -2226,7 +2226,7 @@ static void nvme_queue_helper_180d(uint8_t enable)
     REG_XFER_CTRL_CE88 = *(__idata uint8_t *)0x38;
 
     /* Wait for bit 0 of 0xCE89 */
-    while (!(REG_XFER_READY & 0x01));
+    while (!(REG_XFER_READY & XFER_READY_BIT));
 
     /* Increment counter at 0x000A */
     (*(__xdata uint8_t *)0x000A)++;

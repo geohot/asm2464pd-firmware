@@ -518,10 +518,14 @@ uint8_t state_action_dispatch(uint8_t action_code)
  */
 void transfer_func_16a2(void)
 {
-    /* This function reads from DPTR (set by caller) and computes
-     * a new address. In C we can't directly manipulate DPTR,
-     * so we implement the semantics using globals. */
-    /* The caller (handler_3adb) expects DPTR to point to state counter area */
+    /* This function reads value from 0x0AA4 (state counter low) and computes
+     * an address in the 0x04xx region: DPTR = 0x0452 + value
+     * This address points to state table entries.
+     * The result is then used by subsequent operations.
+     * Since we can't return DPTR in C, the caller must handle this directly. */
+    uint8_t val = G_STATE_COUNTER_LO;
+    /* Address would be 0x0452 + val, which points to state table at 0x0452-0x04FF */
+    (void)val;
 }
 
 /*
@@ -542,9 +546,14 @@ void transfer_func_16a2(void)
  */
 void transfer_func_16b7(uint8_t param)
 {
-    /* The function writes value to DPTR (set by caller)
-     * then computes address 0x046A + param */
-    (void)param;
+    /* The function writes value to DPTR (set by previous call)
+     * then computes address 0x046A + param for next operation.
+     * This is typically used to write state to computed addresses.
+     * param is typically the state counter value. */
+    /* Write param value to state address at 0x046A + something */
+    uint16_t addr = 0x046A + param;
+    /* The caller chain uses this address for state tracking */
+    (void)addr;
 }
 
 /*
@@ -560,8 +569,14 @@ void transfer_func_16b7(uint8_t param)
  */
 void transfer_func_17ed(void)
 {
-    /* Reads 3 bytes from REG_WAIT_BIT location at 0x0461 */
-    /* The result is used by caller for state calculations */
+    /* Reads 3 bytes from 0x0461-0x0463 (state wait counter area)
+     * Using the xdata_load_triple pattern (R3, R2, R1).
+     * The result is used by caller for state calculations.
+     * In C, we can read the values but can't return in registers.
+     * The caller chain in protocol.c handles these values. */
+    __xdata uint8_t *ptr = (__xdata uint8_t *)0x0461;
+    /* R3 = ptr[0], R2 = ptr[1], R1 = ptr[2] */
+    (void)ptr;
 }
 
 /*
@@ -603,14 +618,39 @@ uint8_t state_helper_15af(void)
 }
 
 /*
- * flash_func_1679 - Flash operation helper
- * Address: 0x1679
+ * flash_func_1679 - Address calculation helper
+ * Address: 0x1679-0x1686 (14 bytes)
  *
- * Called during state transitions in handler_3adb.
+ * Computes an address in the 0x04xx region:
+ * DPTR = 0x0477 + (A * 4)
+ * where A is the input value from accumulator.
+ *
+ * Original disassembly:
+ *   1679: add a, 0xe0       ; A = A + A (multiply by 2)
+ *   167b: add a, 0xe0       ; A = A + A (multiply by 4)
+ *   167d: add a, #0x77      ; A = A + 0x77
+ *   167f: mov 0x82, a       ; DPL = A
+ *   1681: clr a
+ *   1682: addc a, #0x04     ; DPH = 0x04 + carry
+ *   1684: mov 0x83, a
+ *   1686: ret
+ *
+ * Called during state transitions - returns pointer to
+ * state table entry at 0x0477 + (index * 4).
  */
+__xdata uint8_t *flash_func_1679_ptr(uint8_t index)
+{
+    /* Compute address: 0x0477 + (index * 4) */
+    uint16_t addr = 0x0477 + ((uint16_t)index * 4);
+    return (__xdata uint8_t *)addr;
+}
+
+/* Stub for compatibility with existing externs */
 void flash_func_1679(void)
 {
-    /* TODO: Implement from address 0x1679 */
+    /* This function is typically called via assembly with A set.
+     * In our C implementation, callers should use flash_func_1679_ptr() instead.
+     * This stub exists for link compatibility. */
 }
 
 /*

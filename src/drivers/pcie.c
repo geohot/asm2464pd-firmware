@@ -209,7 +209,7 @@ void pcie_clear_and_trigger(void)
  */
 uint8_t pcie_get_completion_status(void)
 {
-    return (REG_PCIE_STATUS & 0x04) >> 2;
+    return (REG_PCIE_STATUS & PCIE_STATUS_BUSY) >> 2;
 }
 
 /*
@@ -270,7 +270,7 @@ void pcie_set_byte_enables(uint8_t byte_en)
  */
 uint8_t pcie_read_completion_data(void)
 {
-    REG_PCIE_STATUS = 0x02;
+    REG_PCIE_STATUS = PCIE_STATUS_COMPLETE;
     return REG_PCIE_CPL_DATA;
 }
 
@@ -288,7 +288,7 @@ uint8_t pcie_read_completion_data(void)
  */
 void pcie_write_status_complete(void)
 {
-    REG_PCIE_STATUS = 0x04;
+    REG_PCIE_STATUS = PCIE_STATUS_BUSY;
 }
 
 /*
@@ -462,7 +462,7 @@ void pcie_write_status_done(void)
  */
 uint8_t pcie_check_status_complete(void)
 {
-    return REG_PCIE_STATUS & 0x02;
+    return REG_PCIE_STATUS & PCIE_STATUS_COMPLETE;
 }
 
 /*
@@ -473,7 +473,7 @@ uint8_t pcie_check_status_complete(void)
  */
 uint8_t pcie_check_status_error(void)
 {
-    return REG_PCIE_STATUS & 0x01;
+    return REG_PCIE_STATUS & PCIE_STATUS_ERROR;
 }
 
 /*
@@ -606,9 +606,9 @@ uint8_t pcie_setup_memory_tlp(void)
 
     /* Set format/type based on direction */
     if (direction & 0x01) {
-        REG_PCIE_FMT_TYPE = 0x40;  /* Memory write */
+        REG_PCIE_FMT_TYPE = PCIE_FMT_MEM_WRITE;
     } else {
-        REG_PCIE_FMT_TYPE = 0x00;  /* Memory read */
+        REG_PCIE_FMT_TYPE = PCIE_FMT_MEM_READ;
     }
 
     /* Enable TLP control */
