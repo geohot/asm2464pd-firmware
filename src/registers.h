@@ -161,15 +161,21 @@
 #define POWER_RESUME            0x04
 
 //=============================================================================
-// USB Interface Registers (0x9000-0x90FF)
+// USB Interface Registers (0x9000-0x91FF)
 //=============================================================================
 #define REG_USB_STATUS          XDATA_REG8(0x9000)  // Status (RW)
-#define REG_USB_PERIPH_STATUS   XDATA_REG8(0x9101)  // Peripheral status (RW)
 #define REG_USB_CONTROL         XDATA_REG8(0x9001)  // Control (RW)
 #define REG_USB_CONFIG          XDATA_REG8(0x9002)  // Configuration (RW)
 #define REG_USB_EP0_STATUS      XDATA_REG8(0x9003)  // EP0 status (RW)
 #define REG_USB_EP0_LEN_L       XDATA_REG8(0x9004)  // EP0 length low (RW)
 #define REG_USB_EP0_LEN_H       XDATA_REG8(0x9005)  // EP0 length high (RW)
+#define REG_USB_EP_CTRL_905E    XDATA_REG8(0x905E)  // EP control (RW)
+#define REG_USB_MODE_90E2       XDATA_REG8(0x90E2)  // USB mode (RW)
+#define REG_USB_PERIPH_STATUS   XDATA_REG8(0x9101)  // Peripheral status (RW)
+#define REG_USB_PHY_CTRL_91C0   XDATA_REG8(0x91C0)  // USB PHY control 0 (RW)
+#define REG_USB_PHY_CTRL_91C1   XDATA_REG8(0x91C1)  // USB PHY control 1 (RW)
+#define REG_USB_PHY_CTRL_91C3   XDATA_REG8(0x91C3)  // USB PHY control 3 (RW)
+#define REG_USB_PHY_CTRL_91D1   XDATA_REG8(0x91D1)  // USB PHY control D1 (RW)
 #define REG_USB_EP0_CONFIG      XDATA_REG8(0x9006)  // EP0 config (RW)
 #define REG_USB_SCSI_BUF_LEN    XDATA_REG16(0x9007) // SCSI buffer length (RW, 2 bytes)
 #define REG_USB_DATA_L          XDATA_REG8(0x9010)  // Data low (RW)
@@ -179,6 +185,16 @@
 #define REG_INT_FLAGS_EX0       XDATA_REG8(0x9091)  // Interrupt flags external (RW)
 #define REG_USB_EP_CFG1         XDATA_REG8(0x9093)  // Endpoint config 1 (RW)
 #define REG_USB_EP_CFG2         XDATA_REG8(0x9094)  // Endpoint config 2 (RW)
+
+//=============================================================================
+// Buffer/DMA Configuration Registers (0x9300-0x93FF)
+//=============================================================================
+#define REG_BUF_CFG_9300        XDATA_REG8(0x9300)  // Buffer config 0 (RW)
+#define REG_BUF_CFG_9301        XDATA_REG8(0x9301)  // Buffer config 1 (RW)
+#define REG_BUF_CFG_9302        XDATA_REG8(0x9302)  // Buffer config 2 (RW)
+#define REG_BUF_CFG_9303        XDATA_REG8(0x9303)  // Buffer config 3 (RW)
+#define REG_BUF_CFG_9304        XDATA_REG8(0x9304)  // Buffer config 4 (RW)
+#define REG_BUF_CFG_9305        XDATA_REG8(0x9305)  // Buffer config 5 (RW)
 #define REG_USB_EP_STATUS       XDATA_REG8(0x9118)  // Endpoint status (RO)
 #define REG_USB_BUFFER_ALT      XDATA_REG8(0x911B)  // USB buffer alt (RW)
 #define REG_USB_STATUS_0D       XDATA_REG8(0x910D)  // USB status 0D (RO)
@@ -374,9 +390,13 @@
 #define REG_DMA_LEN_L           XDATA_REG8(0xC8AE)  // Length low (RW)
 #define REG_DMA_LEN_H           XDATA_REG8(0xC8AF)  // Length high (RW)
 #define REG_DMA_MODE            XDATA_REG8(0xC8B0)  // Mode (RW)
-#define REG_DMA_CHAN_AUX        XDATA_REG8(0xC8B2)  // Channel auxiliary (RW)
+#define REG_DMA_CHAN_AUX        XDATA_REG8(0xC8B2)  // Channel auxiliary byte 0 (RW)
+#define REG_DMA_CHAN_AUX1       XDATA_REG8(0xC8B3)  // Channel auxiliary byte 1 (RW)
+#define REG_DMA_XFER_CNT_HI     XDATA_REG8(0xC8B4)  // Transfer count high (RW)
+#define REG_DMA_XFER_CNT_LO     XDATA_REG8(0xC8B5)  // Transfer count low (RW)
 #define REG_DMA_CHAN_CTRL2      XDATA_REG8(0xC8B6)  // Channel control 2 (RW)
 #define REG_DMA_CHAN_STATUS2    XDATA_REG8(0xC8B7)  // Channel status 2 (RW)
+#define REG_DMA_TRIGGER         XDATA_REG8(0xC8B8)  // DMA trigger (RW) - bit 0: busy
 #define REG_DMA_CONFIG          XDATA_REG8(0xC8D4)  // Configuration (WO)
 #define REG_DMA_STATUS          XDATA_REG8(0xC8D6)  // Status (RW)
 #define REG_DMA_STATUS2         XDATA_REG8(0xC8D8)  // Status 2 (RW)
@@ -492,6 +512,7 @@
 #define REG_PCIE_PM_ENTER       XDATA_REG8(0xB255)  // PM enter (WO)
 #define REG_PCIE_COMPL_STATUS   XDATA_REG8(0xB284)  // Completion status (RO)
 #define REG_PCIE_STATUS         XDATA_REG8(0xB296)  // Status (RW)
+#define REG_PCIE_CTRL_B402      XDATA_REG8(0xB402)  // PCIe control (RW)
 #define REG_PCIE_LANE_COUNT     XDATA_REG8(0xB424)  // Lane count (RO)
 #define REG_PCIE_LINK_STATUS_ALT XDATA_REG16(0xB4AE) // Link status alt (RO, 2 bytes)
 #define REG_PCIE_LANE_MASK      XDATA_REG8(0xB4C8)  // Lane mask (RW)
@@ -550,6 +571,12 @@
 #define CMD_RESP_ERROR          0x01
 #define CMD_RESP_READY          0x01
 #define CMD_TIMEOUT_FLAG        0x80
+
+//=============================================================================
+// System Status Registers (0xE700-0xE7FF)
+//=============================================================================
+#define REG_FLASH_READY_STATUS  XDATA_REG8(0xE795)  // Flash ready status (bit 5 = ready)
+#define REG_LINK_MODE_CTRL      XDATA_REG8(0xE7FC)  // Link mode control (RW)
 
 //=============================================================================
 // System Registers (Hardware registers >= 0x6000)

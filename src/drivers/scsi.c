@@ -1,0 +1,368 @@
+/*
+ * ASM2464PD Firmware - SCSI Command Handler
+ *
+ * Handles SCSI/USB Mass Storage commands for the NVMe bridge.
+ * The ASM2464PD presents NVMe storage as a USB Mass Storage device,
+ * translating SCSI commands to NVMe operations.
+ *
+ * ============================================================================
+ * USB MASS STORAGE PROTOCOL
+ * ============================================================================
+ *
+ * The USB Mass Storage class uses Command Block Wrapper (CBW) and
+ * Command Status Wrapper (CSW) structures:
+ *
+ * CBW (31 bytes):
+ *   Bytes 0-3:   Signature 'USBC' (0x55, 0x53, 0x42, 0x43)
+ *   Bytes 4-7:   Tag
+ *   Bytes 8-11:  Data transfer length
+ *   Byte 12:     Flags (bit 7 = direction)
+ *   Byte 13:     LUN
+ *   Byte 14:     Command length
+ *   Bytes 15-30: Command block (SCSI CDB)
+ *
+ * CSW (13 bytes):
+ *   Bytes 0-3:   Signature 'USBS' (0x55, 0x53, 0x42, 0x53)
+ *   Bytes 4-7:   Tag (same as CBW)
+ *   Bytes 8-11:  Data residue
+ *   Byte 12:     Status (0=pass, 1=fail, 2=phase error)
+ *
+ * ============================================================================
+ * SCSI COMMANDS SUPPORTED
+ * ============================================================================
+ *
+ * Essential commands:
+ *   0x00 - TEST UNIT READY
+ *   0x03 - REQUEST SENSE
+ *   0x12 - INQUIRY
+ *   0x1A - MODE SENSE (6)
+ *   0x1B - START STOP UNIT
+ *   0x23 - READ FORMAT CAPACITIES
+ *   0x25 - READ CAPACITY (10)
+ *   0x28 - READ (10)
+ *   0x2A - WRITE (10)
+ *   0x2F - VERIFY (10)
+ *   0x35 - SYNCHRONIZE CACHE (10)
+ *   0x5A - MODE SENSE (10)
+ *   0x9E - SERVICE ACTION IN (READ CAPACITY 16)
+ *   0xA0 - REPORT LUNS
+ *
+ * ============================================================================
+ * REGISTER MAP
+ * ============================================================================
+ *
+ *   0x9007-0x9008: Status/result registers
+ *   0x9093-0x9094: Mode configuration
+ *
+ * ============================================================================
+ * GLOBAL VARIABLES
+ * ============================================================================
+ *
+ *   IDATA[0x09]: Command data buffer (4 bytes)
+ *
+ * ============================================================================
+ */
+
+#include "../types.h"
+#include "../sfr.h"
+#include "../registers.h"
+#include "../globals.h"
+
+/* USB Mass Storage signatures */
+#define USB_CBW_SIGNATURE_0     0x55    /* 'U' */
+#define USB_CBW_SIGNATURE_1     0x53    /* 'S' */
+#define USB_CBW_SIGNATURE_2     0x42    /* 'B' */
+#define USB_CBW_SIGNATURE_3     0x43    /* 'C' */
+
+#define USB_CSW_SIGNATURE_0     0x55    /* 'U' */
+#define USB_CSW_SIGNATURE_1     0x53    /* 'S' */
+#define USB_CSW_SIGNATURE_2     0x42    /* 'B' */
+#define USB_CSW_SIGNATURE_3     0x53    /* 'S' */
+
+/* CSW Status codes */
+#define CSW_STATUS_PASS         0x00
+#define CSW_STATUS_FAIL         0x01
+#define CSW_STATUS_PHASE_ERROR  0x02
+
+/*
+ * scsi_validate_cbw_signature - Validate CBW 'USBC' signature
+ * Address: 0x5200-0x5215 (22 bytes)
+ *
+ * Calls helper to get signature bytes, validates against 'SBC' (0x53, 0x42, 0x43).
+ * Note: First byte 'U' (0x55) is checked elsewhere.
+ * Returns 1 if valid, 0 if invalid.
+ *
+ * Original disassembly:
+ *   5200: lcall 0xa3e0          ; get signature helper (returns DPTR, A)
+ *   5203: cjne a, #0x53, 0x5213 ; check 'S'
+ *   5206: inc dptr
+ *   5207: movx a, @dptr         ; read next byte
+ *   5208: cjne a, #0x42, 0x5213 ; check 'B'
+ *   520b: inc dptr
+ *   520c: movx a, @dptr         ; read next byte
+ *   520d: cjne a, #0x43, 0x5213 ; check 'C'
+ *   5210: mov r7, #0x01         ; return 1 (valid)
+ *   5212: ret
+ *   5213: mov r7, #0x00         ; return 0 (invalid)
+ *   5215: ret
+ */
+uint8_t scsi_validate_cbw_signature(void)
+{
+    /* This would call helper at 0xa3e0 to get signature location */
+    /* For now, assume the signature check is against CBW buffer */
+
+    /* Simplified validation - actual implementation would read from
+     * the CBW buffer location returned by helper */
+    __xdata uint8_t *cbw_ptr;
+
+    /* The helper at 0xa3e0 returns pointer to signature bytes */
+    /* Checking bytes 1-3 ('S', 'B', 'C') */
+    cbw_ptr = (__xdata uint8_t *)0xA3E0;  /* Placeholder - actual address from helper */
+
+    if (cbw_ptr[0] != USB_CBW_SIGNATURE_1) return 0;  /* 'S' */
+    if (cbw_ptr[1] != USB_CBW_SIGNATURE_2) return 0;  /* 'B' */
+    if (cbw_ptr[2] != USB_CBW_SIGNATURE_3) return 0;  /* 'C' */
+
+    return 1;
+}
+
+/*
+ * scsi_setup_status_regs - Setup status registers for command processing
+ * Address: 0x5216-0x523b (38 bytes)
+ *
+ * Calls helpers to setup command state, writes to status registers.
+ *
+ * Original disassembly:
+ *   5216: lcall 0x31a5          ; helper 1
+ *   5219: lcall 0x322e          ; helper 2 (returns carry on error)
+ *   521c: jc 0x5224             ; if error, jump
+ *   521e: lcall 0x31a5          ; helper 1 again
+ *   5221: mov r7, a             ; result in R7
+ *   5222: sjmp 0x5229           ; jump to write regs
+ *   5224: mov r0, #0x09         ; error path: R0 = 0x09
+ *   5226: lcall 0x0d78          ; idata_load_dword(0x09) -> R4-R7
+ *   5229: mov dptr, #0x9007     ; status register
+ *   522c: mov a, r6
+ *   522d: movx @dptr, a         ; write R6
+ *   522e: inc dptr
+ *   522f: mov a, r7
+ *   5230: movx @dptr, a         ; write R7
+ *   5231: mov dptr, #0x9093     ; mode register
+ *   5234: mov a, #0x08
+ *   5236: movx @dptr, a         ; write 0x08
+ *   5237: inc dptr
+ *   5238: mov a, #0x02
+ *   523a: movx @dptr, a         ; write 0x02
+ *   523b: ret
+ */
+void scsi_setup_status_regs(void)
+{
+    uint8_t r6_val, r7_val;
+    uint8_t error = 0;
+
+    /* Call helpers at 0x31a5 and 0x322e */
+    /* Helper 0x322e returns carry set on error */
+
+    /* TODO: Implement actual helper calls */
+    /* For now, simulate no error path */
+
+    if (error) {
+        /* Load from IDATA[0x09] */
+        r6_val = ((__idata uint8_t *)0x09)[2];  /* R6 = byte 2 */
+        r7_val = ((__idata uint8_t *)0x09)[3];  /* R7 = byte 3 */
+    } else {
+        /* Get result from helper */
+        r6_val = 0;
+        r7_val = 0;
+    }
+
+    /* Write to status registers */
+    XDATA8(0x9007) = r6_val;
+    XDATA8(0x9008) = r7_val;
+
+    /* Write to mode registers */
+    XDATA8(0x9093) = 0x08;
+    XDATA8(0x9094) = 0x02;
+}
+
+/*
+ * scsi_get_command_byte - Get SCSI command byte from CBW
+ * Address: 0xa3e0 (approximate - helper function)
+ *
+ * Reads the SCSI opcode from the CBW command block.
+ * Returns opcode in A, DPTR points to command data.
+ */
+uint8_t scsi_get_command_byte(void)
+{
+    /* The command byte is at CBW offset 15 */
+    /* This would read from the USB endpoint buffer */
+    return 0;  /* Placeholder */
+}
+
+/*
+ * scsi_send_csw - Send Command Status Wrapper
+ * Address: various locations
+ *
+ * Builds and sends a CSW response to the host.
+ *
+ * Parameters:
+ *   status: CSW status code (0=pass, 1=fail, 2=phase error)
+ *   residue: Number of bytes not transferred
+ */
+void scsi_send_csw(uint8_t status, uint32_t residue)
+{
+    /* Build CSW in endpoint buffer */
+    /* Signature 'USBS' */
+    /* Tag (copy from CBW) */
+    /* Residue (4 bytes) */
+    /* Status (1 byte) */
+
+    (void)status;
+    (void)residue;
+    /* TODO: Implement actual CSW transmission */
+}
+
+/*
+ * scsi_check_lun - Check if LUN is valid
+ * Address: inline pattern
+ *
+ * Validates that the requested LUN is within range.
+ * The ASM2464PD typically supports LUN 0 only.
+ *
+ * Returns 1 if valid, 0 if invalid.
+ */
+uint8_t scsi_check_lun(uint8_t lun)
+{
+    /* Only LUN 0 is valid for single NVMe device */
+    return (lun == 0) ? 1 : 0;
+}
+
+/*
+ * scsi_test_unit_ready - Handle TEST UNIT READY command
+ * Address: various
+ *
+ * SCSI opcode 0x00: Check if device is ready.
+ * Returns sense data if not ready.
+ */
+void scsi_test_unit_ready(void)
+{
+    /* Check if NVMe device is ready */
+    /* If ready: return good status */
+    /* If not: set sense data (NOT READY, MEDIUM NOT PRESENT) */
+}
+
+/*
+ * scsi_inquiry - Handle INQUIRY command
+ * Address: various
+ *
+ * SCSI opcode 0x12: Return device identification.
+ * Returns vendor ID, product ID, revision.
+ */
+void scsi_inquiry(void)
+{
+    /* Return standard INQUIRY data:
+     * Byte 0: Device type (0x00 = disk)
+     * Byte 1: Removable (0x00 = not removable)
+     * Byte 2: Version (0x05 = SPC-3)
+     * Byte 3: Response format (0x02)
+     * Byte 4: Additional length
+     * Bytes 8-15: Vendor ID
+     * Bytes 16-31: Product ID
+     * Bytes 32-35: Revision
+     */
+}
+
+/*
+ * scsi_read_capacity_10 - Handle READ CAPACITY (10) command
+ * Address: various
+ *
+ * SCSI opcode 0x25: Return device capacity.
+ * Returns last LBA and block size.
+ */
+void scsi_read_capacity_10(void)
+{
+    /* Return:
+     * Bytes 0-3: Last LBA (big-endian)
+     * Bytes 4-7: Block size (512 or 4096, big-endian)
+     */
+}
+
+/*
+ * scsi_read_10 - Handle READ (10) command
+ * Address: various
+ *
+ * SCSI opcode 0x28: Read data from device.
+ * Translates to NVMe Read command.
+ */
+void scsi_read_10(void)
+{
+    /* Extract from CDB:
+     * Bytes 2-5: LBA (big-endian)
+     * Bytes 7-8: Transfer length (blocks)
+     *
+     * Translate to NVMe:
+     * - Set up NVMe Read command
+     * - Execute via NVMe submission queue
+     * - Transfer data to USB endpoint
+     */
+}
+
+/*
+ * scsi_write_10 - Handle WRITE (10) command
+ * Address: various
+ *
+ * SCSI opcode 0x2A: Write data to device.
+ * Translates to NVMe Write command.
+ */
+void scsi_write_10(void)
+{
+    /* Extract from CDB:
+     * Bytes 2-5: LBA (big-endian)
+     * Bytes 7-8: Transfer length (blocks)
+     *
+     * Translate to NVMe:
+     * - Receive data from USB endpoint
+     * - Set up NVMe Write command
+     * - Execute via NVMe submission queue
+     */
+}
+
+/*
+ * scsi_request_sense - Handle REQUEST SENSE command
+ * Address: various
+ *
+ * SCSI opcode 0x03: Return sense data from last error.
+ */
+void scsi_request_sense(void)
+{
+    /* Return sense data:
+     * Byte 0: Response code (0x70 = current, fixed format)
+     * Byte 2: Sense key
+     * Byte 7: Additional sense length
+     * Byte 12: ASC (Additional Sense Code)
+     * Byte 13: ASCQ (ASC Qualifier)
+     */
+}
+
+/*
+ * scsi_mode_sense_6 - Handle MODE SENSE (6) command
+ * Address: various
+ *
+ * SCSI opcode 0x1A: Return mode pages.
+ */
+void scsi_mode_sense_6(void)
+{
+    /* Return mode page data based on page code in CDB byte 2 */
+}
+
+/*
+ * scsi_synchronize_cache - Handle SYNCHRONIZE CACHE command
+ * Address: various
+ *
+ * SCSI opcode 0x35: Flush cache to media.
+ * Translates to NVMe Flush command.
+ */
+void scsi_synchronize_cache(void)
+{
+    /* Issue NVMe Flush command */
+}

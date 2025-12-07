@@ -326,18 +326,120 @@ void reg_set_bit_0_cpu_exec(void)
  *===========================================================================*/
 
 /*
- * Handler at 0x04d0
- * Address: 0x04d0-0x04d4 (5 bytes)
+ * Handler at 0x04d0 - Timer/Link status handler
+ * Address: 0x04d0-0x04d4 (5 bytes) -> dispatches to 0xCE79
  *
- * Calls jump_bank_0 with register 0xCE79
+ * Function at 0xCE79 (94 bytes):
+ * Handles timer and link status checks:
+ * 1. Checks REG_LINK_STATUS_CC3F bits 1,2 and calls helper if set
+ * 2. Configures timer/link registers (0xCC30, 0xCC33, 0xCC3B, etc.)
+ * 3. Clears bits in PHY_CONFIG (0xC233)
+ * 4. Performs timing delays with polling
+ * 5. Polls status registers until link ready
  *
  * Original disassembly:
- *   04d0: mov dptr, #0xce79
- *   04d3: ajmp 0x0300
+ *   ce79: mov dptr, #0xcc3f
+ *   ce7c: movx a, @dptr       ; read REG_LINK_STATUS_CC3F
+ *   ce7d: jb 0xe0.1, 0xce84   ; if bit 1 set, call helper
+ *   ce80: movx a, @dptr
+ *   ce81: jnb 0xe0.2, 0xce87  ; if bit 2 not set, skip helper
+ *   ce84: lcall 0xd0d3        ; clear bits in CC3F, set flags
+ *   ce87: lcall 0xcf28        ; configure timer regs
+ *   ce8a: lcall 0x0610        ; dispatch to bank 1 0xED02
+ *   ce8d: mov dptr, #0xc233
+ *   ce90: movx a, @dptr
+ *   ce91: anl a, #0xfc        ; clear bits 0-1
+ *   ce93: movx @dptr, a
+ *   ce94: lcall 0xbd5e        ; set bit 2, clear bit 2 of @DPTR
+ *   ce97-cea6: timing delay loop
+ *   cea7-ceab: more timing delay
+ *   ceb0-cec5: poll 0xE712 and 0xCC11 until ready
+ *   cec6: lcall 0xe8ef
+ *   cecb: lcall 0xdd42
+ *   cece: ljmp 0xd996
  */
 void handler_04d0(void)
 {
-    jump_bank_0(0xCE79);
+    uint8_t status;
+    uint8_t val;
+
+    /* Read link status register 0xCC3F */
+    status = XDATA8(0xCC3F);
+
+    /* Check if bit 1 or bit 2 is set - if so, call helper to clear flags */
+    if ((status & 0x02) || (status & 0x04)) {
+        /* Helper at 0xD0D3:
+         * - Calls 0xBD2A (set bit 2, clear bit 2)
+         * - Delay loop with R4:R5=0x0009
+         * - Reads 0xCC3F, clears bit 1
+         * - Modifies register, sets bit 5, clears bit 6
+         * - More delay loops
+         * - Clears bit 7 of 0xCC3D
+         */
+        XDATA8(0xCC3F) = (XDATA8(0xCC3F) & 0xFB) | 0x04;  /* Set bit 2 */
+        /* Note: Full helper implementation would include delays */
+        XDATA8(0xCC3F) = XDATA8(0xCC3F) & 0xFD;  /* Clear bit 1 */
+        XDATA8(0xCC3D) = XDATA8(0xCC3D) & 0x7F;  /* Clear bit 7 */
+    }
+
+    /* Helper at 0xCF28: Configure timer/link registers
+     * - Reads 0xCC30, calls 0xBCEB, 0xBD49, sets bit 2
+     * - Writes 0x04 to 0xCC33
+     * - Clears bit 2 of 0xE324
+     * - Clears bit 0 of 0xCC3B
+     * - Sets bits in 0xCC39, 0xCC3A
+     * - Clears bit 0 of 0xCC3E
+     * - Configures 0xCA81
+     */
+    val = XDATA8(0xCC30);
+    val = (val & 0xFB) | 0x04;  /* Set bit 2 */
+    XDATA8(0xCC30) = val;
+
+    XDATA8(0xCC33) = 0x04;
+
+    XDATA8(0xE324) = XDATA8(0xE324) & 0xFB;  /* Clear bit 2 */
+    XDATA8(0xCC3B) = XDATA8(0xCC3B) & 0xFE;  /* Clear bit 0 */
+
+    /* Set bits 5,6 in 0xCC3A */
+    XDATA8(0xCC3A) = (XDATA8(0xCC3A) & 0x9F) | 0x60;
+
+    XDATA8(0xCC3E) = XDATA8(0xCC3E) & 0xFE;  /* Clear bit 0 */
+
+    /* Dispatch to bank 1 handler at 0xED02 via 0x0610 */
+    jump_bank_1(0xED02);
+
+    /* Clear bits 0-1 of PHY config register 0xC233 */
+    REG_PHY_CONFIG = REG_PHY_CONFIG & 0xFC;
+
+    /* Helper at 0xBD5E: read @DPTR, clear bit 2, set bit 2 */
+    val = XDATA8(0xC233);
+    val = (val & 0xFB) | 0x04;  /* Set bit 2 */
+    XDATA8(0xC233) = val;
+
+    /* Timing delay - R4:R5=0x0014, R7=0x02 */
+    /* In original firmware this calls 0xE80A delay function */
+
+    /* Clear bit 2 of PHY config */
+    REG_PHY_CONFIG = REG_PHY_CONFIG & 0xFB;
+
+    /* More timing delay - R4:R5=0x000A, R7=0x03 */
+
+    /* Polling loop: wait for status bits in 0xE712 and 0xCC11 */
+    do {
+        status = XDATA8(0xE712);
+        /* Check bit 0 - if set, call helper and exit */
+        if (status & 0x01) {
+            break;
+        }
+        /* Check bit 1 (from value ANDed with 0x02, shifted right) */
+        if ((status & 0x02) != 0) {
+            break;
+        }
+        /* Check bit 1 of timer CSR 0xCC11 - if not set, continue polling */
+    } while ((REG_TIMER0_CSR & 0x02) == 0);
+
+    /* Final handlers - would call 0xE8EF, 0xDD42, then jump to 0xD996 */
+    /* These handle completion of the timer/link setup */
 }
 
 /*
@@ -384,41 +486,70 @@ void phy_config_link_params(void)
 }
 
 /*
- * Handler at 0x04b2
- * Address: 0x04b2-0x04b6 (5 bytes)
+ * Handler at 0x04b2 - Placeholder/Reserved handler
+ * Address: 0x04b2-0x04b6 (5 bytes) -> dispatches to 0xE971
  *
- * Calls jump_bank_0 with register 0xE971
+ * Function at 0xE971 is a stub that just returns immediately (ret).
+ * The area 0xE971-0xE9A2 contains RET instructions followed by NOPs,
+ * indicating this is reserved space for future functionality.
  *
  * Original disassembly:
- *   04b2: mov dptr, #0xe971
- *   04b5: ajmp 0x0300
+ *   e971: ret
+ *   e972: ret
+ *   e973: ret
+ *   ... (NOPs follow)
  */
 void handler_04b2(void)
 {
-    jump_bank_0(0xE971);
+    /* Stub function - reserved for future functionality */
+    /* Original firmware at 0xE971 just returns immediately */
 }
 
 /*
- * Handler at 0x4fb6
+ * Handler at 0x4fb6 - Core polling and dispatch handler
  * Address: 0x4fb6-0x50da (292 bytes)
  *
- * Core polling and dispatch handler. Calls multiple sub-handlers and
- * polls for PHY status before continuing.
+ * This is the main polling handler called from the main loop.
+ * It dispatches to multiple sub-handlers and polls for PHY status.
  *
- * From ghidra.c FUN_CODE_4fb6:
- *   - Calls various dispatch stubs (FUN_CODE_5305, 04b7, 04bc, 4be6, 032c, 0539, 04f8, 063d)
- *   - If DAT_EXTMEM_0ae3 != 0, clears bit 0 of 0xCC32
- *   - Polls DAT_EXTMEM_c6b3 until bits 4 or 5 are set
- *   - Calls more handlers (0462, 0435, 0340)
- *   - Sets DAT_EXTMEM_06e6 = 1
+ * Original disassembly:
+ *   4fb6: lcall 0x5305        ; dispatch stub
+ *   4fb9: lcall 0x04b7        ; dispatch stub
+ *   4fbc: lcall 0x04bc        ; dispatch stub
+ *   4fbf: lcall 0x4be6        ; dispatch stub
+ *   4fc2: lcall 0x032c        ; dispatch stub
+ *   4fc5: lcall 0x0539        ; dispatch stub
+ *   4fc8: lcall 0x04f8        ; dispatch stub
+ *   4fcb: lcall 0x063d        ; dispatch stub
+ *   4fce: mov dptr, #0x0ae3   ; G_STATE_FLAG_0AE3
+ *   4fd1: movx a, @dptr
+ *   4fd2: jz 0x4fdb           ; if zero, skip
+ *   4fd4: mov dptr, #0xcc32   ; REG_CPU_EXEC_STATUS
+ *   4fd7: movx a, @dptr
+ *   4fd8: anl a, #0xfe        ; clear bit 0
+ *   4fda: movx @dptr, a
+ *   4fdb: mov dptr, #0xc6b3   ; REG_PHY_EXT_B3
+ *   4fde: movx a, @dptr
+ *   4fdf: anl a, #0x30        ; check bits 4,5
+ *   4fe1: jz 0x4fdb           ; loop until set
+ *   4fe3: lcall 0x0462        ; dispatch stub
+ *   4fe6: mov dptr, #0x06e6   ; G_STATE_FLAG_06E6
+ *   4fe9: mov a, #0x01
+ *   4feb: movx @dptr, a       ; set to 1
+ *   4fec: lcall 0x0435        ; dispatch stub
+ *   4fef: ljmp 0x0340         ; final dispatch (tail call)
  */
 void handler_4fb6(void)
 {
-    /* Call dispatch handlers */
-    jump_bank_0(0xD3CB);  /* FUN_CODE_5305 */
-    jump_bank_0(0xE597);  /* FUN_CODE_04b7 */
-    jump_bank_0(0xE14B);  /* FUN_CODE_04bc */
-    jump_bank_0(0x92C5);  /* FUN_CODE_032c */
+    /* Call dispatch stubs - these dispatch to various bank 0/1 handlers */
+    /* 0x5305 -> dispatches to some handler */
+    /* 0x04b7 -> dispatches to 0xE597 (bank 0) */
+    /* 0x04bc -> dispatches to 0xE14B (bank 0) */
+    /* 0x4be6 -> inline handler */
+    /* 0x032c -> dispatches to 0x92C5 (bank 0) */
+    /* 0x0539 -> dispatches to some handler */
+    /* 0x04f8 -> dispatches to some handler */
+    /* 0x063d -> dispatches to 0xEEF9 (bank 1) */
 
     /* Check state flag and conditionally clear bit 0 of CPU exec status */
     if (G_STATE_FLAG_0AE3 != 0) {
@@ -426,139 +557,570 @@ void handler_4fb6(void)
     }
 
     /* Poll PHY status register until bits 4 or 5 are set */
+    /* This waits for PHY link training to complete */
     while ((REG_PHY_EXT_B3 & 0x30) == 0);
 
-    /* More dispatch calls */
-    jump_bank_0(0xBF8E);  /* FUN_CODE_0340 */
+    /* 0x0462 -> dispatches to some handler */
 
     /* Set flag indicating processing complete */
     G_STATE_FLAG_06E6 = 1;
+
+    /* 0x0435 -> dispatches to some handler */
+    /* 0x0340 -> dispatches to 0xBF8E (bank 0) - final tail call */
 }
 
 /*
- * Handler at 0x0327
- * Address: 0x0327-0x032a (5 bytes)
+ * Handler at 0x0327 - USB/Power Initialization
+ * Address: 0x0327-0x032a (5 bytes) -> dispatches to 0xB1CB
  *
- * Calls jump_bank_0 with register 0xB1CB
- * Sets DPX register as part of the dispatch system
+ * Function at 0xB1CB (142 bytes):
+ * Initializes USB and power management registers:
+ * - Sets power control registers (0x92C0 - set bit 7)
+ * - Configures USB peripheral registers (0x91D1, 0x9300-0x9305)
+ * - Sets up USB interrupt flags (0x9091, 0x9093)
+ * - Configures USB control registers (0x91C1, 0x9002, 0x9005)
+ * - Sets up NVMe command register (0xC42C)
+ * - Calls delay helpers and configuration routines
  *
  * Original disassembly:
- *   0327: mov dptr, #0xb1cb
- *   032a: ajmp 0x0300
+ *   b1cb: mov dptr, #0x92c0    ; Power control
+ *   b1ce: movx a, @dptr
+ *   b1cf: anl a, #0x7f         ; clear bit 7
+ *   b1d1: orl a, #0x80         ; set bit 7
+ *   b1d3: movx @dptr, a
+ *   b1d4: mov dptr, #0x91d1
+ *   b1d7: mov a, #0x0f
+ *   b1d9: movx @dptr, a
+ *   ... (continues with USB/power init)
  */
 void handler_0327(void)
 {
-    jump_bank_0(0xB1CB);
+    uint8_t val;
+
+    /* Set bit 7 of power control register 0x92C0 */
+    val = REG_POWER_CTRL_92C0;
+    val = (val & 0x7F) | 0x80;
+    REG_POWER_CTRL_92C0 = val;
+
+    /* Configure USB peripheral register 0x91D1 */
+    XDATA8(0x91D1) = 0x0F;
+
+    /* Configure registers 0x9300-0x9302 */
+    XDATA8(0x9300) = 0x0C;
+    XDATA8(0x9301) = 0xC0;
+    XDATA8(0x9302) = 0xBF;  /* 0xC0 - 1 = 0xBF */
+
+    /* Configure USB interrupt flags register 0x9091 */
+    REG_INT_FLAGS_EX0 = 0x1F;
+
+    /* Configure USB endpoint config 0x9093 */
+    REG_USB_EP_CFG1 = 0x0F;
+
+    /* Configure USB peripheral register 0x91C1 */
+    XDATA8(0x91C1) = 0xF0;
+
+    /* Configure registers 0x9303-0x9305 */
+    XDATA8(0x9303) = 0x33;
+    XDATA8(0x9304) = 0x3F;
+    XDATA8(0x9305) = 0x40;  /* 0x3F + 1 = 0x40 */
+
+    /* Configure USB control register 0x9002 */
+    REG_USB_CONFIG = 0xE0;
+
+    /* Configure USB register 0x9005 */
+    XDATA8(0x9005) = 0xF0;
+
+    /* Configure USB register 0x90E2 */
+    XDATA8(0x90E2) = 0x01;
+
+    /* Clear bit 0 of USB register 0x905E */
+    XDATA8(0x905E) = XDATA8(0x905E) & 0xFE;
+
+    /* Configure NVMe command NSID register 0xC42C */
+    REG_NVME_CMD_NSID = 0x01;
+
+    /* Clear bit 0 of register 0xC42D */
+    XDATA8(0xC42D) = XDATA8(0xC42D) & 0xFE;
+
+    /* Call helper functions at 0xD07F, 0xE214 for additional setup */
+    /* These would be implemented as separate functions */
+
+    /* Clear bit 5 of register 0x91C3 */
+    XDATA8(0x91C3) = XDATA8(0x91C3) & 0xDF;
+
+    /* Configure register 0x91C0: set bit 0, then clear bit 0 */
+    val = XDATA8(0x91C0);
+    val = (val & 0xFE) | 0x01;
+    XDATA8(0x91C0) = val;
+    XDATA8(0x91C0) = XDATA8(0x91C0) & 0xFE;
+
+    /* Additional timing delay with R4:R5=0x018F, R7=0x04 would follow */
 }
 
 /*
- * Handler at 0x0494
- * Address: 0x0494-0x0498 (5 bytes)
+ * Handler at 0x0494 - Event handler
+ * Address: 0x0494-0x0498 (5 bytes) -> dispatches to bank 1 0xE56F
  *
- * Dispatches to bank 1 code at 0xE56F (file offset 0x1656F)
- * Called when events & 0x81 is set
+ * Function at 0xE56F (file offset 0x1656F):
+ * Event state machine handler called when events & 0x81 is set.
+ *
+ * Algorithm:
+ *   1. Read XDATA[0x0AEE], check bit 3
+ *   2. If bit 3 set: R7=1, call 0xE6F0
+ *   3. Read XDATA[0x09EF], check bit 0
+ *   4. If bit 0 not set, check XDATA[0x0991]
+ *   5. If 0x0991 == 0, ljmp to 0xEE11
+ *   6. If 0x098E == 1, R7=0x0A, call 0xABC9
+ *   7. Write 0x84 to 0x097A
+ *   8. Continue with helper calls for state processing
  *
  * Original disassembly:
- *   0494: mov dptr, #0xe56f
- *   0497: ajmp 0x0311
+ *   e56f: movx a, @dptr         ; read from DPTR (0x0AEE set earlier)
+ *   e570: jnb 0xe0.3, 0xe578    ; if bit 3 not set, skip
+ *   e573: mov r7, #0x01
+ *   e575: lcall 0xe6f0          ; helper call
+ *   e578: mov dptr, #0x09ef
+ *   e57b: movx a, @dptr
+ *   e57c: jnb 0xe0.0, 0xe596    ; if bit 0 not set, skip to check
+ *   e57f: sjmp 0xe587           ; else skip
+ *   e581-e596: branch logic for 0x0991 check
+ *   e596: mov dptr, #0x097a
+ *   e599: mov a, #0x84
+ *   e59b: movx @dptr, a         ; write 0x84 to 0x097A
+ *   e59c: ret
  */
-extern void event_handler_e56f(void);  /* Bank 1: file 0x1656F */
 void handler_0494(void)
 {
-    event_handler_e56f();
+    uint8_t val;
+    uint8_t r7;
+
+    /* Read state flag at 0x0AEE and check bit 3 */
+    val = XDATA8(0x0AEE);
+    if (val & 0x08) {
+        /* Call helper at 0xE6F0 with R7=1 */
+        r7 = 0x01;
+        /* Helper function would be called here */
+        (void)r7;
+    }
+
+    /* Read event state at 0x09EF */
+    val = XDATA8(0x09EF);
+    if ((val & 0x01) == 0) {
+        /* Check 0x0991 state */
+        val = XDATA8(0x0991);
+        if (val != 0) {
+            /* Check 0x098E for state 1 */
+            val = XDATA8(0x098E);
+            if (val == 0x01) {
+                /* Call helper 0xABC9 with R7=0x0A */
+                r7 = 0x0A;
+                (void)r7;
+            }
+        } else {
+            /* State 0: ljmp to 0xEE11 */
+            /* This would dispatch to another handler */
+        }
+    }
+
+    /* Write final state 0x84 to 0x097A */
+    XDATA8(0x097A) = 0x84;
 }
 
 /*
- * Handler at 0x0606
- * Address: 0x0606-0x060a (5 bytes)
+ * Handler at 0x0606 - Error/State handler
+ * Address: 0x0606-0x060a (5 bytes) -> dispatches to bank 1 0xB230
  *
- * Dispatches to bank 1 code at 0xB230 (file offset 0x13230)
+ * Function at 0xB230 (file offset 0x13230):
+ * Error and state management handler. Configures various control registers
+ * for error handling and link state management.
+ *
+ * Algorithm:
+ *   1. Call helper 0x96B7 to get value, modify bits, call 0x980D
+ *   2. Read 0xE7FC, clear bits 0-1 and write back
+ *   3. Call helpers 0x968E, 0x99E0 for state setup
+ *   4. Write 0xA0 to register via 0x0BE6 helper
+ *   5. Clear 0x06EC, set up R4:R5=0x0271 for transfer params
+ *   6. Configure 0x0C7A with value 0x3E and mask 0x80
+ *   7. Call 0x97EF, then configure 0xCCD8, 0xC801, 0xCCDA
  *
  * Original disassembly:
- *   0606: mov dptr, #0xb230
- *   0609: ajmp 0x0311
+ *   b230: anl a, #0xef           ; clear bit 4
+ *   b232: orl a, #0x10           ; set bit 4
+ *   b234: lcall 0x96b7           ; helper
+ *   b237: lcall 0x980d           ; helper
+ *   b23a: mov dptr, #0xe7fc
+ *   b23d: movx a, @dptr
+ *   b23e: anl a, #0xfc           ; clear bits 0-1
+ *   b240: movx @dptr, a
+ *   ... (continues with state configuration)
  */
-extern void error_handler_b230(void);  /* Bank 1: file 0x13230 */
 void handler_0606(void)
 {
-    error_handler_b230();
+    uint8_t val;
+
+    /* Configure REG_LINK_MODE_CTRL - clear bits 0-1 */
+    val = REG_LINK_MODE_CTRL;
+    val = val & 0xFC;
+    REG_LINK_MODE_CTRL = val;
+
+    /* Clear error counter at 0x06EC */
+    XDATA8(0x06EC) = 0x00;
+
+    /* Configure 0xCCD8 - clear bit 4 */
+    val = XDATA8(0xCCD8);
+    val = val & 0xEF;
+    XDATA8(0xCCD8) = val;
+
+    /* Configure 0xC801 - clear bit 4, set bit 4 */
+    val = XDATA8(0xC801);
+    val = (val & 0xEF) | 0x10;
+    XDATA8(0xC801) = val;
+
+    /* Configure 0xCCD8 - clear bits 0-2, set bits 0-2 to 4 */
+    val = XDATA8(0xCCD8);
+    val = (val & 0xF8) | 0x04;
+    XDATA8(0xCCD8) = val;
+
+    /* Write 0x00 to 0xCCDA, 0xC8 to 0xCCDB */
+    XDATA8(0xCCDA) = 0x00;
+    XDATA8(0xCCDB) = 0xC8;
 }
 
 /*
- * Handler at 0x0589
- * Address: 0x0589-0x058d (5 bytes)
+ * Handler at 0x0589 - PHY/Register Configuration
+ * Address: 0x0589-0x058d (5 bytes) -> dispatches to bank 0 0xD894
  *
- * Calls jump_bank_0 with register 0xD894
+ * Function at 0xD894:
+ * PHY and system register configuration handler.
+ * Configures PCIe/USB interface registers.
+ *
+ * Algorithm:
+ *   1. Call 0xBC8F, mask with 0xFD, call 0x0BE6 (write)
+ *   2. Read 0xC809, clear bit 1, set bit 1, write back
+ *   3. Call 0xB031 helper
+ *   4. R1=0x02, call 0xBCB1, mask with 0xFE, call 0x0BE6
+ *   5. Inc R1, write 0x01 via 0x0BE6
+ *   6. Dec R1, call 0x0BC8, mask with 0xFD, call 0x0BE6
+ *   7. Inc R1, write 0x02 via 0x0BE6
+ *   8. R2=0x12, R1=0x1E, call 0x0BC8
+ *   9. Mask with 0xFE, set bit 0, ljmp 0x0BE6
  *
  * Original disassembly:
- *   0589: mov dptr, #0xd894
- *   058c: ajmp 0x0300
+ *   d894: lcall 0xbc8f
+ *   d897: anl a, #0xfd           ; clear bit 1
+ *   d899: lcall 0x0be6           ; write register
+ *   d89c: mov dptr, #0xc809
+ *   d89f: movx a, @dptr
+ *   d8a0: anl a, #0xfd           ; clear bit 1
+ *   d8a2: orl a, #0x02           ; set bit 1
+ *   d8a4: movx @dptr, a
+ *   d8a5: lcall 0xb031           ; helper
+ *   ... (continues with register configuration)
  */
 void handler_0589(void)
 {
-    jump_bank_0(0xD894);
+    uint8_t val;
+
+    /* Configure register 0xC809 - clear bit 1, set bit 1 */
+    val = XDATA8(0xC809);
+    val = (val & 0xFD) | 0x02;
+    XDATA8(0xC809) = val;
+
+    /* Read 0x0AF1 and check bit 1 */
+    val = XDATA8(0x0AF1);
+    if (val & 0x02) {
+        /* If bit 1 set, call handler 0x057A with R7=0x03 */
+        /* This would handle a specific condition */
+    }
+
+    /* Configure register 0xB402 if needed */
+    val = XDATA8(0xB402);
+    val = val & 0xFE;  /* Clear bit 0 */
+    XDATA8(0xB402) = val;
+    val = XDATA8(0xB402);
+    val = val & 0xFD;  /* Clear bit 1 */
+    XDATA8(0xB402) = val;
 }
 
 /*
- * Handler at 0x0525
- * Address: 0x0525-0x0529 (5 bytes)
+ * Handler at 0x0525 - Flash Command Handler
+ * Address: 0x0525-0x0529 (5 bytes) -> dispatches to bank 0 0xBAA0
  *
- * Calls jump_bank_0 with register 0xBAA0
+ * Function at 0xBAA0:
+ * Flash command processor. Reads commands from SPI flash buffer at 0x7000
+ * and dispatches to appropriate handlers.
+ *
+ * Command types (from 0x7000):
+ *   0x3A: Command type 1 - set flag 0x07BC=1, 0x07B8=1, call 0xE4B4, 0x538D
+ *   0x3B: Command type 2 - set flag 0x07BC=2, call 0x538D
+ *   0x3C: Command type 3 - set flag 0x07BC=3, call 0x538D
+ *   Other: Configure 0xCC98 with (val & 0xF8) | 0x06, call 0x95B6
  *
  * Original disassembly:
- *   0525: mov dptr, #0xbaa0
- *   0528: ajmp 0x0300
+ *   baa0: mov dptr, #0xe795
+ *   baa3: movx a, @dptr
+ *   baa4: jb 0xe0.5, 0xbaaa       ; if bit 5 set, continue
+ *   baa7: ljmp 0xbb36             ; else exit
+ *   baaa: lcall 0xae87            ; helper
+ *   baad: lcall 0xb8c3            ; helper
+ *   bab0: clr a
+ *   bab1: mov r7, a
+ *   bab2: lcall 0xdd42            ; helper
+ *   bab5: lcall 0xe6e7            ; helper
+ *   bab8: mov dptr, #0x7000       ; SPI flash buffer
+ *   babb: movx a, @dptr           ; read command byte
+ *   babc: cjne a, #0x3a, 0xbada   ; check for command 0x3A
+ *   ... (command dispatch logic)
  */
 void handler_0525(void)
 {
-    jump_bank_0(0xBAA0);
+    uint8_t val;
+    uint8_t cmd;
+
+    /* Check bit 5 of REG_FLASH_READY_STATUS - if not set, exit early */
+    val = REG_FLASH_READY_STATUS;
+    if ((val & 0x20) == 0) {
+        return;
+    }
+
+    /* Read command from SPI flash buffer at 0x7000 */
+    cmd = XDATA8(FLASH_BUFFER_BASE);
+
+    if (cmd == 0x3A) {
+        /* Command 0x3A: Set flags and process */
+        G_FLASH_CMD_TYPE = 0x01;
+        G_FLASH_CMD_FLAG = 0x01;
+        /* Call helper 0xE4B4 for flash operation */
+        /* Call helper 0x538D with R3=0xFF, R2=0x21, R1=0xFB */
+    } else if (cmd == 0x3B) {
+        /* Command 0x3B: Set flag and process */
+        G_FLASH_CMD_TYPE = 0x02;
+        /* Call helper 0x538D with R3=0xFF, R2=0x22, R1=0x0B */
+    } else if (cmd == 0x3C) {
+        /* Command 0x3C: Set flag and process */
+        G_FLASH_CMD_TYPE = 0x03;
+        /* Call helper 0x538D with R3=0xFF, R2=0x22, R1=0x25 */
+    }
+
+    /* Configure 0xCC98 register - set bits 0-2 to 6 */
+    val = XDATA8(0xCC98);
+    val = (val & 0xF8) | 0x06;
+    XDATA8(0xCC98) = val;
+
+    /* Write state 0x04 to 0x09FA */
+    XDATA8(0x09FA) = 0x04;
 }
 
 /*
  * Handler at 0x039a - Buffer dispatch handler
- * Address: 0x039a-0x039e (5 bytes)
+ * Address: 0x039a-0x039e (5 bytes) -> dispatches to bank 0 0xD810
  *
- * Dispatches to buffer handler at 0xD810 via jump_bank_0.
+ * Function at 0xD810:
+ * Buffer transfer and USB endpoint dispatch handler.
+ * Checks various status registers and initiates buffer transfers.
+ *
+ * Algorithm:
+ *   1. Read 0x0B41, if zero return
+ *   2. Read 0x9091, if bit 0 set return
+ *   3. Read 0x07E4, if != 1 return
+ *   4. Read 0x9000, check bit 0
+ *   5. If bit 0 set, read 0xC471 and check bit 0
+ *   6. Read G_EP_CHECK_FLAG (0x000A), if non-zero, exit specific branch
+ *   7. Write 0x04, 0x02, 0x01 sequence to 0xCC17
  *
  * Original disassembly:
- *   039a: mov dptr, #0xd810
- *   039d: ajmp 0x0300
+ *   d810: mov dptr, #0x0b41
+ *   d813: movx a, @dptr
+ *   d814: jz 0xd851              ; if zero, return
+ *   d816: mov dptr, #0x9091
+ *   d819: movx a, @dptr
+ *   d81a: jb 0xe0.0, 0xd851      ; if bit 0 set, return
+ *   ... (complex state checking)
  */
 void handler_039a(void)
 {
-    jump_bank_0(0xD810);
+    uint8_t val;
+
+    /* Check 0x0B41 - if zero, exit */
+    val = XDATA8(0x0B41);
+    if (val == 0) {
+        return;
+    }
+
+    /* Check 0x9091 bit 0 - if set, exit */
+    val = XDATA8(0x9091);
+    if (val & 0x01) {
+        return;
+    }
+
+    /* Check 0x07E4 - must equal 1 */
+    val = G_SYS_FLAGS_BASE;  /* 0x07E4 */
+    if (val != 0x01) {
+        return;
+    }
+
+    /* Check 0x9000 bit 0 */
+    val = XDATA8(0x9000);
+    if (val & 0x01) {
+        /* Check 0xC471 bit 0 */
+        val = XDATA8(0xC471);
+        if (val & 0x01) {
+            return;
+        }
+
+        /* Check G_EP_CHECK_FLAG */
+        val = G_EP_CHECK_FLAG;  /* 0x000A */
+        if (val != 0) {
+            return;
+        }
+    } else {
+        /* Check 0x9101 bit 6 */
+        val = XDATA8(0x9101);
+        if (val & 0x40) {
+            return;
+        }
+    }
+
+    /* Initiate buffer transfer - write sequence to 0xCC17 */
+    XDATA8(0xCC17) = 0x04;
+    XDATA8(0xCC17) = 0x02;
+    XDATA8(0xCC17) = 0x01;  /* dec a gives 0x01 */
 }
 
 /*
- * Handler at 0x0520
- * Address: 0x0520-0x0524 (5 bytes)
+ * Handler at 0x0520 - System Interrupt Handler
+ * Address: 0x0520-0x0524 (5 bytes) -> dispatches to bank 0 0xB4BA
  *
- * Calls jump_bank_0 with register 0xB4BA.
- * Called from ext1_isr when system interrupt status bit 0 is set.
+ * Function at 0xB4BA:
+ * System interrupt handler called when system status bit 0 is set.
+ * Handles link status changes and timer events.
+ *
+ * Algorithm:
+ *   1. Read 0xCC23, check bit 1
+ *   2. If bit 1 set: call 0xE3D8, write 0x02 to 0xCC23
+ *   3. Read 0xCC81, check bit 1
+ *   4. If bit 1 set: read 0x07BD, compare with 0x0E or 0x0D
+ *   5. Configure 0xCC81 with value 0x02
+ *   6. Check 0x07BC and dispatch accordingly
  *
  * Original disassembly:
- *   0520: mov dptr, #0xb4ba
- *   0523: ajmp 0x0300
+ *   b4ba: mov dptr, #0xcc23
+ *   b4bd: movx a, @dptr
+ *   b4be: jnb 0xe0.1, 0xb4ca     ; if bit 1 not set, skip
+ *   b4c1: lcall 0xe3d8           ; helper
+ *   b4c4: mov dptr, #0xcc23
+ *   b4c7: mov a, #0x02
+ *   b4c9: movx @dptr, a          ; write 0x02
+ *   ... (continues with state machine)
  */
 void handler_0520(void)
 {
-    jump_bank_0(0xB4BA);
+    uint8_t val;
+    uint8_t state;
+
+    /* Read 0xCC23 and check bit 1 */
+    val = XDATA8(0xCC23);
+    if (val & 0x02) {
+        /* Call helper 0xE3D8 */
+        /* Write 0x02 to acknowledge */
+        XDATA8(0xCC23) = 0x02;
+    }
+
+    /* Read 0xCC81 and check bit 1 */
+    val = XDATA8(0xCC81);
+    if (val & 0x02) {
+        /* Read state from G_FLASH_OP_COUNTER */
+        state = G_FLASH_OP_COUNTER;
+
+        if (state == 0x0E || state == 0x0D) {
+            /* Write 0x02 to 0xCC81 */
+            XDATA8(0xCC81) = 0x02;
+
+            /* Check G_FLASH_CMD_TYPE for further dispatch */
+            val = G_FLASH_CMD_TYPE;
+            if (val != 0) {
+                /* Call helper 0xE529 with R7=0x3B */
+            }
+            /* Call helper 0xD676 */
+        } else {
+            /* Call 0xE90B for other states */
+            XDATA8(0xCC81) = 0x02;
+        }
+    }
+
+    /* Read 0xCC91 and check bit 1 */
+    val = XDATA8(0xCC91);
+    if (val & 0x02) {
+        XDATA8(0xCC91) = 0x02;  /* Acknowledge */
+    }
 }
 
 /*
- * Handler at 0x052f
- * Address: 0x052f-0x0533 (5 bytes)
+ * Handler at 0x052f - PCIe/NVMe Event Handler
+ * Address: 0x052f-0x0533 (5 bytes) -> dispatches to bank 0 0xAF5E
  *
- * Calls jump_bank_0 with register 0xAF5E.
- * Called from ext1_isr when PCIe/NVMe status bit 6 is set.
+ * Function at 0xAF5E:
+ * PCIe/NVMe event handler called when PCIe status bit 6 is set.
+ * Handles NVMe command completion and error events.
+ *
+ * Algorithm:
+ *   1. Write 0x0A, 0x0D to 0xC001 (NVMe command register)
+ *   2. Call helper 0x538D with R3=0xFF, R2=0x23, R1=0xEE
+ *   3. Read 0xE40F, pass to helper 0x51C7
+ *   4. Write 0x3A to 0xC001
+ *   5. Read 0xE410, pass to helper 0x51C7
+ *   6. Write 0x5D to 0xC001
+ *   7. Check 0xE40F bits 7, 0, 5 for various dispatch paths
  *
  * Original disassembly:
- *   052f: mov dptr, #0xaf5e
- *   0532: ajmp 0x0300
+ *   af5e: mov dptr, #0xc001
+ *   af61: mov a, #0x0a
+ *   af63: movx @dptr, a
+ *   af64: mov a, #0x0d
+ *   af66: movx @dptr, a
+ *   af67: mov r3, #0xff
+ *   af69: mov r2, #0x23
+ *   af6b: mov r1, #0xee
+ *   af6d: lcall 0x538d
+ *   ... (continues with NVMe event processing)
  */
 void handler_052f(void)
 {
-    jump_bank_0(0xAF5E);
+    uint8_t val;
+
+    /* Write NVMe command sequence to 0xC001 */
+    XDATA8(0xC001) = 0x0A;
+    XDATA8(0xC001) = 0x0D;
+
+    /* Call helper 0x538D with R3=0xFF, R2=0x23, R1=0xEE */
+    /* This reads/processes NVMe response data */
+
+    /* Read NVMe status from 0xE40F */
+    val = XDATA8(0xE40F);
+
+    /* Call helper 0x51C7 with status in R7 */
+
+    /* Write next command 0x3A */
+    XDATA8(0xC001) = 0x3A;
+
+    /* Read 0xE410 and process */
+    val = XDATA8(0xE410);
+
+    /* Write command 0x5D */
+    XDATA8(0xC001) = 0x5D;
+
+    /* Check status bits in 0xE40F */
+    val = XDATA8(0xE40F);
+
+    if (val & 0x80) {
+        /* Bit 7 set: call 0xDFDC helper */
+    } else if (val & 0x01) {
+        /* Bit 0 set: write 0x01 to 0xE40F, call 0x83D6 */
+        XDATA8(0xE40F) = 0x01;
+    } else if (val & 0x20) {
+        /* Bit 5 set: write 0x20 to 0xE40F, call 0xDFDC */
+        XDATA8(0xE40F) = 0x20;
+    }
 }
 
 /*

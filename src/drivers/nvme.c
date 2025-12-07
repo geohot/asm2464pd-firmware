@@ -1,11 +1,101 @@
 /*
  * ASM2464PD Firmware - NVMe Driver
  *
- * NVMe controller interface for USB4/Thunderbolt to NVMe bridge
- * Handles NVMe command submission, completion, and queue management
+ * NVMe controller interface for USB4/Thunderbolt to NVMe bridge.
+ * Handles NVMe command submission, completion, and queue management.
  *
- * NVMe registers are at 0xC400-0xC4FF
- * NVMe event registers are at 0xEC00-0xEC0F
+ *===========================================================================
+ * NVME CONTROLLER ARCHITECTURE
+ *===========================================================================
+ *
+ * The ASM2464PD bridges USB4/Thunderbolt/USB to PCIe NVMe SSDs.
+ * This driver manages the NVMe command/completion queues and data transfers.
+ *
+ * Block Diagram:
+ * ┌───────────────────────────────────────────────────────────────────────┐
+ * │                        NVMe SUBSYSTEM                                │
+ * ├───────────────────────────────────────────────────────────────────────┤
+ * │                                                                       │
+ * │  USB/PCIe ──> SCSI Cmd ──> NVMe Cmd Builder ──> Submission Queue     │
+ * │      │                          │                     │               │
+ * │      │                          v                     v               │
+ * │      │                    ┌──────────┐          ┌──────────┐          │
+ * │      │                    │ NVMe Regs│          │ PCIe DMA │          │
+ * │      │                    │ 0xC400+  │          │ Engine   │          │
+ * │      │                    └──────────┘          └────┬─────┘          │
+ * │      │                                               │               │
+ * │      │                                               v               │
+ * │      <───── SCSI Status <── NVMe Completion <── Completion Queue     │
+ * │                                                                       │
+ * └───────────────────────────────────────────────────────────────────────┘
+ *
+ * Register Map (0xC400-0xC5FF):
+ * ┌──────────┬───────────────────────────────────────────────────────────┐
+ * │ Address  │ Description                                               │
+ * ├──────────┼───────────────────────────────────────────────────────────┤
+ * │ 0xC400   │ NVME_CTRL - Control register                              │
+ * │ 0xC401   │ NVME_STATUS - Status register                             │
+ * │ 0xC412   │ NVME_CTRL_STATUS - Control/status combined                │
+ * │ 0xC413   │ NVME_CONFIG - Configuration                               │
+ * │ 0xC414   │ NVME_DATA_CTRL - Data transfer control                    │
+ * │ 0xC415   │ NVME_DEV_STATUS - Device presence/ready status            │
+ * │ 0xC420   │ NVME_CMD - Command register                               │
+ * │ 0xC421   │ NVME_CMD_OPCODE - NVMe opcode                              │
+ * │ 0xC422-24│ NVME_LBA_0/1/2 - LBA bytes 0-2                            │
+ * │ 0xC425-26│ NVME_COUNT - Transfer count                               │
+ * │ 0xC427   │ NVME_ERROR - Error code                                   │
+ * │ 0xC428   │ NVME_QUEUE_CFG - Queue configuration                      │
+ * │ 0xC429   │ NVME_CMD_PARAM - Command parameters                       │
+ * │ 0xC42A   │ NVME_DOORBELL - Queue doorbell                            │
+ * │ 0xC440-45│ Queue head/tail pointers                                  │
+ * │ 0xC446   │ NVME_LBA_3 - LBA byte 3                                   │
+ * │ 0xC462   │ DMA_ENTRY - DMA entry point                               │
+ * │ 0xC470-7F│ Command queue directory                                   │
+ * └──────────┴───────────────────────────────────────────────────────────┘
+ *
+ * NVMe Event Registers (0xEC00-0xEC0F):
+ * ┌──────────┬───────────────────────────────────────────────────────────┐
+ * │ 0xEC04   │ NVME_EVENT_ACK - Event acknowledge                        │
+ * │ 0xEC06   │ NVME_EVENT_STATUS - Event status                          │
+ * └──────────┴───────────────────────────────────────────────────────────┘
+ *
+ * Queue Management:
+ * - Submission Queue (SQ): Commands sent to NVMe device
+ * - Completion Queue (CQ): Status returned from NVMe device
+ * - Circular buffer with head/tail pointers
+ * - Phase bit for completion tracking
+ * - Maximum 32 outstanding commands (5-bit counter)
+ *
+ * SCSI DMA Registers (0xCE40-0xCEFF):
+ * - Used for NVMe data transfers
+ * - 0xCE88-CE89: SCSI DMA control/status
+ * - 0xCEB0: Transfer status
+ *
+ *===========================================================================
+ * IMPLEMENTATION STATUS
+ *===========================================================================
+ * nvme_set_usb_mode_bit      [DONE] 0x1bde-0x1be7 - Set USB mode bit
+ * nvme_get_config_offset     [DONE] 0x1be8-0x1bf5 - Get config offset
+ * nvme_calc_buffer_offset    [DONE] 0x1bf6-0x1c0e - Calculate buffer offset
+ * nvme_load_transfer_data    [DONE] 0x1bcb-0x1bd4 - Load transfer data
+ * nvme_calc_idata_offset     [DONE] 0x1c0f-0x1c1a - Calculate IDATA offset
+ * nvme_check_scsi_ctrl       [DONE] 0x1c22-0x1c29 - Check SCSI control
+ * nvme_get_cmd_param_upper   [DONE] 0x1c77-0x1c7d - Get cmd param upper bits
+ * nvme_subtract_idata_16     [DONE] 0x1c6d-0x1c76 - Subtract 16-bit value
+ * nvme_calc_addr_01xx        [DONE] 0x1c88-0x1c8f - Calculate 0x01XX addr
+ * nvme_inc_circular_counter  [DONE] 0x1cae-0x1cb6 - Increment circular counter
+ * nvme_calc_addr_012b        [DONE] 0x1cb7-0x1cc0 - Calculate 0x012B+ addr
+ * nvme_set_ep_queue_ctrl_84  [DONE] 0x1cc1-0x1cc7 - Set EP queue ctrl
+ * nvme_get_dev_status_upper  [DONE] 0x1c56-0x1c5c - Get device status upper
+ * nvme_get_data_ctrl_upper   [DONE] 0x1d24-0x1d2a - Get data ctrl upper bits
+ * nvme_clear_status_bit1     [DONE] 0x1cd4-0x1cdb - Clear status bit 1
+ * nvme_set_data_ctrl_bit7    [DONE] 0x1d2b-0x1d31 - Set data ctrl bit 7
+ * nvme_store_idata_16        [DONE] 0x1d32-0x1d38 - Store 16-bit to IDATA
+ * nvme_calc_addr_04b7        [DONE] 0x1ce4-0x1cef - Calculate 0x04B7+ addr
+ * nvme_add_to_global_053a    [DONE] 0x1cdc-0x1ce3 - Add 0x20 to global 0x053A
+ *
+ * Total: 19 functions implemented
+ *===========================================================================
  *
  * NOTE: Core dispatch functions (jump_bank_0, jump_bank_1)
  * are defined in main.c as they are part of the core dispatch mechanism.
@@ -296,4 +386,142 @@ void nvme_set_ep_queue_ctrl_84(void)
     G_EP_QUEUE_CTRL = 0x84;
 }
 
-/* Additional NVMe driver functions will be added here as they are reversed */
+/*
+ * nvme_get_dev_status_upper - Get upper 2 bits of device status
+ * Address: 0x1c56-0x1c5c (7 bytes)
+ *
+ * Reads NVMe device status register and masks to upper 2 bits.
+ * These bits indicate device presence and ready state.
+ *
+ * Original disassembly:
+ *   1c56: mov dptr, #0xc415   ; REG_NVME_DEV_STATUS
+ *   1c59: movx a, @dptr       ; read status
+ *   1c5a: anl a, #0xc0        ; mask bits 7-6
+ *   1c5c: ret
+ */
+uint8_t nvme_get_dev_status_upper(void)
+{
+    return REG_NVME_DEV_STATUS & 0xC0;
+}
+
+/*
+ * nvme_get_data_ctrl_upper - Get upper 2 bits of data control
+ * Address: 0x1d24-0x1d2a (7 bytes)
+ *
+ * Reads NVMe data control register and masks to upper 2 bits.
+ *
+ * Original disassembly:
+ *   1d24: mov dptr, #0xc414   ; REG_NVME_DATA_CTRL
+ *   1d27: movx a, @dptr       ; read control
+ *   1d28: anl a, #0xc0        ; mask bits 7-6
+ *   1d2a: ret
+ */
+uint8_t nvme_get_data_ctrl_upper(void)
+{
+    return REG_NVME_DATA_CTRL & 0xC0;
+}
+
+/*
+ * nvme_clear_status_bit1 - Clear bit 1 of NVMe status register
+ * Address: 0x1cd4-0x1cdb (8 bytes)
+ *
+ * Reads status, clears bit 1, writes back.
+ * Bit 1 is typically an error/interrupt flag.
+ *
+ * Original disassembly:
+ *   1cd4: mov dptr, #0xc401   ; REG_NVME_STATUS
+ *   1cd7: movx a, @dptr       ; read status
+ *   1cd8: anl a, #0xfd        ; clear bit 1
+ *   1cda: movx @dptr, a       ; write back
+ *   1cdb: ret
+ */
+void nvme_clear_status_bit1(void)
+{
+    uint8_t val = REG_NVME_STATUS;
+    val &= 0xFD;
+    REG_NVME_STATUS = val;
+}
+
+/*
+ * nvme_set_data_ctrl_bit7 - Set bit 7 of data control register
+ * Address: 0x1d2b-0x1d31 (7 bytes)
+ *
+ * Reads from DPTR (caller sets it), clears bit 7, sets bit 7, writes back.
+ * This is called after nvme_get_data_ctrl_upper with DPTR still pointing
+ * to 0xC414.
+ *
+ * Original disassembly:
+ *   1d2b: movx a, @dptr       ; read current value
+ *   1d2c: anl a, #0x7f        ; clear bit 7
+ *   1d2e: orl a, #0x80        ; set bit 7
+ *   1d30: movx @dptr, a       ; write back
+ *   1d31: ret
+ */
+void nvme_set_data_ctrl_bit7(void)
+{
+    uint8_t val = REG_NVME_DATA_CTRL;
+    val = (val & 0x7F) | 0x80;
+    REG_NVME_DATA_CTRL = val;
+}
+
+/*
+ * nvme_store_idata_16 - Store 16-bit value to IDATA[0x16:0x17]
+ * Address: 0x1d32-0x1d38 (7 bytes)
+ *
+ * Stores R6:R7 (hi:lo) to IDATA[0x16:0x17].
+ *
+ * Original disassembly:
+ *   1d32: mov r1, #0x17
+ *   1d34: mov @r1, a          ; store low byte (A = R7)
+ *   1d35: mov a, r6           ; get high byte
+ *   1d36: dec r1              ; point to 0x16
+ *   1d37: mov @r1, a          ; store high byte
+ *   1d38: ret
+ */
+void nvme_store_idata_16(uint8_t hi, uint8_t lo)
+{
+    *(__idata uint8_t *)0x17 = lo;
+    *(__idata uint8_t *)0x16 = hi;
+}
+
+/*
+ * nvme_calc_addr_04b7 - Calculate address in 0x04B7+ region
+ * Address: 0x1ce4-0x1cef (12 bytes)
+ *
+ * Returns pointer to 0x04B7 + IDATA[0x23].
+ *
+ * Original disassembly:
+ *   1ce4: mov a, #0xb7
+ *   1ce6: add a, 0x23         ; A = 0xB7 + IDATA[0x23]
+ *   1ce8: mov 0x82, a         ; DPL
+ *   1cea: clr a
+ *   1ceb: addc a, #0x04       ; DPH = 0x04 + carry
+ *   1ced: mov 0x83, a
+ *   1cef: ret
+ */
+__xdata uint8_t *nvme_calc_addr_04b7(void)
+{
+    uint8_t offset = *(__idata uint8_t *)0x23;
+    uint16_t addr = 0x04B7 + offset;
+    return (__xdata uint8_t *)addr;
+}
+
+/*
+ * nvme_add_to_global_053a - Add 0x20 to value at 0x053A
+ * Address: 0x1cdc-0x1ce3 (8 bytes)
+ *
+ * Reads value from 0x053A, adds 0x20, writes back.
+ *
+ * Original disassembly:
+ *   1cdc: mov dptr, #0x053a
+ *   1cdf: movx a, @dptr       ; read value
+ *   1ce0: add a, #0x20        ; add 0x20
+ *   1ce2: movx @dptr, a       ; write back
+ *   1ce3: ret
+ */
+void nvme_add_to_global_053a(void)
+{
+    uint8_t val = XDATA8(0x053A);
+    val += 0x20;
+    XDATA8(0x053A) = val;
+}

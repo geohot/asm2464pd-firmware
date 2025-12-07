@@ -4,7 +4,141 @@
  * USB interface controller for USB4/Thunderbolt to NVMe bridge
  * Handles USB enumeration, endpoint configuration, and data transfers
  *
- * USB registers are at 0x9000-0x91FF
+ * ============================================================================
+ * ARCHITECTURE OVERVIEW
+ * ============================================================================
+ * The ASM2464PD USB subsystem handles the host interface for the NVMe bridge:
+ *
+ *   USB Host <---> USB Controller <---> Endpoint Buffers <---> DMA Engine
+ *                      |                      |
+ *                      v                      v
+ *              Status Registers         SCSI/Mass Storage
+ *
+ * The USB controller supports:
+ * - USB 3.2 Gen2x2 (20 Gbps)
+ * - USB4/Thunderbolt 3/4 tunneling
+ * - 8 configurable endpoints (EP0-EP7)
+ * - Mass Storage Class (SCSI over USB)
+ * - Bulk-Only Transport (BOT) protocol
+ *
+ * ============================================================================
+ * REGISTER MAP
+ * ============================================================================
+ * USB Core Registers (0x9000-0x90FF):
+ * 0x9000: REG_USB_STATUS          - Main status register
+ *         Bit 0: Activity/interrupt pending
+ *         Bit 7: Connected/ready
+ * 0x9001: REG_USB_CONTROL         - Control register
+ * 0x9002: REG_USB_CONFIG          - Configuration
+ * 0x9003: REG_USB_EP0_STATUS      - EP0 status
+ * 0x9004-0x9005: REG_USB_EP0_LEN  - EP0 transfer length (16-bit)
+ * 0x9006: REG_USB_EP0_CONFIG      - EP0 configuration
+ *         Bit 0: Mode bit (set for USB mode)
+ * 0x9007-0x9008: REG_USB_SCSI_BUF_LEN - SCSI buffer length
+ * 0x9091: REG_INT_FLAGS_EX0       - Extended interrupt flags
+ * 0x9093: REG_USB_EP_CFG1         - Endpoint config 1
+ * 0x9094: REG_USB_EP_CFG2         - Endpoint config 2
+ * 0x9096: USB Endpoint Base       - Indexed by endpoint number
+ * 0x9101: REG_USB_PERIPH_STATUS   - Peripheral status
+ *         Bit 6: Peripheral busy flag
+ * 0x9118: REG_USB_EP_STATUS       - Endpoint status bitmap (8 EPs)
+ * 0x910D-0x910E: Status pair
+ * 0x911B: REG_USB_BUFFER_ALT      - Buffer alternate
+ * 0x911F-0x9122: USB status bytes
+ *
+ * Buffer Control (0xD800-0xD8FF):
+ * 0xD804-0xD807: Transfer status copy area
+ * 0xD80C: Buffer transfer start
+ *
+ * ============================================================================
+ * ENDPOINT DISPATCH TABLE
+ * ============================================================================
+ * Located at CODE address 0x5A6A (256 bytes):
+ * - Maps USB status byte to endpoint index (0-7)
+ * - Value >= 8 means "no endpoint to process"
+ * - Priority-based selection using bit position lookup
+ *
+ * Bit mask table at 0x5B6A (8 bytes):
+ * - Maps endpoint index to clear mask
+ *
+ * Offset table at 0x5B72 (8 bytes):
+ * - Maps endpoint index to register offset (multiples of 8)
+ *
+ * ============================================================================
+ * WORK AREA GLOBALS (0x0000-0x0BFF)
+ * ============================================================================
+ * 0x000A: G_EP_CHECK_FLAG         - Endpoint processing check
+ * 0x014E: Circular buffer index (5-bit)
+ * 0x0218-0x0219: Buffer address pair
+ * 0x0464: G_SYS_STATUS_PRIMARY    - Primary status for indexing
+ * 0x0465: G_SYS_STATUS_SECONDARY  - Secondary status
+ * 0x054E: G_EP_CONFIG_ARRAY       - Endpoint config array base
+ * 0x0564: G_EP_QUEUE_CTRL         - Endpoint queue control
+ * 0x0565: G_EP_QUEUE_STATUS       - Endpoint queue status
+ * 0x05A6-0x05A7: G_PCIE_TXN_COUNT - PCIe transaction count
+ * 0x05D3: Endpoint config multiplier base
+ * 0x06E6: G_STATE_FLAG_06E6       - Processing complete/error flag
+ * 0x07E4: G_SYS_FLAGS_BASE        - System flags base (must be 1)
+ * 0x0A7B: G_EP_DISPATCH_VAL1      - First endpoint index
+ * 0x0A7C: G_EP_DISPATCH_VAL2      - Second endpoint index
+ * 0x0AA8-0x0AAB: Flash error flags and state
+ * 0x0AF2: G_TRANSFER_FLAG_0AF2    - Transfer active flag
+ * 0x0AF5: G_EP_DISPATCH_OFFSET    - Combined dispatch offset
+ * 0x0AFA-0x0AFB: G_TRANSFER_PARAMS - Transfer parameters
+ * 0x0B2E: G_USB_TRANSFER_FLAG     - USB transfer in progress
+ * 0x0B41: Buffer handler check
+ *
+ * ============================================================================
+ * ENDPOINT DISPATCH ALGORITHM
+ * ============================================================================
+ * 1. Read endpoint status from REG_USB_EP_STATUS (0x9118)
+ * 2. Look up primary endpoint index via ep_index_table[status]
+ * 3. If index >= 8, exit (no endpoints need service)
+ * 4. Read secondary status from USB_EP_BASE + ep_index1
+ * 5. Look up secondary endpoint index
+ * 6. If secondary index >= 8, exit
+ * 7. Calculate combined offset = ep_offset_table[ep_index1] + ep_index2
+ * 8. Call endpoint handler with combined offset
+ * 9. Clear endpoint status via bit mask write
+ * 10. Loop up to 32 times
+ *
+ * ============================================================================
+ * IMPLEMENTATION STATUS
+ * ============================================================================
+ * [x] usb_enable (0x1b7e)                  - Load config params
+ * [x] usb_setup_endpoint                   - Configure endpoint (stub)
+ * [x] usb_ep_init_handler (0x5409)         - Clear state flags
+ * [x] usb_ep_handler (0x5442)              - Process single endpoint
+ * [x] usb_buffer_handler (0xd810)          - Buffer transfer dispatch
+ * [x] usb_ep_config_bulk (0x1cfc)          - Configure bulk endpoint
+ * [x] usb_ep_config_int (0x1d07)           - Configure interrupt endpoint
+ * [x] usb_set_transfer_flag (0x1d1d)       - Set transfer flag
+ * [x] usb_get_nvme_data_ctrl (0x1d24)      - Get NVMe data control
+ * [x] usb_set_nvme_ctrl_bit7 (0x1d2b)      - Set control bit 7
+ * [x] usb_get_sys_status_offset (0x1743)   - Get status with offset
+ * [x] usb_calc_addr_with_offset (0x1752)   - Calculate address
+ * [x] usb_set_done_flag (0x1787)           - Set done flag
+ * [x] usb_set_transfer_active_flag (0x312a) - Set transfer active
+ * [x] usb_copy_status_to_buffer (0x3147)   - Copy status regs
+ * [x] usb_clear_idata_indexed (0x3168)     - Clear indexed location
+ * [x] usb_read_status_pair (0x3181)        - Read 16-bit status
+ * [x] usb_read_transfer_params (0x31a5)    - Read transfer params
+ * [x] usb_calc_queue_addr (0x176b)         - Calculate queue address
+ * [x] usb_calc_queue_addr_next (0x1779)    - Calculate next queue address
+ * [x] usb_store_idata_16 (0x1d32)          - Store 16-bit to IDATA
+ * [x] usb_add_masked_counter (0x1d39)      - Add to circular counter
+ * [x] usb_calc_indexed_addr (0x179d)       - Calculate indexed address
+ * [x] usb_read_queue_status_masked (0x17c1) - Read masked queue status
+ * [x] usb_shift_right_3 (0x17cd)           - Shift utility
+ * [x] usb_ep_dispatch_loop (0x0e96)        - Main endpoint dispatch
+ * [x] dma_clear_dword (0x173b)             - Clear 32-bit value
+ * [x] usb_calc_addr_009f (0x1b88)          - Calculate address with IDATA offset
+ * [x] usb_get_ep_config_indexed (0x1b96)   - Get indexed endpoint config
+ * [x] usb_read_buf_addr_pair (0x1ba5)      - Read buffer address pair
+ * [x] usb_get_idata_0x12_field (0x1bae)    - Extract IDATA[0x12] field
+ * [x] usb_set_ep0_mode_bit (0x1bde)        - Set EP0 mode bit 0
+ * [x] usb_get_config_offset_0456 (0x1be8)  - Get config offset 0x04XX
+ * [x] usb_init_pcie_txn_state (0x1d43)     - Initialize PCIe transaction state
  */
 
 #include "types.h"
@@ -928,4 +1062,206 @@ void usb_ep_dispatch_loop(void)
         counter++;
 
     } while (counter < 0x20);
+}
+
+/*===========================================================================
+ * Additional USB Utility Functions
+ *===========================================================================*/
+
+/*
+ * usb_calc_addr_009f - Calculate address 0x009F + IDATA[0x3E]
+ * Address: 0x1b88-0x1b95 (14 bytes)
+ *
+ * Reads offset from IDATA[0x3E], adds to 0x9F, returns that XDATA value.
+ *
+ * Original disassembly:
+ *   1b88: mov r7, a
+ *   1b89: mov a, #0x9f
+ *   1b8b: add a, 0x3e           ; A = 0x9F + IDATA[0x3E]
+ *   1b8d: mov 0x82, a           ; DPL
+ *   1b8f: clr a
+ *   1b90: addc a, #0x00         ; DPH = carry
+ *   1b92: mov 0x83, a
+ *   1b94: movx a, @dptr
+ *   1b95: ret
+ */
+uint8_t usb_calc_addr_009f(void)
+{
+    uint8_t offset = *(__idata uint8_t *)0x3E;
+    return XDATA8(0x009F + offset);
+}
+
+/*
+ * usb_get_ep_config_indexed - Get endpoint config from indexed array
+ * Address: 0x1b96-0x1ba4 (15 bytes)
+ *
+ * Reads G_SYS_STATUS_SECONDARY, uses it to index into endpoint config array
+ * at 0x054E with multiplier 0x14.
+ *
+ * Original disassembly:
+ *   1b96: mov dptr, #0x0465
+ *   1b99: movx a, @dptr         ; A = [0x0465]
+ *   1b9a: mov dptr, #0x054e     ; base = 0x054E
+ *   1b9d: mov 0xf0, #0x14       ; B = 0x14 (multiplier)
+ *   1ba0: lcall 0x0dd1          ; mul_add_index
+ *   1ba3: movx a, @dptr         ; read from result
+ *   1ba4: ret
+ */
+uint8_t usb_get_ep_config_indexed(void)
+{
+    uint8_t status = G_SYS_STATUS_SECONDARY;
+    uint16_t addr = 0x054E + ((uint16_t)status * 0x14);
+    return XDATA8(addr);
+}
+
+/*
+ * usb_read_buf_addr_pair - Read 16-bit buffer address from 0x0218
+ * Address: 0x1ba5-0x1bad (9 bytes)
+ *
+ * Reads 16-bit value from work area 0x0218-0x0219.
+ *
+ * Original disassembly:
+ *   1ba5: mov dptr, #0x0218
+ *   1ba8: movx a, @dptr         ; R6 = [0x0218] (high)
+ *   1ba9: mov r6, a
+ *   1baa: inc dptr
+ *   1bab: movx a, @dptr         ; R7 = [0x0219] (low)
+ *   1bac: mov r7, a
+ *   1bad: ret
+ */
+uint16_t usb_read_buf_addr_pair(void)
+{
+    uint8_t hi = XDATA8(0x0218);
+    uint8_t lo = XDATA8(0x0219);
+    return ((uint16_t)hi << 8) | lo;
+}
+
+/*
+ * usb_get_idata_0x12_field - Extract field from IDATA[0x12]
+ * Address: 0x1bae-0x1bc0 (19 bytes)
+ *
+ * Reads IDATA[0x12], swaps nibbles, rotates right, masks to 3 bits.
+ * Returns R4-R7 with extracted value.
+ *
+ * Original disassembly:
+ *   1bae: mov r1, 0x05          ; save R5-R7 to R1-R3
+ *   1bb0: mov r2, 0x06
+ *   1bb2: mov r3, 0x07
+ *   1bb4: mov r0, #0x12
+ *   1bb6: mov a, @r0            ; A = IDATA[0x12]
+ *   1bb7: swap a                ; swap nibbles
+ *   1bb8: rrc a                 ; rotate right through carry
+ *   1bb9: anl a, #0x07          ; mask to 3 bits
+ *   1bbb: mov r7, a
+ *   1bbc: clr a
+ *   1bbd: mov r4, a             ; R4 = 0
+ *   1bbe: mov r5, a             ; R5 = 0
+ *   1bbf: mov r6, a             ; R6 = 0
+ *   1bc0: ret
+ */
+uint8_t usb_get_idata_0x12_field(void)
+{
+    uint8_t val = *(__idata uint8_t *)0x12;
+    /* Swap nibbles: bits 7-4 <-> bits 3-0 */
+    val = ((val << 4) | (val >> 4));
+    /* Rotate right (approximation without carry) */
+    val = val >> 1;
+    /* Mask to 3 bits */
+    return val & 0x07;
+}
+
+/*
+ * usb_set_ep0_mode_bit - Set bit 0 of USB EP0 config register
+ * Address: 0x1bde-0x1be7 (10 bytes)
+ *
+ * Reads 0x9006, clears bit 0, sets bit 0, writes back.
+ * Note: This is the same as nvme_set_usb_mode_bit in nvme.c
+ *
+ * Original disassembly:
+ *   1bde: mov dptr, #0x9006
+ *   1be1: movx a, @dptr
+ *   1be2: anl a, #0xfe          ; clear bit 0
+ *   1be4: orl a, #0x01          ; set bit 0
+ *   1be6: movx @dptr, a
+ *   1be7: ret
+ */
+void usb_set_ep0_mode_bit(void)
+{
+    uint8_t val;
+
+    val = REG_USB_EP0_CONFIG;
+    val = (val & 0xFE) | 0x01;
+    REG_USB_EP0_CONFIG = val;
+}
+
+/*
+ * usb_get_config_offset_0456 - Get config offset in 0x04XX region
+ * Address: 0x1be8-0x1bf5 (14 bytes)
+ *
+ * Reads G_SYS_STATUS_PRIMARY, adds 0x56, returns pointer to 0x04XX.
+ *
+ * Original disassembly:
+ *   1be8: mov dptr, #0x0464
+ *   1beb: movx a, @dptr         ; A = [0x0464]
+ *   1bec: add a, #0x56          ; A = A + 0x56
+ *   1bee: mov 0x82, a           ; DPL
+ *   1bf0: clr a
+ *   1bf1: addc a, #0x04         ; DPH = 0x04 + carry
+ *   1bf3: mov 0x83, a
+ *   1bf5: ret
+ */
+__xdata uint8_t *usb_get_config_offset_0456(void)
+{
+    uint8_t val = G_SYS_STATUS_PRIMARY;
+    uint16_t addr = 0x0400 + val + 0x56;
+    return (__xdata uint8_t *)addr;
+}
+
+/*
+ * usb_init_pcie_txn_state - Initialize PCIe transaction state
+ * Address: 0x1d43-0x1d70 (46 bytes)
+ *
+ * Clears 0x0AAA, reads transaction count from 0x05A6, stores to 0x0AA8,
+ * reads indexed config, stores to 0x0AA9.
+ *
+ * Original disassembly (partial):
+ *   1d43: clr a
+ *   1d44: mov dptr, #0x0aaa
+ *   1d47: movx @dptr, a         ; clear 0x0AAA
+ *   1d48: mov dptr, #0x05a6
+ *   1d4b: movx a, @dptr         ; read PCIe txn count low
+ *   1d4c: mov 0xf0, #0x22       ; multiplier = 0x22
+ *   1d4f: mov dptr, #0x05d3     ; base = 0x05D3
+ *   1d52: lcall 0x0dd1          ; indexed read
+ *   1d55: movx a, @dptr
+ *   1d56: mov dptr, #0x0aa8
+ *   1d59: movx @dptr, a         ; store to flash error 0
+ *   ... continues
+ */
+void usb_init_pcie_txn_state(void)
+{
+    uint8_t txn_lo;
+    uint8_t val;
+    uint16_t addr;
+
+    /* Clear state at 0x0AAA */
+    XDATA8(0x0AAA) = 0;
+
+    /* Read PCIe transaction count low */
+    txn_lo = G_PCIE_TXN_COUNT_LO;
+
+    /* Calculate indexed address: 0x05D3 + (txn_lo * 0x22) */
+    addr = 0x05D3 + ((uint16_t)txn_lo * 0x22);
+    val = XDATA8(addr);
+
+    /* Store to flash error 0 */
+    G_FLASH_ERROR_0 = val;
+
+    /* Read secondary status and calculate indexed config */
+    val = G_SYS_STATUS_SECONDARY;
+    addr = 0x0548 + ((uint16_t)val * 0x14);
+    val = XDATA8(addr);
+
+    /* Store to flash error 1 */
+    G_FLASH_ERROR_1 = val;
 }
