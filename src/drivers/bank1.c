@@ -414,7 +414,7 @@ void handler_ed02(void)
     /* TODO: Implement call to 0x05C5 when available */
 
     /* Clear 0x023F */
-    XDATA_VAR8(0x023F) = 0;
+    G_BANK1_STATE_023F = 0;
 }
 
 /*

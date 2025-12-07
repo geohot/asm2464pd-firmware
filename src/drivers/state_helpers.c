@@ -686,12 +686,12 @@ void handler_d07f(uint8_t param)
 {
     if (param == 0) {
         *(__idata uint8_t *)0x3E = 0xFF;
-        XDATA_REG8(0x9018) = 3;
-        XDATA_REG8(0x9019) = 0xFE;  /* REG_USB_DATA_L assumed at 0x9019 */
+        REG_USB_MODE_9018 = 3;
+        REG_USB_MODE_VAL_9019 = 0xFE;
     } else {
         *(__idata uint8_t *)0x3E = 0;
-        XDATA_REG8(0x9018) = 2;
-        XDATA_REG8(0x9019) = 0;
+        REG_USB_MODE_9018 = 2;
+        REG_USB_MODE_VAL_9019 = 0;
     }
     /* TODO: Full implementation calls FUN_CODE_bb47 multiple times */
 }

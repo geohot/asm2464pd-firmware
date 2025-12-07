@@ -194,15 +194,15 @@ void power_config_init(void)
 
     /* Set clock gating config */
     REG_POWER_CTRL_92C6 = 0x05;
-    XDATA_REG8(0x92C7) = 0x00;
+    REG_POWER_CTRL_92C7 = 0x00;
 
     /* Clear bits 0,1 of 0x9201 */
-    val = XDATA_REG8(0x9201);
+    val = REG_USB_CTRL_9201;
     val &= 0xFE;  /* Clear bit 0 */
-    XDATA_REG8(0x9201) = val;
-    val = XDATA_REG8(0x9201);
+    REG_USB_CTRL_9201 = val;
+    val = REG_USB_CTRL_9201;
     val &= 0xFD;  /* Clear bit 1 */
-    XDATA_REG8(0x9201) = val;
+    REG_USB_CTRL_9201 = val;
 }
 
 /*
@@ -261,7 +261,7 @@ void power_check_status_e647(void)
 
     /* Poll 0xB296 bit 2 until set */
     do {
-        status = XDATA_REG8(0xB296);
+        status = REG_PCIE_STATUS;
     } while (!(status & 0x04));
 
     /* Final processing - would call 0xC48F */
@@ -281,13 +281,13 @@ void power_set_state(void)
 {
     /* FUN_CODE_53c0 copies 4 bytes from IDATA[0x72-0x6F] to XDATA[0xD808-0xD80B] */
     /* This appears to be CSW residue setup */
-    XDATA_REG8(0xD808) = *(__idata uint8_t *)0x72;
-    XDATA_REG8(0xD809) = *(__idata uint8_t *)0x71;
-    XDATA_REG8(0xD80A) = *(__idata uint8_t *)0x70;
-    XDATA_REG8(0xD80B) = *(__idata uint8_t *)0x6F;
+    REG_CSW_RESIDUE_0 = *(__idata uint8_t *)0x72;
+    REG_CSW_RESIDUE_1 = *(__idata uint8_t *)0x71;
+    REG_CSW_RESIDUE_2 = *(__idata uint8_t *)0x70;
+    REG_CSW_RESIDUE_3 = *(__idata uint8_t *)0x6F;
 
     /* Set power state active */
-    XDATA_REG8(0x90A1) = 1;
+    REG_USB_SIGNAL_90A1 = 1;
 }
 
 /*
@@ -466,7 +466,7 @@ void usb_power_init(void)
     /* Poll for completion - check XDATA 0xE318 and timer */
     /* Simplified polling - original uses FUN_CODE_e50d(1,0x8f,4) and complex wait */
     do {
-        status = XDATA_REG8(0xE318);
+        status = REG_PHY_COMPLETION_E318;
         if ((status & 0x10) != 0) break;
         val = REG_TIMER0_CSR;
     } while ((val & 0x02) == 0);

@@ -37,6 +37,8 @@ __idata __at(0x55) extern uint8_t I_WORK_55;   /* Work variable 0x55 */
 // System Work Area (0x0000-0x01FF)
 //=============================================================================
 #define G_SYSTEM_CTRL           XDATA_VAR8(0x0000)  /* System control byte */
+#define G_IO_CMD_TYPE           XDATA_VAR8(0x0001)  /* I/O command type byte */
+#define G_IO_CMD_STATE          XDATA_VAR8(0x0002)  /* I/O command state byte */
 #define G_EP_STATUS_CTRL        XDATA_VAR8(0x0003)  /* Endpoint status control (checked by usb_ep_process) */
 #define G_WORK_0007             XDATA_VAR8(0x0007)  /* Work variable 0x0007 */
 #define G_EP_CHECK_FLAG         XDATA_VAR8(0x000A)  /* Endpoint check flag */
@@ -45,6 +47,8 @@ __idata __at(0x55) extern uint8_t I_WORK_55;   /* Work variable 0x55 */
 #define G_NVME_QUEUE_READY      XDATA_VAR8(0x0055)  /* NVMe queue ready flag */
 #define G_USB_ADDR_HI_0056      XDATA_VAR8(0x0056)  /* USB address high 0x0056 */
 #define G_USB_ADDR_LO_0057      XDATA_VAR8(0x0057)  /* USB address low 0x0057 */
+#define G_INIT_STATE_00C2       XDATA_VAR8(0x00C2)  /* Initialization state flag */
+#define G_INIT_STATE_00E5       XDATA_VAR8(0x00E5)  /* Initialization state flag 2 */
 #define G_USB_INDEX_COUNTER     XDATA_VAR8(0x014E)  /* USB index counter (5-bit) */
 #define G_SCSI_CTRL             XDATA_VAR8(0x0171)  /* SCSI control */
 #define G_USB_WORK_01B4         XDATA_VAR8(0x01B4)  /* USB work variable 0x01B4 */
@@ -60,6 +64,7 @@ __idata __at(0x55) extern uint8_t I_WORK_55;   /* Work variable 0x55 */
 #define G_BUF_ADDR_LO           XDATA_VAR8(0x0219)  /* Buffer address low */
 #define G_BUF_BASE_HI           XDATA_VAR8(0x021A)  /* Buffer base address high */
 #define G_BUF_BASE_LO           XDATA_VAR8(0x021B)  /* Buffer base address low */
+#define G_BANK1_STATE_023F      XDATA_VAR8(0x023F)  /* Bank 1 state flag */
 
 //=============================================================================
 // System Status Work Area (0x0400-0x04FF)
@@ -81,7 +86,9 @@ __idata __at(0x55) extern uint8_t I_WORK_55;   /* Work variable 0x55 */
 //=============================================================================
 // Endpoint Configuration Work Area (0x0500-0x05FF)
 //=============================================================================
+#define G_EP_INIT_0517          XDATA_VAR8(0x0517)  /* Endpoint init state */
 #define G_NVME_PARAM_053A       XDATA_VAR8(0x053A)  /* NVMe parameter storage */
+#define G_NVME_STATE_053B       XDATA_VAR8(0x053B)  /* NVMe state flag */
 #define G_EP_CONFIG_BASE        XDATA_VAR8(0x054B)  /* EP config base */
 #define G_EP_CONFIG_ARRAY       XDATA_VAR8(0x054E)  /* EP config array */
 #define G_EP_QUEUE_CTRL         XDATA_VAR8(0x0564)  /* Endpoint queue control */
@@ -164,6 +171,7 @@ __idata __at(0x55) extern uint8_t I_WORK_55;   /* Work variable 0x55 */
 #define G_TRANSFER_PARAMS_HI    XDATA_VAR8(0x0AFA)  /* Transfer params high byte */
 #define G_TRANSFER_PARAMS_LO    XDATA_VAR8(0x0AFB)  /* Transfer params low byte */
 #define G_USB_PARAM_0B00        XDATA_VAR8(0x0B00)  /* USB parameter storage */
+#define G_USB_INIT_0B01         XDATA_VAR8(0x0B01)  /* USB init state flag */
 #define G_USB_TRANSFER_FLAG     XDATA_VAR8(0x0B2E)  /* USB transfer flag */
 #define G_USB_STATE_0B41        XDATA_VAR8(0x0B41)  /* USB state check */
 

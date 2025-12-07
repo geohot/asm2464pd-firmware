@@ -653,9 +653,9 @@ void nvme_read_and_sum_index(__xdata uint8_t *ptr)
     uint8_t val1, val2, result;
 
     val1 = *ptr;
-    val2 = XDATA_VAR8(0x0216);
+    val2 = G_DMA_WORK_0216;
     result = (val1 + val2) & 0x1F;
-    XDATA_VAR8(0x01B4) = result;
+    G_USB_WORK_01B4 = result;
 }
 
 /*
@@ -757,6 +757,67 @@ uint8_t nvme_get_pcie_count_config(void)
 }
 
 /*
+ * nvme_calc_dptr_0500_base - Calculate DPTR = 0x0500 + A (with carry)
+ * Address: 0x3257-0x325e (8 bytes)
+ *
+ * Sets DPTR to 0x0500 + A. If carry is set from previous operation,
+ * it will be added to the high byte.
+ *
+ * Original disassembly:
+ *   3257: mov 0x82, a           ; DPL = A
+ *   3259: clr a                 ; A = 0
+ *   325a: addc a, #0x05         ; A = 5 + carry
+ *   325c: mov 0x83, a           ; DPH = A
+ *   325e: ret
+ */
+__xdata uint8_t *nvme_calc_dptr_0500_base(uint8_t val)
+{
+    return (__xdata uint8_t *)(0x0500 + val);
+}
+
+/*
+ * nvme_calc_dptr_direct_with_carry - Calculate DPTR = A (with carry to high)
+ * Address: 0x325f-0x3266 (8 bytes)
+ *
+ * Sets DPTR to A in low byte, carry in high byte.
+ * Similar to usb_calc_dptr_direct but carries to high.
+ *
+ * Original disassembly:
+ *   325f: mov 0x82, a           ; DPL = A
+ *   3261: clr a                 ; A = 0
+ *   3262: addc a, #0x00         ; A = 0 + carry
+ *   3264: mov 0x83, a           ; DPH = A
+ *   3266: ret
+ */
+__xdata uint8_t *nvme_calc_dptr_direct_with_carry(uint8_t val)
+{
+    /* Without actual carry flag, this just returns the value as an address */
+    return (__xdata uint8_t *)val;
+}
+
+/*
+ * nvme_setup_regs_from_a - Setup R0-R3 with A and memory at 0x06
+ * Address: 0x3279-0x327f (7 bytes)
+ *
+ * Sets R3=A, R2=(0x06), R1=0, R0=0.
+ * This is a register setup helper function.
+ *
+ * Original disassembly:
+ *   3279: mov r3, a             ; R3 = A
+ *   327a: mov r2, 0x06          ; R2 = value at address 0x06
+ *   327c: clr a                 ; A = 0
+ *   327d: mov r1, a             ; R1 = 0
+ *   327e: mov r0, a             ; R0 = 0
+ *   327f: ret
+ *
+ * Note: This function modifies registers directly, so C implementation
+ * returns a struct to capture the 32-bit result.
+ */
+/* This function is typically called inline and modifies R0-R3 directly.
+ * In C, we can't directly modify registers, so callers should use
+ * inline assembly or handle this differently. For now, marking as stub. */
+
+/*
  * nvme_init_step - Set EP configuration for NVMe endpoint setup
  * Address: 0x3267-0x3271 (11 bytes)
  *
@@ -832,7 +893,7 @@ void nvme_set_int_aux_bit1(void)
  */
 uint8_t nvme_get_link_status_masked(void)
 {
-    return XDATA_REG8(0x9100) & 0x03;
+    return REG_USB_LINK_STATUS & 0x03;
 }
 
 /*
@@ -906,7 +967,54 @@ void nvme_call_and_signal(void)
 {
     /* TODO: Call function at 0x53c0 when implemented */
     /* For now, just set the signal register */
-    XDATA_REG8(0x90A1) = 0x01;
+    REG_USB_SIGNAL_90A1 = 0x01;
+}
+
+/*
+ * nvme_add_8_to_addr - Add 8 to 16-bit address in R1:R2
+ * Address: 0x3223-0x322d (11 bytes)
+ *
+ * Takes a 16-bit address in R1:R2 (R1=low, R2=high) and adds 8.
+ * Returns the result in DPTR.
+ *
+ * Original disassembly:
+ *   3223: mov a, r1           ; A = R1 (low byte)
+ *   3224: add a, #0x08        ; A += 8
+ *   3226: mov r1, a           ; R1 = result low
+ *   3227: clr a               ; A = 0
+ *   3228: addc a, r2          ; A = R2 + carry
+ *   3229: mov 0x82, r1        ; DPL = R1
+ *   322b: mov 0x83, a         ; DPH = A
+ *   322d: ret
+ */
+__xdata uint8_t *nvme_add_8_to_addr(uint8_t addr_lo, uint8_t addr_hi)
+{
+    uint16_t addr = ((uint16_t)addr_hi << 8) | addr_lo;
+    addr += 8;
+    return (__xdata uint8_t *)addr;
+}
+
+/*
+ * nvme_set_buffer_flags - Set buffer length and system flags
+ * Address: 0x323b-0x3248 (14 bytes)
+ *
+ * Writes 0x0A to G_BUFFER_LENGTH_HIGH (0x0054) and sets bits 1,4,5
+ * on G_SYS_FLAGS_0052 (0x0052).
+ *
+ * Original disassembly:
+ *   323b: mov dptr, #0x0054   ; G_BUFFER_LENGTH_HIGH
+ *   323e: mov a, #0x0a        ; A = 10
+ *   3240: movx @dptr, a       ; write 10
+ *   3241: mov dptr, #0x0052   ; G_SYS_FLAGS_0052
+ *   3244: movx a, @dptr       ; read flags
+ *   3245: orl a, #0x32        ; set bits 1, 4, 5
+ *   3247: movx @dptr, a       ; write back
+ *   3248: ret
+ */
+void nvme_set_buffer_flags(void)
+{
+    G_BUFFER_LENGTH_HIGH = 0x0A;
+    G_SYS_FLAGS_0052 |= 0x32;
 }
 
 /*
@@ -934,6 +1042,26 @@ void usb_validate_descriptor(void)
 }
 
 /*
+ * nvme_get_idata_0d_r7 - Read IDATA[0x0D] into return value
+ * Address: 0x3291-0x3297 (7 bytes)
+ *
+ * Reads the value at IDATA[0x0D] and returns it.
+ * Also clears an internal counter (R5 in assembly).
+ *
+ * Original disassembly:
+ *   3291: mov r0, #0x0d         ; R0 = 0x0D
+ *   3293: mov a, @r0            ; A = IDATA[0x0D]
+ *   3294: mov r7, a             ; R7 = A
+ *   3295: clr a                 ; A = 0
+ *   3296: mov r5, a             ; R5 = 0
+ *   3297: ret
+ */
+uint8_t nvme_get_idata_0d_r7(void)
+{
+    return *(__idata uint8_t *)0x0D;
+}
+
+/*
  * nvme_get_dma_status_masked - Get DMA status masked to upper bits
  * Address: 0x3298-0x329e (7 bytes)
  *
@@ -947,7 +1075,7 @@ void usb_validate_descriptor(void)
  */
 uint8_t nvme_get_dma_status_masked(void)
 {
-    return XDATA_REG8(0xC8D9) & 0xF8;
+    return REG_DMA_STATUS3 & 0xF8;
 }
 
 /* Forward declaration for reg_wait_bit_clear from state_helpers.c */
@@ -1041,6 +1169,33 @@ uint8_t nvme_build_cmd(uint8_t param)
 }
 
 /*
+ * nvme_get_ep_table_entry - Get endpoint table entry value
+ * Address: 0x31ea-0x31fa (17 bytes)
+ *
+ * Reads index from DPTR, then reads from table at 0x057F + (index * 10).
+ * This is an endpoint configuration lookup table.
+ *
+ * Original disassembly:
+ *   31ea: movx a, @dptr        ; read index from DPTR
+ *   31eb: mov 0xf0, #0x0a      ; B = 10
+ *   31ee: mul ab               ; A = index * 10
+ *   31ef: add a, #0x7f         ; A += 0x7F
+ *   31f1: mov 0x82, a          ; DPL = A
+ *   31f3: clr a                ; A = 0
+ *   31f4: addc a, #0x05        ; A = 5 + carry
+ *   31f6: mov 0x83, a          ; DPH = A  (DPTR = 0x057F + index*10)
+ *   31f8: movx a, @dptr        ; read from table
+ *   31f9: mov r7, a            ; return in R7
+ *   31fa: ret
+ */
+uint8_t nvme_get_ep_table_entry(__xdata uint8_t *index_ptr)
+{
+    uint8_t index = *index_ptr;
+    uint16_t addr = 0x057F + ((uint16_t)index * 10);
+    return *(__xdata uint8_t *)addr;
+}
+
+/*
  * nvme_submit_cmd - Submit command to NVMe controller
  * Address: 0x31fb region (part of larger function)
  *
@@ -1087,7 +1242,7 @@ void nvme_io_handler(uint8_t param)
     }
 
     /* State 2: Check command type from XDATA[0x0002] */
-    cmd_type = XDATA_VAR8(0x0002);
+    cmd_type = G_IO_CMD_STATE;
 
     if (cmd_type == 0xE3 || cmd_type == 0xFB || cmd_type == 0xE1) {
         /* These command types (0xE3=-0x1D, 0xFB=-0x05, 0xE1=-0x1F)
@@ -1101,7 +1256,7 @@ void nvme_io_handler(uint8_t param)
         }
 
         /* Check XDATA[0x0001] for additional processing */
-        if (XDATA_VAR8(0x0001) != 0x07) {
+        if (G_IO_CMD_TYPE != 0x07) {
             nvme_set_int_aux_bit1();
             /* Additional processing would go here */
             if (param == 0) {
@@ -1123,7 +1278,7 @@ handle_io_path:
 
     /* cmd_type == 0xF9 (-7) also goes through special handling */
     if (cmd_type == 0xF9) {
-        if (XDATA_VAR8(0x0001) != 0x07) {
+        if (G_IO_CMD_TYPE != 0x07) {
             nvme_set_int_aux_bit1();
             if (param == 0) {
                 /* dma_setup_transfer(0, 3, 3); */
@@ -1216,37 +1371,37 @@ void nvme_init_registers(void)
     }
 
     /* Initialize state registers to zero */
-    XDATA_VAR8(0x0B01) = 0;
-    XDATA_VAR8(0x053B) = 0;
-    XDATA_VAR8(0x00C2) = 0;
-    XDATA_VAR8(0x0517) = 0;
+    G_USB_INIT_0B01 = 0;
+    G_NVME_STATE_053B = 0;
+    G_INIT_STATE_00C2 = 0;
+    G_EP_INIT_0517 = 0;
     G_USB_INDEX_COUNTER = 0;  /* 0x014E */
-    XDATA_VAR8(0x00E5) = 0;
+    G_INIT_STATE_00E5 = 0;
 
     /* Clear SCSI DMA control register */
-    XDATA_REG8(0xCE88) = 0;
+    REG_XFER_CTRL_CE88 = 0;
 
     /* Wait for bit 0 of 0xCE89 to be set */
     do {
-        val = XDATA_REG8(0xCE89);
+        val = REG_XFER_STATUS_CE89;
     } while ((val & 0x01) == 0);
 
     /* Check bit 1 for error/abort condition */
-    val = XDATA_REG8(0xCE89);
+    val = REG_XFER_STATUS_CE89;
     if (val & 0x02) {
         /* Error condition, abort initialization */
         return;
     }
 
     /* Check bit 4 of 0xCE86 */
-    val = XDATA_REG8(0xCE86);
+    val = REG_XFER_STATUS_CE86;
     if (val & 0x10) {
         /* Abort initialization */
         return;
     }
 
     /* Check transfer flag at 0x0AF8 */
-    val = XDATA_VAR8(0x0AF8);
+    val = G_POWER_INIT_FLAG;
     if (val != 0x01) {
         /* Not ready for transfer */
         return;
@@ -1465,7 +1620,7 @@ uint8_t nvme_func_1c2a(uint8_t param)
  */
 void nvme_func_1c43(uint8_t param)
 {
-    XDATA_VAR8(0x01B4) = param & 0x1F;
+    G_USB_WORK_01B4 = param & 0x1F;
 }
 
 /*

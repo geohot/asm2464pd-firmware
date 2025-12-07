@@ -67,6 +67,7 @@
 #include "../sfr.h"
 #include "../registers.h"
 #include "../globals.h"
+#include "../structs.h"
 
 /* External functions from usb.c */
 extern uint16_t usb_read_transfer_params(void);
@@ -74,21 +75,11 @@ extern uint16_t usb_read_transfer_params(void);
 /* IDATA command buffer at 0x09 (4 bytes) */
 static __idata uint8_t * const scsi_cmd_buffer = (__idata uint8_t *)0x09;
 
-/* USB Mass Storage signatures */
+/* USB Mass Storage CBW signatures (CSW signatures are in structs.h) */
 #define USB_CBW_SIGNATURE_0     0x55    /* 'U' */
 #define USB_CBW_SIGNATURE_1     0x53    /* 'S' */
 #define USB_CBW_SIGNATURE_2     0x42    /* 'B' */
 #define USB_CBW_SIGNATURE_3     0x43    /* 'C' */
-
-#define USB_CSW_SIGNATURE_0     0x55    /* 'U' */
-#define USB_CSW_SIGNATURE_1     0x53    /* 'S' */
-#define USB_CSW_SIGNATURE_2     0x42    /* 'B' */
-#define USB_CSW_SIGNATURE_3     0x53    /* 'S' */
-
-/* CSW Status codes */
-#define CSW_STATUS_PASS         0x00
-#define CSW_STATUS_FAIL         0x01
-#define CSW_STATUS_PHASE_ERROR  0x02
 
 /*
  * scsi_validate_cbw_signature - Validate CBW 'USBC' signature
@@ -261,28 +252,28 @@ void scsi_send_csw(uint8_t status, uint32_t residue)
     uint8_t msc_status;
 
     /* Write CSW signature 'USBS' to 0xD800-0xD803 */
-    REG_CSW_SIGNATURE_0 = USB_CSW_SIGNATURE_0;  /* 'U' = 0x55 */
-    REG_CSW_SIGNATURE_1 = USB_CSW_SIGNATURE_1;  /* 'S' = 0x53 */
-    REG_CSW_SIGNATURE_2 = USB_CSW_SIGNATURE_2;  /* 'B' = 0x42 */
-    REG_CSW_SIGNATURE_3 = USB_CSW_SIGNATURE_3;  /* 'S' = 0x53 */
+    USB_CSW->sig0 = USB_CSW_SIGNATURE_0;  /* 'U' = 0x55 */
+    USB_CSW->sig1 = USB_CSW_SIGNATURE_1;  /* 'S' = 0x53 */
+    USB_CSW->sig2 = USB_CSW_SIGNATURE_2;  /* 'B' = 0x42 */
+    USB_CSW->sig3 = USB_CSW_SIGNATURE_3;  /* 'S' = 0x53 */
 
     /* Copy tag from CBW (0x9120-0x9123) to CSW (0xD804-0xD807) */
-    REG_CSW_TAG_0 = REG_CBW_TAG_0;
-    REG_CSW_TAG_1 = REG_CBW_TAG_1;
-    REG_CSW_TAG_2 = REG_CBW_TAG_2;
-    REG_CSW_TAG_3 = REG_CBW_TAG_3;
+    USB_CSW->tag0 = REG_CBW_TAG_0;
+    USB_CSW->tag1 = REG_CBW_TAG_1;
+    USB_CSW->tag2 = REG_CBW_TAG_2;
+    USB_CSW->tag3 = REG_CBW_TAG_3;
 
     /* Write data residue (little-endian) to 0xD808-0xD80B */
-    REG_CSW_RESIDUE_0 = (uint8_t)(residue & 0xFF);
-    REG_CSW_RESIDUE_1 = (uint8_t)((residue >> 8) & 0xFF);
-    REG_CSW_RESIDUE_2 = (uint8_t)((residue >> 16) & 0xFF);
-    REG_CSW_RESIDUE_3 = (uint8_t)((residue >> 24) & 0xFF);
+    USB_CSW->residue0 = (uint8_t)(residue & 0xFF);
+    USB_CSW->residue1 = (uint8_t)((residue >> 8) & 0xFF);
+    USB_CSW->residue2 = (uint8_t)((residue >> 16) & 0xFF);
+    USB_CSW->residue3 = (uint8_t)((residue >> 24) & 0xFF);
 
     /* Write status byte to 0xD80C */
-    REG_CSW_STATUS = status;
+    USB_CSW->status = status;
 
     /* Set CSW packet length (13 bytes) */
-    REG_USB_MSC_LENGTH = CSW_LENGTH;
+    REG_USB_MSC_LENGTH = USB_CSW_LENGTH;
 
     /* Trigger USB transmission */
     REG_USB_MSC_CTRL = 0x01;

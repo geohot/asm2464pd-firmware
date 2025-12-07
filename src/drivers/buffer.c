@@ -66,6 +66,7 @@
 #include "sfr.h"
 #include "registers.h"
 #include "globals.h"
+#include "structs.h"
 
 /*
  * buf_set_ctrl_mode_4 - Set buffer control to mode 0x04
@@ -87,8 +88,8 @@
  */
 void buf_set_ctrl_mode_4(void)
 {
-    REG_BUFFER_CTRL = 0x04;
-    REG_BUFFER_LENGTH_HIGH = G_BUFFER_LENGTH_HIGH;
+    USB_BUF_CTRL->ctrl = 0x04;
+    USB_BUF_CTRL->length_high = G_BUFFER_LENGTH_HIGH;
 }
 
 /*
@@ -104,7 +105,7 @@ void buf_set_ctrl_mode_4(void)
  */
 void buf_set_ctrl_mode_3(void)
 {
-    REG_BUFFER_CTRL = 0x03;
+    USB_BUF_CTRL->ctrl = 0x03;
 }
 
 /*
@@ -142,10 +143,10 @@ void buf_write_idata_params(void)
      */
     __idata uint8_t *ptr = (__idata uint8_t *)0x72;
 
-    REG_BUFFER_CTRL_GLOBAL = *ptr--;     /* idata[0x72] -> 0xD808 */
-    REG_BUFFER_THRESHOLD_HIGH = *ptr--;  /* idata[0x71] -> 0xD809 */
-    REG_BUFFER_THRESHOLD_LOW = *ptr--;   /* idata[0x70] -> 0xD80A */
-    REG_BUFFER_FLOW_CTRL = *ptr;         /* idata[0x6f] -> 0xD80B */
+    USB_BUF_CTRL->ctrl_global = *ptr--;      /* idata[0x72] -> 0xD808 */
+    USB_BUF_CTRL->threshold_high = *ptr--;   /* idata[0x71] -> 0xD809 */
+    USB_BUF_CTRL->threshold_low = *ptr--;    /* idata[0x70] -> 0xD80A */
+    USB_BUF_CTRL->flow_ctrl = *ptr;          /* idata[0x6f] -> 0xD80B */
 }
 
 /*
@@ -176,10 +177,10 @@ void buf_write_idata_params(void)
  */
 void buf_config_from_status(void)
 {
-    REG_BUFFER_PTR_HIGH = REG_USB_STATUS_1F;
-    REG_BUFFER_LENGTH_LOW = REG_USB_STATUS_20;
-    REG_BUFFER_STATUS = REG_USB_STATUS_21;
-    REG_BUFFER_LENGTH_HIGH = REG_USB_STATUS_22;
+    USB_BUF_CTRL->ptr_high = REG_USB_STATUS_1F;
+    USB_BUF_CTRL->length_low = REG_USB_STATUS_20;
+    USB_BUF_CTRL->status = REG_USB_STATUS_21;
+    USB_BUF_CTRL->length_high = REG_USB_STATUS_22;
 }
 
 /*
@@ -198,7 +199,7 @@ void buf_config_from_status(void)
  */
 void buf_start_xfer_mode1(void)
 {
-    REG_BUFFER_XFER_START = 0x01;
+    USB_BUF_CTRL->xfer_start = 0x01;
     /* Note: Original calls 0x1bcb which is a transfer handler
      * that processes the buffer state machine. The actual
      * transfer handler would need to be called here. */
@@ -225,7 +226,7 @@ void buf_start_xfer_mode2(void)
 {
     __idata uint8_t *state_ptr = (__idata uint8_t *)0x6a;
 
-    REG_BUFFER_XFER_START = 0x02;
+    USB_BUF_CTRL->xfer_start = 0x02;
     /* Note: Original calls 0x01ea which calls buf_write_idata_params
      * and then sets a register. For now we just set the state. */
     buf_write_idata_params();

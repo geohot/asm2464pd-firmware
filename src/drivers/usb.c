@@ -145,6 +145,7 @@
 #include "sfr.h"
 #include "registers.h"
 #include "globals.h"
+#include "structs.h"
 
 /* External utility functions from utils.c */
 extern uint32_t idata_load_dword(__idata uint8_t *ptr);
@@ -843,10 +844,10 @@ void usb_set_transfer_active_flag(void)
  */
 void usb_copy_status_to_buffer(void)
 {
-    REG_BUFFER_PTR_HIGH = REG_USB_STATUS_1F;
-    REG_BUFFER_LENGTH_LOW = REG_USB_STATUS_20;
-    REG_BUFFER_STATUS = REG_USB_STATUS_21;
-    REG_BUFFER_LENGTH_HIGH = REG_USB_STATUS_22;
+    USB_BUF_CTRL->ptr_high = REG_USB_STATUS_1F;
+    USB_BUF_CTRL->length_low = REG_USB_STATUS_20;
+    USB_BUF_CTRL->status = REG_USB_STATUS_21;
+    USB_BUF_CTRL->length_high = REG_USB_STATUS_22;
 }
 
 /*
@@ -2740,7 +2741,7 @@ void usb_func_523c(uint8_t mode, uint8_t size, uint8_t flags)
 
     status = REG_USB_STATUS;
     if (!(status & 0x01)) {
-        REG_BUFFER_XFER_START = 0x01;
+        USB_BUF_CTRL->xfer_start = 0x01;
         usb_func_1bcb();
     }
 }

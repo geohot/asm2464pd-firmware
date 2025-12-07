@@ -163,6 +163,7 @@
 #define REG_POWER_CTRL_92C4     XDATA_REG8(0x92C4)  // Power control 4 - MAIN (RW)
 #define REG_POWER_CTRL_92C5     XDATA_REG8(0x92C5)  // Power control 5 (RW)
 #define REG_POWER_CTRL_92C6     XDATA_REG8(0x92C6)  // Power control 6 (RW)
+#define REG_POWER_CTRL_92C7     XDATA_REG8(0x92C7)  // Power control 7 - Clock gating extension (RW)
 #define REG_POWER_CTRL_92C8     XDATA_REG8(0x92C8)  // Power control 8 (RW)
 
 // Primary power register aliases
@@ -205,6 +206,7 @@
 #define REG_USB_SPEED_90E0      XDATA_REG8(0x90E0)  // USB speed status (RO)
 #define REG_USB_MODE_90E2       XDATA_REG8(0x90E2)  // USB mode (RW)
 #define REG_USB_EP_STATUS_90E3  XDATA_REG8(0x90E3)  // USB endpoint status (RW)
+#define REG_USB_LINK_STATUS     XDATA_REG8(0x9100)  // USB link status (RO) - bits 0-1: link state
 #define REG_USB_PERIPH_STATUS   XDATA_REG8(0x9101)  // Peripheral status (RW)
 #define REG_USB_PHY_CTRL_91C0   XDATA_REG8(0x91C0)  // USB PHY control 0 (RW) - bit 1: PHY state
 #define REG_USB_PHY_CTRL_91C1   XDATA_REG8(0x91C1)  // USB PHY control 1 (RW)
@@ -221,7 +223,10 @@
 #define REG_USB_DATA_H          XDATA_REG8(0x9011)  // Data high (RW)
 #define REG_USB_FIFO_L          XDATA_REG8(0x9012)  // FIFO low (RW)
 #define REG_USB_FIFO_H          XDATA_REG8(0x9013)  // FIFO high (RW)
+#define REG_USB_MODE_9018       XDATA_REG8(0x9018)  // USB mode control (RW)
+#define REG_USB_MODE_VAL_9019   XDATA_REG8(0x9019)  // USB mode value (RW)
 #define REG_INT_FLAGS_EX0       XDATA_REG8(0x9091)  // Interrupt flags external (RW)
+#define REG_USB_SIGNAL_90A1     XDATA_REG8(0x90A1)  // USB signal register (RW)
 #define REG_USB_EP_CFG1         XDATA_REG8(0x9093)  // Endpoint config 1 (RW)
 #define REG_USB_EP_CFG2         XDATA_REG8(0x9094)  // Endpoint config 2 (RW)
 #define REG_USB_EP_READY        XDATA_REG8(0x9096)  // Endpoint ready status (RW)
@@ -294,6 +299,7 @@
 #define REG_PHY_LINK_CONFIG_C20C XDATA_REG8(0xC20C) // PHY link config (RW) - bit 6 set for enable
 #define REG_PHY_CONFIG          XDATA_REG8(0xC233)  // PHY configuration (RW)
 #define REG_PHY_STATUS          XDATA_REG8(0xC284)  // PHY status (RW)
+#define REG_PHY_COMPLETION_E318 XDATA_REG8(0xE318)  // PHY completion status (RO) - bit 4: ready
 #define REG_LINK_CTRL_E324      XDATA_REG8(0xE324)  // Link control (RW)
 #define REG_LINK_STATUS_E712    XDATA_REG8(0xE712)  // Link status (RO)
 #define REG_LINK_STATUS_E716    XDATA_REG8(0xE716)  // Link status 2 (RO)
@@ -439,6 +445,7 @@
 #define REG_DMA_CONFIG          XDATA_REG8(0xC8D4)  // Configuration (WO)
 #define REG_DMA_STATUS          XDATA_REG8(0xC8D6)  // Status (RW)
 #define REG_DMA_STATUS2         XDATA_REG8(0xC8D8)  // Status 2 (RW)
+#define REG_DMA_STATUS3         XDATA_REG8(0xC8D9)  // Status 3 (RO) - upper 5 bits used
 
 // DMA control bits
 #define DMA_ENABLE              0x80
@@ -491,7 +498,8 @@
 #define REG_SCSI_DMA_CMD_REG    XDATA_REG8(0xCE96)  // SCSI DMA command register (RW)
 #define REG_SCSI_DMA_RESP_REG   XDATA_REG8(0xCE97)  // SCSI DMA response register (RO)
 
-// Transfer control registers (0xCE88-0xCE95)
+// Transfer control registers (0xCE86-0xCE95)
+#define REG_XFER_STATUS_CE86    XDATA_REG8(0xCE86)  // Transfer status 2 (RO) - bit 4: abort
 #define REG_XFER_CTRL_CE88      XDATA_REG8(0xCE88)  // Transfer control (RW)
 #define REG_XFER_STATUS_CE89    XDATA_REG8(0xCE89)  // Transfer status (RO)
 #define REG_XFER_CTRL_CE65      XDATA_REG8(0xCE65)  // Transfer control 65 (RW)
@@ -502,23 +510,12 @@
 #define REG_USB_DESC_VAL_CEB2   XDATA_REG8(0xCEB2)  // Descriptor validation high (RO)
 #define REG_USB_DESC_VAL_CEB3   XDATA_REG8(0xCEB3)  // Descriptor validation low (RO)
 
-//=============================================================================
-// USB Mass Storage CSW Buffer (0xD800-0xD80C)
-// Command Status Wrapper - 13 bytes total
-//=============================================================================
-#define REG_CSW_SIGNATURE_0     XDATA_REG8(0xD800)  // 'U' (0x55)
-#define REG_CSW_SIGNATURE_1     XDATA_REG8(0xD801)  // 'S' (0x53)
-#define REG_CSW_SIGNATURE_2     XDATA_REG8(0xD802)  // 'B' (0x42)
-#define REG_CSW_SIGNATURE_3     XDATA_REG8(0xD803)  // 'S' (0x53)
-#define REG_CSW_TAG_0           XDATA_REG8(0xD804)  // Tag byte 0 (LSB)
-#define REG_CSW_TAG_1           XDATA_REG8(0xD805)  // Tag byte 1
-#define REG_CSW_TAG_2           XDATA_REG8(0xD806)  // Tag byte 2
-#define REG_CSW_TAG_3           XDATA_REG8(0xD807)  // Tag byte 3 (MSB)
-#define REG_CSW_RESIDUE_0       XDATA_REG8(0xD808)  // Data residue byte 0 (LSB)
-#define REG_CSW_RESIDUE_1       XDATA_REG8(0xD809)  // Data residue byte 1
-#define REG_CSW_RESIDUE_2       XDATA_REG8(0xD80A)  // Data residue byte 2
-#define REG_CSW_RESIDUE_3       XDATA_REG8(0xD80B)  // Data residue byte 3 (MSB)
-#define REG_CSW_STATUS          XDATA_REG8(0xD80C)  // Status (0=pass, 1=fail, 2=phase error)
+// USB Endpoint Buffer at 0xD800 - see structs.h for CSW and buffer control views
+// This memory region is shared XRAM used for USB packet data.
+#define REG_CSW_RESIDUE_0       XDATA_REG8(0xD808)  // CSW data residue byte 0 (MSB)
+#define REG_CSW_RESIDUE_1       XDATA_REG8(0xD809)  // CSW data residue byte 1
+#define REG_CSW_RESIDUE_2       XDATA_REG8(0xD80A)  // CSW data residue byte 2
+#define REG_CSW_RESIDUE_3       XDATA_REG8(0xD80B)  // CSW data residue byte 3 (LSB)
 
 // CBW Tag source registers (tag is copied from CBW to CSW)
 #define REG_CBW_TAG_0           XDATA_REG8(0x9120)  // CBW tag byte 0 (LSB)
@@ -532,30 +529,7 @@
 #define REG_USB_MSC_STATUS      XDATA_REG8(0xC42D)  // MSC status (RW)
 #define REG_USB_MSC_CFG         XDATA_REG8(0x900B)  // MSC configuration (RW)
 
-// CSW length constant
-#define CSW_LENGTH              0x0D  // 13 bytes
-
-//=============================================================================
-// Data Buffer Control Registers (0xD800-0xD811)
-// Alternative naming for buffer operations (overlaps with CSW)
-//=============================================================================
-#define REG_BUFFER_CTRL         XDATA_REG8(0xD800)  // Buffer control (WO)
-#define REG_BUFFER_SELECT       XDATA_REG8(0xD801)  // Buffer select (RW)
-#define REG_BUFFER_DATA         XDATA_REG8(0xD802)  // Buffer data/pointer (WO)
-#define REG_BUFFER_PTR_LOW      XDATA_REG8(0xD803)  // Pointer low (RW)
-#define REG_BUFFER_PTR_HIGH     XDATA_REG8(0xD804)  // Pointer high / USB status copy dest (RW)
-#define REG_BUFFER_LENGTH_LOW   XDATA_REG8(0xD805)  // Length low / USB status copy dest (RW)
-#define REG_BUFFER_STATUS       XDATA_REG8(0xD806)  // Status / USB status copy dest (RW)
-#define REG_BUFFER_LENGTH_HIGH  XDATA_REG8(0xD807)  // Length high / USB status copy dest (RW)
-#define REG_BUFFER_CTRL_GLOBAL  XDATA_REG8(0xD808)  // Control global (RW)
-#define REG_BUFFER_THRESHOLD_HIGH XDATA_REG8(0xD809) // Threshold high (RW)
-#define REG_BUFFER_THRESHOLD_LOW  XDATA_REG8(0xD80A) // Threshold low (RW)
-#define REG_BUFFER_FLOW_CTRL    XDATA_REG8(0xD80B)  // Flow control (RW)
-#define REG_BUFFER_XFER_START   XDATA_REG8(0xD80C)  // Transfer start (WO)
-#define REG_BUFFER_L            XDATA_REG8(0xD810)  // Buffer low (RW)
-#define REG_BUFFER_H            XDATA_REG8(0xD811)  // Buffer high (RW)
-
-// Buffer status bits
+// Buffer status bits (used with USB_BUF_CTRL struct from structs.h)
 #define BUF_FULL                0x80
 #define BUF_EMPTY               0x40
 #define BUF_LEVEL_MASK          0x3F
