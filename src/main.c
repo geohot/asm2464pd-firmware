@@ -21,6 +21,7 @@ __idata __at(0x40) uint8_t I_WORK_40;
 __idata __at(0x41) uint8_t I_WORK_41;
 __idata __at(0x43) uint8_t I_WORK_43;
 __idata __at(0x47) uint8_t I_WORK_47;
+__idata __at(0x52) uint8_t I_WORK_52;
 __idata __at(0x53) uint8_t I_WORK_53;
 __idata __at(0x55) uint8_t I_WORK_55;
 

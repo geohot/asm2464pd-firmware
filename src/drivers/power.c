@@ -350,21 +350,142 @@ void power_disable_clocks(void)
     REG_POWER_CTRL_92C5 = val;
 }
 
+/* Forward declarations for helper functions */
+extern void handler_d07f(uint8_t param);
+extern void handler_e214(void);
+extern void handler_e8ef(uint8_t param);
+
+/*
+ * power_clear_init_flag - Clear power init flag
+ * Address: 0x545c-0x5461 (6 bytes)
+ *
+ * Sets the power init flag to 0.
+ * Called during USB power initialization.
+ *
+ * Original (from ghidra):
+ *   DAT_EXTMEM_0af8 = 0;
+ */
+void power_clear_init_flag(void)
+{
+    G_POWER_INIT_FLAG = 0;
+}
+
+/*
+ * power_set_event_ctrl - Set event control to 4
+ * Address: 0xbbb6-0xbbbf (10 bytes)
+ *
+ * Sets event control register to 4.
+ * Called during USB power initialization state handling.
+ *
+ * Original (from ghidra):
+ *   G_EVENT_CTRL_09FA = 4;
+ */
+void power_set_event_ctrl(void)
+{
+    G_EVENT_CTRL_09FA = 4;
+}
+
 /*
  * usb_power_init - Initialize USB power settings
- * Address: Dispatched via handler_0327 to bank 0
+ * Address: Full initialization sequence from ghidra
  *
  * Initializes USB power configuration for operation.
- * Called during system initialization.
+ * Called during system initialization via handler_0327.
+ *
+ * This function performs:
+ * 1. Power control register setup (0x92C0 bit 7)
+ * 2. USB PHY configuration (0x91D1, 0x91C0, 0x91C1, 0x91C3)
+ * 3. Buffer configuration (0x9300-0x9305)
+ * 4. USB endpoint and mode setup
+ * 5. NVMe command register init
+ * 6. PHY power-up sequence with polling
  */
 void usb_power_init(void)
 {
-    /* USB power initialization sequence */
-    /* Sets up USB PHY and power domains */
+    uint8_t val;
+    uint8_t status;
 
-    /* Enable main power controls */
-    power_enable_clocks();
+    /* Set power control bit 7 (enable main power) */
+    val = REG_POWER_CTRL_92C0;
+    REG_POWER_CTRL_92C0 = (val & 0x7F) | 0x80;
 
-    /* Configure clock gating */
-    power_config_init();
+    /* Configure USB PHY */
+    REG_USB_PHY_CTRL_91D1 = 0x0F;
+
+    /* Configure buffer settings */
+    REG_BUF_CFG_9300 = 0x0C;
+    REG_BUF_CFG_9301 = 0xC0;
+    REG_BUF_CFG_9302 = 0xBF;
+
+    /* Set interrupt flags */
+    REG_INT_FLAGS_EX0 = 0x1F;
+
+    /* Configure endpoint */
+    REG_USB_EP_CFG1 = 0x0F;
+
+    /* Configure USB PHY control 1 */
+    REG_USB_PHY_CTRL_91C1 = 0xF0;
+
+    /* More buffer configuration */
+    REG_BUF_CFG_9303 = 0x33;
+    REG_BUF_CFG_9304 = 0x3F;
+    REG_BUF_CFG_9305 = 0x40;
+
+    /* Configure USB */
+    REG_USB_CONFIG = 0xE0;
+    REG_USB_EP0_LEN_H = 0xF0;
+    REG_USB_MODE_90E2 = 1;
+
+    /* Clear EP control bit 0 */
+    val = REG_USB_EP_CTRL_905E;
+    REG_USB_EP_CTRL_905E = val & 0xFE;
+
+    /* Initialize NVMe command registers */
+    REG_NVME_CMD_NSID = 1;
+    val = REG_NVME_CMD_PRP1;
+    REG_NVME_CMD_PRP1 = val & 0xFE;
+
+    /* Call initialization handlers */
+    handler_d07f(0);
+    handler_e214();
+
+    /* Configure USB PHY control 3 - clear bit 5 */
+    val = REG_USB_PHY_CTRL_91C3;
+    REG_USB_PHY_CTRL_91C3 = val & 0xDF;
+
+    /* PHY power-up sequence */
+    /* Set bit 0 then clear it */
+    val = REG_USB_PHY_CTRL_91C0;
+    REG_USB_PHY_CTRL_91C0 = (val & 0xFE) | 0x01;
+    val = REG_USB_PHY_CTRL_91C0;
+    REG_USB_PHY_CTRL_91C0 = val & 0xFE;
+
+    /* Clear init flag */
+    power_clear_init_flag();
+
+    /* Poll for completion - check XDATA 0xE318 and timer */
+    /* Simplified polling - original uses FUN_CODE_e50d(1,0x8f,4) and complex wait */
+    do {
+        status = XDATA_REG8(0xE318);
+        if ((status & 0x10) != 0) break;
+        val = REG_TIMER0_CSR;
+    } while ((val & 0x02) == 0);
+
+    /* Call completion handler */
+    handler_e8ef(status & 0x10);
+
+    /* Final state handling based on PHY status */
+    val = REG_USB_PHY_CTRL_91C0;
+    if ((val & 0x18) == 0x10) {
+        /* PHY in expected state */
+        if (G_EVENT_FLAGS == 0x04) {
+            power_set_event_ctrl();
+            G_EVENT_FLAGS = 1;
+            return;
+        }
+    } else {
+        /* PHY not in expected state */
+        power_set_event_ctrl();
+        REG_USB_PHY_CTRL_91C0 = 2;
+    }
 }

@@ -202,6 +202,7 @@
 #define REG_USB_EP0_LEN_L       XDATA_REG8(0x9004)  // EP0 length low (RW)
 #define REG_USB_EP0_LEN_H       XDATA_REG8(0x9005)  // EP0 length high (RW)
 #define REG_USB_EP_CTRL_905E    XDATA_REG8(0x905E)  // EP control (RW)
+#define REG_USB_SPEED_90E0      XDATA_REG8(0x90E0)  // USB speed status (RO)
 #define REG_USB_MODE_90E2       XDATA_REG8(0x90E2)  // USB mode (RW)
 #define REG_USB_EP_STATUS_90E3  XDATA_REG8(0x90E3)  // USB endpoint status (RW)
 #define REG_USB_PERIPH_STATUS   XDATA_REG8(0x9101)  // Peripheral status (RW)
@@ -224,6 +225,10 @@
 #define REG_USB_EP_CFG1         XDATA_REG8(0x9093)  // Endpoint config 1 (RW)
 #define REG_USB_EP_CFG2         XDATA_REG8(0x9094)  // Endpoint config 2 (RW)
 #define REG_USB_EP_READY        XDATA_REG8(0x9096)  // Endpoint ready status (RW)
+#define REG_USB_STATUS_909E     XDATA_REG8(0x909E)  // USB general status (RW)
+#define REG_USB_DATA_911D       XDATA_REG8(0x911D)  // USB data high (RW)
+#define REG_USB_DATA_911E       XDATA_REG8(0x911E)  // USB data low (RW)
+#define REG_USB_EP_CTRL_91D0    XDATA_REG8(0x91D0)  // USB EP control (RW)
 
 //=============================================================================
 // Buffer/DMA Configuration Registers (0x9300-0x93FF)
@@ -291,6 +296,7 @@
 #define REG_PHY_STATUS          XDATA_REG8(0xC284)  // PHY status (RW)
 #define REG_LINK_CTRL_E324      XDATA_REG8(0xE324)  // Link control (RW)
 #define REG_LINK_STATUS_E712    XDATA_REG8(0xE712)  // Link status (RO)
+#define REG_LINK_STATUS_E716    XDATA_REG8(0xE716)  // Link status 2 (RO)
 
 // Link control bits
 #define LINK_ENABLE             0x80
@@ -419,24 +425,9 @@
 #define NVME_FLUSH              0x04
 
 //=============================================================================
-// DMA Engine Registers (0xC800-0xC9FF)
+// DMA Engine Registers (0xC8B0-0xC8D9)
+// Note: 0xC8A1-0xC8AE are Flash Controller registers, not DMA
 //=============================================================================
-#define REG_DMA_CHANNEL_SEL     XDATA_REG8(0xC8A1)  // Channel select (RW)
-#define REG_DMA_CHANNEL_CTRL    XDATA_REG8(0xC8A2)  // Channel control (RW)
-#define REG_DMA_CHANNEL_STATUS  XDATA_REG8(0xC8A3)  // Channel status (RW)
-#define REG_DMA_LENGTH_LOW      XDATA_REG8(0xC8A4)  // Length low (RW)
-#define REG_DMA_LENGTH_HIGH     XDATA_REG8(0xC8A5)  // Length high (RW)
-#define REG_DMA_COUNT_LOW       XDATA_REG8(0xC8A6)  // Count low (RW)
-#define REG_DMA_COUNT_HIGH      XDATA_REG8(0xC8A7)  // Count high (RW)
-#define REG_DMA_PRIORITY        XDATA_REG8(0xC8A8)  // Priority (RW)
-#define REG_DMA_BURST_SIZE      XDATA_REG8(0xC8A9)  // Burst size (RW)
-#define REG_DMA_SRC_L           XDATA_REG8(0xC8AA)  // Source low (RW)
-#define REG_DMA_SRC_H           XDATA_REG8(0xC8AB)  // Source high (RW)
-#define REG_DMA_DST_L           XDATA_REG8(0xC8AC)  // Destination low (RW)
-#define REG_DMA_DST_H           XDATA_REG8(0xC8AD)  // Destination high (RW)
-#define REG_DMA_CTRL            XDATA_REG8(0xC8AD)  // DMA control (RW)
-#define REG_DMA_LEN_L           XDATA_REG8(0xC8AE)  // Length low (RW)
-#define REG_DMA_LEN_H           XDATA_REG8(0xC8AF)  // Length high (RW)
 #define REG_DMA_MODE            XDATA_REG8(0xC8B0)  // Mode (RW)
 #define REG_DMA_CHAN_AUX        XDATA_REG8(0xC8B2)  // Channel auxiliary byte 0 (RW)
 #define REG_DMA_CHAN_AUX1       XDATA_REG8(0xC8B3)  // Channel auxiliary byte 1 (RW)
@@ -499,6 +490,17 @@
 #define REG_SCSI_DMA_STATUS     XDATA_REG16(0xCE6E) // DMA status (RW, 2 bytes)
 #define REG_SCSI_DMA_CMD_REG    XDATA_REG8(0xCE96)  // SCSI DMA command register (RW)
 #define REG_SCSI_DMA_RESP_REG   XDATA_REG8(0xCE97)  // SCSI DMA response register (RO)
+
+// Transfer control registers (0xCE88-0xCE95)
+#define REG_XFER_CTRL_CE88      XDATA_REG8(0xCE88)  // Transfer control (RW)
+#define REG_XFER_STATUS_CE89    XDATA_REG8(0xCE89)  // Transfer status (RO)
+#define REG_XFER_CTRL_CE65      XDATA_REG8(0xCE65)  // Transfer control 65 (RW)
+#define REG_XFER_CTRL_CE6E      XDATA_REG8(0xCE6E)  // Transfer control 6E (RW)
+#define REG_XFER_MODE_CE95      XDATA_REG8(0xCE95)  // Transfer mode (RW)
+
+// USB descriptor validation registers (0xCEB0-0xCEB3)
+#define REG_USB_DESC_VAL_CEB2   XDATA_REG8(0xCEB2)  // Descriptor validation high (RO)
+#define REG_USB_DESC_VAL_CEB3   XDATA_REG8(0xCEB3)  // Descriptor validation low (RO)
 
 //=============================================================================
 // USB Mass Storage CSW Buffer (0xD800-0xD80C)

@@ -38,11 +38,16 @@ __idata __at(0x55) extern uint8_t I_WORK_55;   /* Work variable 0x55 */
 //=============================================================================
 #define G_SYSTEM_CTRL           XDATA_VAR8(0x0000)  /* System control byte */
 #define G_EP_STATUS_CTRL        XDATA_VAR8(0x0003)  /* Endpoint status control (checked by usb_ep_process) */
+#define G_WORK_0007             XDATA_VAR8(0x0007)  /* Work variable 0x0007 */
 #define G_EP_CHECK_FLAG         XDATA_VAR8(0x000A)  /* Endpoint check flag */
+#define G_SYS_FLAGS_0052        XDATA_VAR8(0x0052)  /* System flags 0x0052 */
 #define G_BUFFER_LENGTH_HIGH    XDATA_VAR8(0x0054)  /* Buffer length high byte (for mode 4) */
 #define G_NVME_QUEUE_READY      XDATA_VAR8(0x0055)  /* NVMe queue ready flag */
+#define G_USB_ADDR_HI_0056      XDATA_VAR8(0x0056)  /* USB address high 0x0056 */
+#define G_USB_ADDR_LO_0057      XDATA_VAR8(0x0057)  /* USB address low 0x0057 */
 #define G_USB_INDEX_COUNTER     XDATA_VAR8(0x014E)  /* USB index counter (5-bit) */
 #define G_SCSI_CTRL             XDATA_VAR8(0x0171)  /* SCSI control */
+#define G_USB_WORK_01B4         XDATA_VAR8(0x01B4)  /* USB work variable 0x01B4 */
 
 //=============================================================================
 // DMA Work Area (0x0200-0x02FF)
@@ -50,6 +55,7 @@ __idata __at(0x55) extern uint8_t I_WORK_55;   /* Work variable 0x55 */
 #define G_DMA_MODE_SELECT       XDATA_VAR8(0x0203)  /* DMA mode select */
 #define G_DMA_PARAM1            XDATA_VAR8(0x020D)  /* DMA parameter 1 */
 #define G_DMA_PARAM2            XDATA_VAR8(0x020E)  /* DMA parameter 2 */
+#define G_DMA_WORK_0216         XDATA_VAR8(0x0216)  /* DMA work variable 0x0216 */
 #define G_BUF_ADDR_HI           XDATA_VAR8(0x0218)  /* Buffer address high */
 #define G_BUF_ADDR_LO           XDATA_VAR8(0x0219)  /* Buffer address low */
 #define G_BUF_BASE_HI           XDATA_VAR8(0x021A)  /* Buffer base address high */
@@ -83,9 +89,11 @@ __idata __at(0x55) extern uint8_t I_WORK_55;   /* Work variable 0x55 */
 #define G_EP_QUEUE_PARAM        XDATA_VAR8(0x0566)  /* Endpoint queue parameter */
 #define G_EP_QUEUE_IDATA        XDATA_VAR8(0x0567)  /* Endpoint queue IDATA copy */
 #define G_BUF_OFFSET_HI         XDATA_VAR8(0x0568)  /* Buffer offset result high */
+#define G_BUF_OFFSET_LO         XDATA_VAR8(0x0569)  /* Buffer offset result low */
+#define G_EP_QUEUE_IDATA2       XDATA_VAR8(0x056A)  /* Endpoint queue IDATA byte 2 */
+#define G_EP_QUEUE_IDATA3       XDATA_VAR8(0x056B)  /* Endpoint queue IDATA byte 3 */
 #define G_LOG_PROCESS_STATE     XDATA_VAR8(0x0574)  /* Log processing state */
 #define G_LOG_ENTRY_VALUE       XDATA_VAR8(0x0575)  /* Log entry value */
-#define G_BUF_OFFSET_LO         XDATA_VAR8(0x0569)  /* Buffer offset result low */
 #define G_PCIE_TXN_COUNT_LO     XDATA_VAR8(0x05A6)  /* PCIe transaction count low */
 #define G_PCIE_TXN_COUNT_HI     XDATA_VAR8(0x05A7)  /* PCIe transaction count high */
 #define G_EP_CONFIG_05A8        XDATA_VAR8(0x05A8)  /* EP config 0x05A8 */
@@ -112,6 +120,8 @@ __idata __at(0x55) extern uint8_t I_WORK_55;   /* Work variable 0x55 */
 #define G_SYS_FLAGS_07ED        XDATA_VAR8(0x07ED)  /* System flags 0x07ED */
 #define G_SYS_FLAGS_07EE        XDATA_VAR8(0x07EE)  /* System flags 0x07EE */
 #define G_SYS_FLAGS_07EF        XDATA_VAR8(0x07EF)  /* System flags 0x07EF */
+#define G_SYS_FLAGS_07F6        XDATA_VAR8(0x07F6)  /* System flags 0x07F6 */
+#define G_SYS_FLAGS_07E8        XDATA_VAR8(0x07E8)  /* System flags 0x07E8 */
 
 //=============================================================================
 // Event/Loop State Work Area (0x0900-0x09FF)
@@ -148,6 +158,9 @@ __idata __at(0x55) extern uint8_t I_WORK_55;   /* Work variable 0x55 */
 #define G_STATE_FLAG_0AF1       XDATA_VAR8(0x0AF1)  /* State flag */
 #define G_TRANSFER_FLAG_0AF2    XDATA_VAR8(0x0AF2)  /* Transfer flag 0x0AF2 */
 #define G_EP_DISPATCH_OFFSET    XDATA_VAR8(0x0AF5)  /* Endpoint dispatch offset */
+#define G_XFER_STATE_0AF6       XDATA_VAR8(0x0AF6)  /* Transfer state 0x0AF6 */
+#define G_XFER_CTRL_0AF7        XDATA_VAR8(0x0AF7)  /* Transfer control 0x0AF7 */
+#define G_POWER_INIT_FLAG       XDATA_VAR8(0x0AF8)  /* Power init flag (set to 0 in usb_power_init) */
 #define G_TRANSFER_PARAMS_HI    XDATA_VAR8(0x0AFA)  /* Transfer params high byte */
 #define G_TRANSFER_PARAMS_LO    XDATA_VAR8(0x0AFB)  /* Transfer params low byte */
 #define G_USB_PARAM_0B00        XDATA_VAR8(0x0B00)  /* USB parameter storage */

@@ -668,3 +668,63 @@ void xdata_load_dword_noarg(void)
 }
 
 /* reg_wait_bit_set and nvme_func_04da are defined earlier in this file */
+
+/*
+ * handler_d07f - USB/NVMe command initialization handler
+ * Address: 0xd07f
+ *
+ * Initializes command registers based on parameter.
+ * Called during USB power initialization.
+ *
+ * From ghidra (simplified):
+ *   if (param == 0) DAT_INTMEM_3e = 0xff; else DAT_INTMEM_3e = 0;
+ *   Calls FUN_CODE_bb47 multiple times with register addresses
+ *   Sets DAT_EXTMEM_9018 = (param == 0) ? 3 : 2
+ *   Sets REG_USB_DATA_L = (param == 0) ? 0xfe : 0
+ */
+void handler_d07f(uint8_t param)
+{
+    if (param == 0) {
+        *(__idata uint8_t *)0x3E = 0xFF;
+        XDATA_REG8(0x9018) = 3;
+        XDATA_REG8(0x9019) = 0xFE;  /* REG_USB_DATA_L assumed at 0x9019 */
+    } else {
+        *(__idata uint8_t *)0x3E = 0;
+        XDATA_REG8(0x9018) = 2;
+        XDATA_REG8(0x9019) = 0;
+    }
+    /* TODO: Full implementation calls FUN_CODE_bb47 multiple times */
+}
+
+/*
+ * handler_e214 - NVMe queue configuration handler
+ * Address: 0xe214
+ *
+ * Configures NVMe queue and related settings.
+ * Called during USB power initialization.
+ *
+ * From ghidra:
+ *   REG_NVME_QUEUE_CFG &= 0xf7 (clear bit 3)
+ *   Calls FUN_CODE_bba8, FUN_CODE_bbaf, FUN_CODE_bb7e, etc.
+ */
+void handler_e214(void)
+{
+    uint8_t val = REG_NVME_QUEUE_CFG;
+    REG_NVME_QUEUE_CFG = val & 0xF7;  /* Clear bit 3 */
+    /* TODO: Full implementation calls multiple FUN_CODE_bb* helpers */
+}
+
+/*
+ * handler_e8ef - Power initialization completion handler
+ * Address: 0xe8ef
+ *
+ * Handles completion of power initialization sequence.
+ * Called after PHY polling completes.
+ *
+ * From ghidra: Complex state handling based on param value.
+ */
+void handler_e8ef(uint8_t param)
+{
+    (void)param;
+    /* TODO: Full implementation from address 0xe8ef */
+}

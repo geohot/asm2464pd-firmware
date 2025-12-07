@@ -1428,7 +1428,7 @@ uint16_t transfer_calc_work53_offset(void)
     uint8_t val;
     uint16_t addr;
 
-    val = *(__idata uint8_t *)0x53;
+    val = I_WORK_53;
     addr = 0x0477 + (val * 4);
     return addr;
 }
@@ -1479,7 +1479,7 @@ uint16_t transfer_calc_work55_offset(void)
 {
     uint16_t addr;
 
-    addr = 0x04B7 + *(__idata uint8_t *)0x55;
+    addr = 0x04B7 + I_WORK_55;
     return addr;
 }
 

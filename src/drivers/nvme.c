@@ -929,8 +929,8 @@ void nvme_call_and_signal(void)
  */
 void usb_validate_descriptor(void)
 {
-    XDATA_VAR8(0x0056) = XDATA_REG8(0xCEB2);
-    XDATA_VAR8(0x0057) = XDATA_REG8(0xCEB3);
+    G_USB_ADDR_HI_0056 = REG_USB_DESC_VAL_CEB2;
+    G_USB_ADDR_LO_0057 = REG_USB_DESC_VAL_CEB3;
 }
 
 /*
