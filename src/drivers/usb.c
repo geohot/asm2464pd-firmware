@@ -4354,7 +4354,7 @@ void usb_store_idata_16_17(uint8_t hi, uint8_t lo)
 uint8_t usb_get_idata_16_17(void)
 {
     /* Returns A (low byte) in R7, R6 gets high byte */
-    return *(__idata uint8_t *)0x17;
+    return I_CORE_STATE_H;
 }
 
 /*
@@ -4379,8 +4379,8 @@ uint8_t usb_get_idata_16_17(void)
  */
 void usb_write_idata_to_dptr(__xdata uint8_t *ptr)
 {
-    ptr[0] = *(__idata uint8_t *)0x16;
-    ptr[1] = *(__idata uint8_t *)0x17;
+    ptr[0] = I_CORE_STATE_L;
+    ptr[1] = I_CORE_STATE_H;
 }
 
 /*

@@ -233,7 +233,7 @@ void phy_config_link_params(void)
 
 /*
  * phy_poll_link_ready - Poll PHY status for link ready
- * Based on: 0x4fdb-0x4fe1 (poll loop in handler_4fb6)
+ * Address: 0x4fdb-0x4fe1 (poll loop in handler_4fb6)
  *
  * Polls PHY extended status register 0xC6B3 bits 4,5 until
  * at least one is set, indicating link is ready.

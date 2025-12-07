@@ -73,7 +73,7 @@
 
 /*
  * int_get_system_status - Read system interrupt status register
- * Based on: 0x44a3-0x44a6
+ * Address: 0x44a3-0x44a6
  *
  * Reads the system interrupt status register (0xC806).
  *
@@ -90,7 +90,7 @@ uint8_t int_get_system_status(void)
 
 /*
  * int_get_pcie_nvme_status - Read PCIe/NVMe interrupt status register
- * Based on: 0x44ba-0x44bd
+ * Address: 0x44ba-0x44bd
  *
  * Reads the PCIe/NVMe interrupt status register (0xC80A).
  *
@@ -107,7 +107,7 @@ uint8_t int_get_pcie_nvme_status(void)
 
 /*
  * int_get_usb_status - Read USB master interrupt status register
- * Based on: 0x0e78-0x0e7b
+ * Address: 0x0e78-0x0e7b
  *
  * Reads the USB master interrupt status register (0xC802).
  *
@@ -124,7 +124,7 @@ uint8_t int_get_usb_status(void)
 
 /*
  * int_check_system_event - Check if system event interrupt is pending
- * Based on: 0x44a7-0x44aa
+ * Address: 0x44a7-0x44aa
  *
  * Checks bit 0 of system interrupt status register.
  * If set, calls the system event handler.
@@ -142,7 +142,7 @@ uint8_t int_check_system_event(void)
 
 /*
  * int_check_nvme_queue - Check if NVMe queue interrupt is pending
- * Based on: 0x44be-0x44c1
+ * Address: 0x44be-0x44c1
  *
  * Checks bit 6 of PCIe/NVMe interrupt status register.
  * This indicates an NVMe queue event.
@@ -160,7 +160,7 @@ uint8_t int_check_nvme_queue(void)
 
 /*
  * int_check_pcie_event - Check if PCIe link event interrupt is pending
- * Based on: 0x44d0-0x44d3
+ * Address: 0x44d0-0x44d3
  *
  * Checks bit 5 of PCIe/NVMe interrupt status register.
  * This indicates a PCIe link state change.
@@ -178,7 +178,7 @@ uint8_t int_check_pcie_event(void)
 
 /*
  * int_check_nvme_complete - Check if NVMe command completion interrupt
- * Based on: 0x44da-0x44dd
+ * Address: 0x44da-0x44dd
  *
  * Checks bit 4 of PCIe/NVMe interrupt status register.
  * This indicates NVMe command completion.
@@ -196,7 +196,7 @@ uint8_t int_check_nvme_complete(void)
 
 /*
  * int_check_timer - Check if timer interrupt is pending
- * Based on: 0x4511-0x4514
+ * Address: 0x4511-0x4514
  *
  * Checks bit 4 of system interrupt status register.
  * This indicates a timer event.

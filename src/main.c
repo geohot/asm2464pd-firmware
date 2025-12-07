@@ -17,13 +17,36 @@
  * IDATA Work Variable Definitions
  * These are the actual storage for the extern declarations in globals.h
  *===========================================================================*/
+__idata __at(0x0D) uint8_t I_QUEUE_IDX;
+__idata __at(0x12) uint8_t I_WORK_12;
+__idata __at(0x16) uint8_t I_CORE_STATE_L;
+__idata __at(0x17) uint8_t I_CORE_STATE_H;
+__idata __at(0x18) uint8_t I_WORK_18;
+__idata __at(0x19) uint8_t I_WORK_19;
+__idata __at(0x21) uint8_t I_LOG_INDEX;
+__idata __at(0x23) uint8_t I_WORK_23;
+__idata __at(0x38) uint8_t I_WORK_38;
+__idata __at(0x39) uint8_t I_WORK_39;
+__idata __at(0x3A) uint8_t I_WORK_3A;
+__idata __at(0x3C) uint8_t I_WORK_3C;
+__idata __at(0x3E) uint8_t I_WORK_3E;
 __idata __at(0x40) uint8_t I_WORK_40;
 __idata __at(0x41) uint8_t I_WORK_41;
 __idata __at(0x43) uint8_t I_WORK_43;
 __idata __at(0x47) uint8_t I_WORK_47;
+__idata __at(0x51) uint8_t I_WORK_51;
 __idata __at(0x52) uint8_t I_WORK_52;
 __idata __at(0x53) uint8_t I_WORK_53;
 __idata __at(0x55) uint8_t I_WORK_55;
+__idata __at(0x6A) uint8_t I_STATE_6A;
+__idata __at(0x6B) uint8_t I_TRANSFER_6B;
+__idata __at(0x6C) uint8_t I_TRANSFER_6C;
+__idata __at(0x6D) uint8_t I_TRANSFER_6D;
+__idata __at(0x6E) uint8_t I_TRANSFER_6E;
+__idata __at(0x6F) uint8_t I_BUF_FLOW_CTRL;
+__idata __at(0x70) uint8_t I_BUF_THRESH_LO;
+__idata __at(0x71) uint8_t I_BUF_THRESH_HI;
+__idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL;
 
 /*===========================================================================
  * Forward declarations

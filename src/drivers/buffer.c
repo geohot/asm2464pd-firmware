@@ -70,7 +70,7 @@
 
 /*
  * buf_set_ctrl_mode_4 - Set buffer control to mode 0x04
- * Based on: 0x025a-0x0269
+ * Address: 0x025a-0x0269
  *
  * Configures the buffer for mode 0x04 operation and sets up
  * the length high register from xdata[0x0054].
@@ -94,7 +94,7 @@ void buf_set_ctrl_mode_4(void)
 
 /*
  * buf_set_ctrl_mode_3 - Set buffer control to mode 0x03
- * Based on: 0x026c-0x0271
+ * Address: 0x026c-0x0271
  *
  * Configures the buffer for mode 0x03 operation.
  *
@@ -110,7 +110,7 @@ void buf_set_ctrl_mode_3(void)
 
 /*
  * buf_write_idata_params - Write idata parameters to buffer registers
- * Based on: 0x53c0-0x53d3
+ * Address: 0x53c0-0x53d3
  *
  * Copies 4 bytes from idata[0x6f-0x72] to buffer registers 0xD808-0xD80B.
  * The bytes are written in reverse order (0x72->D808, 0x71->D809, etc).
@@ -141,17 +141,15 @@ void buf_write_idata_params(void)
      * In 8051, idata is accessed via indirect addressing with R0/R1.
      * These are internal state bytes for buffer configuration.
      */
-    __idata uint8_t *ptr = (__idata uint8_t *)0x72;
-
-    USB_BUF_CTRL->ctrl_global = *ptr--;      /* idata[0x72] -> 0xD808 */
-    USB_BUF_CTRL->threshold_high = *ptr--;   /* idata[0x71] -> 0xD809 */
-    USB_BUF_CTRL->threshold_low = *ptr--;    /* idata[0x70] -> 0xD80A */
-    USB_BUF_CTRL->flow_ctrl = *ptr;          /* idata[0x6f] -> 0xD80B */
+    USB_BUF_CTRL->ctrl_global = I_BUF_CTRL_GLOBAL;   /* idata[0x72] -> 0xD808 */
+    USB_BUF_CTRL->threshold_high = I_BUF_THRESH_HI;  /* idata[0x71] -> 0xD809 */
+    USB_BUF_CTRL->threshold_low = I_BUF_THRESH_LO;   /* idata[0x70] -> 0xD80A */
+    USB_BUF_CTRL->flow_ctrl = I_BUF_FLOW_CTRL;       /* idata[0x6f] -> 0xD80B */
 }
 
 /*
  * buf_config_from_status - Configure buffer from status registers
- * Based on: 0x3147-0x3167
+ * Address: 0x3147-0x3167
  *
  * Copies configuration from status registers 0x911F-0x9122 to
  * buffer registers 0xD804-0xD807.
@@ -185,7 +183,7 @@ void buf_config_from_status(void)
 
 /*
  * buf_start_xfer_mode1 - Start buffer transfer in mode 1
- * Based on: 0x5256-0x525f
+ * Address: 0x5256-0x525f
  *
  * Initiates a mode 1 buffer transfer by writing 0x01 to the
  * transfer start register, then calls the transfer handler.
@@ -207,7 +205,7 @@ void buf_start_xfer_mode1(void)
 
 /*
  * buf_start_xfer_mode2 - Start buffer transfer in mode 2
- * Based on: 0x018b-0x0198
+ * Address: 0x018b-0x0198
  *
  * Initiates a mode 2 buffer transfer by writing 0x02 to the
  * transfer start register, calls the transfer handler, and
@@ -235,7 +233,7 @@ void buf_start_xfer_mode2(void)
 
 /*
  * buf_check_transfer_pending - Check if a transfer operation is pending
- * Based on: 0x313d-0x3146
+ * Address: 0x313d-0x3146
  *
  * Reads 4 bytes from idata[0x6b-0x6e] and returns non-zero if any
  * are set, indicating a pending transfer operation.

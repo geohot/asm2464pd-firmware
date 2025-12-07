@@ -22,16 +22,39 @@
 #define XDATA_VAR8(addr)   (*(__xdata uint8_t *)(addr))
 
 //=============================================================================
-// IDATA Work Variables (0x40-0x7F)
+// IDATA Work Variables (0x00-0x7F)
 //=============================================================================
 /* These are IDATA (internal 8051 RAM) locations used as fast work variables */
-__idata __at(0x40) extern uint8_t I_WORK_40;   /* Work variable 0x40 */
-__idata __at(0x41) extern uint8_t I_WORK_41;   /* Work variable 0x41 */
-__idata __at(0x43) extern uint8_t I_WORK_43;   /* Work variable 0x43 */
-__idata __at(0x47) extern uint8_t I_WORK_47;   /* Work variable 0x47 */
-__idata __at(0x52) extern uint8_t I_WORK_52;   /* Work variable 0x52 */
-__idata __at(0x53) extern uint8_t I_WORK_53;   /* Work variable 0x53 */
-__idata __at(0x55) extern uint8_t I_WORK_55;   /* Work variable 0x55 */
+__idata __at(0x0D) extern uint8_t I_QUEUE_IDX;       /* Queue index / endpoint offset */
+__idata __at(0x12) extern uint8_t I_WORK_12;         /* Work variable 0x12 */
+__idata __at(0x16) extern uint8_t I_CORE_STATE_L;    /* Core state low byte */
+__idata __at(0x17) extern uint8_t I_CORE_STATE_H;    /* Core state high byte */
+__idata __at(0x18) extern uint8_t I_WORK_18;         /* Work variable 0x18 */
+__idata __at(0x19) extern uint8_t I_WORK_19;         /* Work variable 0x19 */
+__idata __at(0x21) extern uint8_t I_LOG_INDEX;       /* Log index */
+__idata __at(0x23) extern uint8_t I_WORK_23;         /* Work variable 0x23 */
+__idata __at(0x38) extern uint8_t I_WORK_38;         /* Work variable 0x38 */
+__idata __at(0x39) extern uint8_t I_WORK_39;         /* Work variable 0x39 */
+__idata __at(0x3A) extern uint8_t I_WORK_3A;         /* Work variable 0x3A */
+__idata __at(0x3C) extern uint8_t I_WORK_3C;         /* Work variable 0x3C */
+__idata __at(0x3E) extern uint8_t I_WORK_3E;         /* Work variable 0x3E */
+__idata __at(0x40) extern uint8_t I_WORK_40;         /* Work variable 0x40 */
+__idata __at(0x41) extern uint8_t I_WORK_41;         /* Work variable 0x41 */
+__idata __at(0x43) extern uint8_t I_WORK_43;         /* Work variable 0x43 */
+__idata __at(0x47) extern uint8_t I_WORK_47;         /* Work variable 0x47 */
+__idata __at(0x51) extern uint8_t I_WORK_51;         /* Work variable 0x51 */
+__idata __at(0x52) extern uint8_t I_WORK_52;         /* Work variable 0x52 */
+__idata __at(0x53) extern uint8_t I_WORK_53;         /* Work variable 0x53 */
+__idata __at(0x55) extern uint8_t I_WORK_55;         /* Work variable 0x55 */
+__idata __at(0x6A) extern uint8_t I_STATE_6A;        /* State machine variable */
+__idata __at(0x6B) extern uint8_t I_TRANSFER_6B;     /* Transfer pending byte 0 */
+__idata __at(0x6C) extern uint8_t I_TRANSFER_6C;     /* Transfer pending byte 1 */
+__idata __at(0x6D) extern uint8_t I_TRANSFER_6D;     /* Transfer pending byte 2 */
+__idata __at(0x6E) extern uint8_t I_TRANSFER_6E;     /* Transfer pending byte 3 */
+__idata __at(0x6F) extern uint8_t I_BUF_FLOW_CTRL;   /* Buffer flow control */
+__idata __at(0x70) extern uint8_t I_BUF_THRESH_LO;   /* Buffer threshold low */
+__idata __at(0x71) extern uint8_t I_BUF_THRESH_HI;   /* Buffer threshold high */
+__idata __at(0x72) extern uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 
 //=============================================================================
 // System Work Area (0x0000-0x01FF)
@@ -187,6 +210,7 @@ __idata __at(0x55) extern uint8_t I_WORK_55;   /* Work variable 0x55 */
 #define G_USB_PARAM_0B00        XDATA_VAR8(0x0B00)  /* USB parameter storage */
 #define G_USB_INIT_0B01         XDATA_VAR8(0x0B01)  /* USB init state flag */
 #define G_USB_TRANSFER_FLAG     XDATA_VAR8(0x0B2E)  /* USB transfer flag */
+#define G_TRANSFER_BUSY_0B3B    XDATA_VAR8(0x0B3B)  /* Transfer busy flag */
 #define G_USB_STATE_0B41        XDATA_VAR8(0x0B41)  /* USB state check */
 #define G_BUFFER_STATE_0AA6     XDATA_VAR8(0x0AA6)  /* Buffer state flags */
 #define G_BUFFER_STATE_0AA7     XDATA_VAR8(0x0AA7)  /* Buffer state control */
