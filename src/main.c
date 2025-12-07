@@ -760,11 +760,11 @@ void handler_0327(void)
     /* Clear bit 0 of USB EP control register */
     REG_USB_EP_CTRL_905E = REG_USB_EP_CTRL_905E & 0xFE;
 
-    /* Configure NVMe command NSID register */
-    REG_NVME_CMD_NSID = 0x01;
+    /* Trigger USB MSC operation */
+    REG_USB_MSC_CTRL = 0x01;
 
-    /* Clear bit 0 of NVMe PRP1 register */
-    REG_NVME_CMD_PRP1 = REG_NVME_CMD_PRP1 & 0xFE;
+    /* Clear bit 0 of USB MSC status register */
+    REG_USB_MSC_STATUS = REG_USB_MSC_STATUS & 0xFE;
 
     /* Call helper functions at 0xD07F, 0xE214 for additional setup */
     /* These would be implemented as separate functions */

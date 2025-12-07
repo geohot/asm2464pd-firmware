@@ -76,6 +76,7 @@
 #include "sfr.h"
 #include "registers.h"
 #include "globals.h"
+#include "structs.h"
 
 /*
  * power_set_suspended - Set power status suspended bit (bit 6)
@@ -281,10 +282,10 @@ void power_set_state(void)
 {
     /* FUN_CODE_53c0 copies 4 bytes from IDATA[0x72-0x6F] to XDATA[0xD808-0xD80B] */
     /* This appears to be CSW residue setup */
-    REG_CSW_RESIDUE_0 = *(__idata uint8_t *)0x72;
-    REG_CSW_RESIDUE_1 = *(__idata uint8_t *)0x71;
-    REG_CSW_RESIDUE_2 = *(__idata uint8_t *)0x70;
-    REG_CSW_RESIDUE_3 = *(__idata uint8_t *)0x6F;
+    USB_CSW->residue0 = *(__idata uint8_t *)0x72;
+    USB_CSW->residue1 = *(__idata uint8_t *)0x71;
+    USB_CSW->residue2 = *(__idata uint8_t *)0x70;
+    USB_CSW->residue3 = *(__idata uint8_t *)0x6F;
 
     /* Set power state active */
     REG_USB_SIGNAL_90A1 = 1;
@@ -440,10 +441,10 @@ void usb_power_init(void)
     val = REG_USB_EP_CTRL_905E;
     REG_USB_EP_CTRL_905E = val & 0xFE;
 
-    /* Initialize NVMe command registers */
-    REG_NVME_CMD_NSID = 1;
-    val = REG_NVME_CMD_PRP1;
-    REG_NVME_CMD_PRP1 = val & 0xFE;
+    /* Trigger USB MSC operation and clear status bit */
+    REG_USB_MSC_CTRL = 1;
+    val = REG_USB_MSC_STATUS;
+    REG_USB_MSC_STATUS = val & 0xFE;
 
     /* Call initialization handlers */
     handler_d07f(0);

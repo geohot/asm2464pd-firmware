@@ -249,9 +249,10 @@
 #define REG_USB_STATUS_0D       XDATA_REG8(0x910D)  // USB status 0D (RO)
 #define REG_USB_STATUS_0E       XDATA_REG8(0x910E)  // USB status 0E (RO)
 #define REG_USB_STATUS_1F       XDATA_REG8(0x911F)  // USB status 1F (RO)
-#define REG_USB_STATUS_20       XDATA_REG8(0x9120)  // USB status 20 (RO)
-#define REG_USB_STATUS_21       XDATA_REG8(0x9121)  // USB status 21 (RO)
-#define REG_USB_STATUS_22       XDATA_REG8(0x9122)  // USB status 22 (RO)
+// Note: 0x9120-0x9123 are also CBW tag storage - see REG_CBW_TAG_* aliases below
+#define REG_USB_STATUS_20       XDATA_REG8(0x9120)  // USB status 20 / CBW tag byte 0 (RO)
+#define REG_USB_STATUS_21       XDATA_REG8(0x9121)  // USB status 21 / CBW tag byte 1 (RO)
+#define REG_USB_STATUS_22       XDATA_REG8(0x9122)  // USB status 22 / CBW tag byte 2 (RO)
 
 // USB status bits
 #define USB_CONNECTED           0x80
@@ -372,8 +373,7 @@
 #define REG_NVME_CMD_PARAM      XDATA_REG8(0xC429)  // Command parameter (WO)
 #define REG_NVME_DOORBELL       XDATA_REG8(0xC42A)  // Doorbell/status (RW)
 #define REG_NVME_CMD_FLAGS      XDATA_REG8(0xC42B)  // Command flags (WO)
-#define REG_NVME_CMD_NSID       XDATA_REG8(0xC42C)  // Namespace ID (WO)
-#define REG_NVME_CMD_PRP1       XDATA_REG8(0xC42D)  // PRP1 pointer (WO)
+// Note: 0xC42C-0xC42D are USB MSC registers, not NVMe - see REG_USB_MSC_CTRL/STATUS
 #define REG_NVME_CMD_PRP2       XDATA_REG8(0xC431)  // PRP2 pointer (WO)
 #define REG_NVME_CMD_CDW10      XDATA_REG8(0xC435)  // Command DWord 10 (WO)
 #define REG_NVME_CMD_CDW11      XDATA_REG8(0xC439)  // Command DWord 11 (WO)
@@ -512,15 +512,12 @@
 
 // USB Endpoint Buffer at 0xD800 - see structs.h for CSW and buffer control views
 // This memory region is shared XRAM used for USB packet data.
-#define REG_CSW_RESIDUE_0       XDATA_REG8(0xD808)  // CSW data residue byte 0 (MSB)
-#define REG_CSW_RESIDUE_1       XDATA_REG8(0xD809)  // CSW data residue byte 1
-#define REG_CSW_RESIDUE_2       XDATA_REG8(0xD80A)  // CSW data residue byte 2
-#define REG_CSW_RESIDUE_3       XDATA_REG8(0xD80B)  // CSW data residue byte 3 (LSB)
 
 // CBW Tag source registers (tag is copied from CBW to CSW)
-#define REG_CBW_TAG_0           XDATA_REG8(0x9120)  // CBW tag byte 0 (LSB)
-#define REG_CBW_TAG_1           XDATA_REG8(0x9121)  // CBW tag byte 1
-#define REG_CBW_TAG_2           XDATA_REG8(0x9122)  // CBW tag byte 2
+// Note: 0x9120-0x9122 overlap with REG_USB_STATUS_20/21/22 - same memory, dual use
+#define REG_CBW_TAG_0           XDATA_REG8(0x9120)  // CBW tag byte 0 (LSB) = REG_USB_STATUS_20
+#define REG_CBW_TAG_1           XDATA_REG8(0x9121)  // CBW tag byte 1 = REG_USB_STATUS_21
+#define REG_CBW_TAG_2           XDATA_REG8(0x9122)  // CBW tag byte 2 = REG_USB_STATUS_22
 #define REG_CBW_TAG_3           XDATA_REG8(0x9123)  // CBW tag byte 3 (MSB)
 
 // USB Mass Storage control registers
