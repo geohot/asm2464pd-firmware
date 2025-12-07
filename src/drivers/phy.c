@@ -164,19 +164,19 @@ void phy_init_sequence(void)
     REG_PHY_LINK_CTRL_C208 = val;
 
     /* Enable power 0x92C0 bit 0 */
-    val = REG_POWER_CTRL_92C0;
+    val = REG_POWER_ENABLE;
     val = (val & 0xFE) | 0x01;
-    REG_POWER_CTRL_92C0 = val;
+    REG_POWER_ENABLE = val;
 
     /* Enable clock 0x92C1 bit 0 */
-    val = REG_POWER_CTRL_92C1;
+    val = REG_CLOCK_ENABLE;
     val = (val & 0xFE) | 0x01;
-    REG_POWER_CTRL_92C1 = val;
+    REG_CLOCK_ENABLE = val;
 
     /* Set PHY power 0x92C5 bit 2 */
-    val = REG_POWER_CTRL_92C5;
+    val = REG_PHY_POWER;
     val = (val & 0xFB) | 0x04;
-    REG_POWER_CTRL_92C5 = val;
+    REG_PHY_POWER = val;
 
     /* Configure USB PHY 0x9241 bit 4 */
     val = REG_USB_PHY_CONFIG_9241;

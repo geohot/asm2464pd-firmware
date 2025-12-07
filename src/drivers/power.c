@@ -94,9 +94,9 @@
  */
 void power_set_suspended(void)
 {
-    uint8_t val = REG_POWER_STATUS_92C2;
+    uint8_t val = REG_POWER_STATUS;
     val = (val & 0xBF) | 0x40;  /* Set bit 6 */
-    REG_POWER_STATUS_92C2 = val;
+    REG_POWER_STATUS = val;
 }
 
 /*
@@ -118,7 +118,7 @@ void power_set_suspended(void)
  */
 uint8_t power_get_status_bit6(void)
 {
-    uint8_t val = REG_POWER_STATUS_92C2;
+    uint8_t val = REG_POWER_STATUS;
     val &= 0x40;  /* Mask bit 6 */
     return val;
 }
@@ -152,19 +152,19 @@ void power_enable_clocks(void)
     uint8_t val;
 
     /* Enable main power (0x92C0 bit 0) */
-    val = REG_POWER_CTRL_92C0;
+    val = REG_POWER_ENABLE;
     val = (val & 0xFE) | 0x01;
-    REG_POWER_CTRL_92C0 = val;
+    REG_POWER_ENABLE = val;
 
     /* Enable clock config (0x92C1 bit 0) */
-    val = REG_POWER_CTRL_92C1;
+    val = REG_CLOCK_ENABLE;
     val = (val & 0xFE) | 0x01;
-    REG_POWER_CTRL_92C1 = val;
+    REG_CLOCK_ENABLE = val;
 
     /* Enable PHY power (0x92C5 bit 2) */
-    val = REG_POWER_CTRL_92C5;
+    val = REG_PHY_POWER;
     val = (val & 0xFB) | 0x04;
-    REG_POWER_CTRL_92C5 = val;
+    REG_PHY_POWER = val;
 }
 
 /*
@@ -221,9 +221,9 @@ void power_config_init(void)
  */
 void power_set_clock_bit1(void)
 {
-    uint8_t val = REG_POWER_CTRL_92C1;
+    uint8_t val = REG_CLOCK_ENABLE;
     val = (val & 0xFD) | 0x02;  /* Set bit 1 */
-    REG_POWER_CTRL_92C1 = val;
+    REG_CLOCK_ENABLE = val;
 }
 
 /*
@@ -306,9 +306,9 @@ void power_set_state(void)
  */
 void power_clear_suspended(void)
 {
-    uint8_t val = REG_POWER_STATUS_92C2;
+    uint8_t val = REG_POWER_STATUS;
     val &= 0xBF;  /* Clear bit 6 */
-    REG_POWER_STATUS_92C2 = val;
+    REG_POWER_STATUS = val;
 }
 
 /*
@@ -336,19 +336,19 @@ void power_disable_clocks(void)
     uint8_t val;
 
     /* Disable main power (0x92C0 bit 0) */
-    val = REG_POWER_CTRL_92C0;
+    val = REG_POWER_ENABLE;
     val &= 0xFE;
-    REG_POWER_CTRL_92C0 = val;
+    REG_POWER_ENABLE = val;
 
     /* Disable clock config (0x92C1 bit 0) */
-    val = REG_POWER_CTRL_92C1;
+    val = REG_CLOCK_ENABLE;
     val &= 0xFE;
-    REG_POWER_CTRL_92C1 = val;
+    REG_CLOCK_ENABLE = val;
 
     /* Disable PHY power (0x92C5 bit 2) */
-    val = REG_POWER_CTRL_92C5;
+    val = REG_PHY_POWER;
     val &= 0xFB;
-    REG_POWER_CTRL_92C5 = val;
+    REG_PHY_POWER = val;
 }
 
 /* Forward declarations for helper functions */
@@ -407,8 +407,8 @@ void usb_power_init(void)
     uint8_t status;
 
     /* Set power control bit 7 (enable main power) */
-    val = REG_POWER_CTRL_92C0;
-    REG_POWER_CTRL_92C0 = (val & 0x7F) | 0x80;
+    val = REG_POWER_ENABLE;
+    REG_POWER_ENABLE = (val & 0x7F) | 0x80;
 
     /* Configure USB PHY */
     REG_USB_PHY_CTRL_91D1 = 0x0F;
@@ -435,7 +435,7 @@ void usb_power_init(void)
     /* Configure USB */
     REG_USB_CONFIG = 0xE0;
     REG_USB_EP0_LEN_H = 0xF0;
-    REG_USB_MODE_90E2 = 1;
+    REG_USB_MODE = 1;
 
     /* Clear EP control bit 0 */
     val = REG_USB_EP_CTRL_905E;

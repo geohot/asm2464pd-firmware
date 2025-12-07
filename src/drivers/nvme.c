@@ -1383,11 +1383,11 @@ void nvme_init_registers(void)
 
     /* Wait for bit 0 of 0xCE89 to be set */
     do {
-        val = REG_XFER_STATUS_CE89;
+        val = REG_XFER_READY;
     } while ((val & 0x01) == 0);
 
     /* Check bit 1 for error/abort condition */
-    val = REG_XFER_STATUS_CE89;
+    val = REG_XFER_READY;
     if (val & 0x02) {
         /* Error condition, abort initialization */
         return;
@@ -2174,4 +2174,79 @@ handle_mismatch:
 
 done:
     return;
+}
+
+/*
+ * nvme_queue_helper_180d - NVMe queue initialization helper
+ * Address: 0x180d-0x18xx
+ *
+ * Initializes NVMe queue state based on parameter.
+ *
+ * Parameters:
+ *   r7: Queue enable flag (1=enable)
+ *
+ * Original disassembly:
+ *   180d: mov dptr, #0x0a7d
+ *   1810: mov a, r7
+ *   1811: movx @dptr, a         ; Store r7 to 0x0A7D
+ *   1812: xrl a, #0x01          ; Check if r7 == 1
+ *   1814: jz 0x1819             ; If r7 == 1, continue
+ *   1816: ljmp 0x19fa           ; Else jump to alternate path
+ *   1819: ...                   ; Continue with queue setup
+ */
+static void nvme_queue_helper_180d(uint8_t enable)
+{
+    /* Store enable flag */
+    *(__xdata uint8_t *)0x0A7D = enable;
+
+    if (enable != 1) {
+        /* Alternate path at 0x19FA - TODO */
+        return;
+    }
+
+    /* Check if initialization needed */
+    if (*(__xdata uint8_t *)0x000A == 0) {
+        /* Increment counter at 0x07E8 */
+        (*(__xdata uint8_t *)0x07E8)++;
+
+        /* Check state at 0x0B41 */
+        if (*(__xdata uint8_t *)0x0B41 != 0) {
+            /* Call helper at 0x04DA with r7=1 */
+            /* TODO: Implement helper_04da */
+        }
+    }
+
+    /* Write queue index to 0xCE88 */
+    *(__idata uint8_t *)0x38 = *(__xdata uint8_t *)0xC47A;
+    REG_XFER_CTRL_CE88 = *(__idata uint8_t *)0x38;
+
+    /* Wait for bit 0 of 0xCE89 */
+    while (!(REG_XFER_READY & 0x01));
+
+    /* Increment counter at 0x000A */
+    (*(__xdata uint8_t *)0x000A)++;
+}
+
+/*
+ * nvme_queue_helper - NVMe queue processing helper
+ * Address: 0x1196-0x11a1 (12 bytes)
+ *
+ * Entry point for NVMe queue helper. Sets up queue state and
+ * marks queue as active.
+ *
+ * Original disassembly:
+ *   1196: mov r7, #0x01
+ *   1198: lcall 0x180d          ; Call queue init helper
+ *   119b: mov dptr, #0xc47a
+ *   119e: mov a, #0xff
+ *   11a0: movx @dptr, a         ; Set 0xC47A = 0xFF
+ *   11a1: ret
+ */
+void nvme_queue_helper(void)
+{
+    /* Initialize queue with enable flag */
+    nvme_queue_helper_180d(1);
+
+    /* Mark queue as active */
+    *(__xdata uint8_t *)0xC47A = 0xFF;
 }

@@ -97,8 +97,8 @@
 #define REG_USB_EP_READY        XDATA_REG8(0x9096)
 #define REG_USB_STATUS_909E     XDATA_REG8(0x909E)
 #define REG_USB_SIGNAL_90A1     XDATA_REG8(0x90A1)
-#define REG_USB_SPEED_90E0      XDATA_REG8(0x90E0)
-#define REG_USB_MODE_90E2       XDATA_REG8(0x90E2)
+#define REG_USB_SPEED           XDATA_REG8(0x90E0)
+#define REG_USB_MODE            XDATA_REG8(0x90E2)
 #define REG_USB_EP_STATUS_90E3  XDATA_REG8(0x90E3)
 
 // USB link/status registers (0x9100-0x912F)
@@ -115,9 +115,9 @@
 #define REG_USB_STATUS_20       XDATA_REG8(0x9120)
 #define REG_USB_STATUS_21       XDATA_REG8(0x9121)
 #define REG_USB_STATUS_22       XDATA_REG8(0x9122)
-#define REG_CBW_TAG_0           XDATA_REG8(0x9120)  // Alias
-#define REG_CBW_TAG_1           XDATA_REG8(0x9121)  // Alias
-#define REG_CBW_TAG_2           XDATA_REG8(0x9122)  // Alias
+#define REG_CBW_TAG_0           XDATA_REG8(0x9120)  // Dual-use
+#define REG_CBW_TAG_1           XDATA_REG8(0x9121)  // Dual-use
+#define REG_CBW_TAG_2           XDATA_REG8(0x9122)  // Dual-use
 #define REG_CBW_TAG_3           XDATA_REG8(0x9123)
 
 // USB PHY registers (0x91C0-0x91FF)
@@ -133,21 +133,15 @@
 #define REG_USB_PHY_CONFIG_9241 XDATA_REG8(0x9241)
 
 // Power Management registers (0x92C0-0x92E0)
-#define REG_POWER_CTRL_92C0     XDATA_REG8(0x92C0)
-#define REG_POWER_CTRL_92C1     XDATA_REG8(0x92C1)
-#define REG_POWER_STATUS_92C2   XDATA_REG8(0x92C2)
+#define REG_POWER_ENABLE        XDATA_REG8(0x92C0)
+#define REG_CLOCK_ENABLE        XDATA_REG8(0x92C1)
+#define REG_POWER_STATUS        XDATA_REG8(0x92C2)
 #define REG_POWER_CTRL_92C4     XDATA_REG8(0x92C4)
-#define REG_POWER_CTRL_92C5     XDATA_REG8(0x92C5)
+#define REG_PHY_POWER           XDATA_REG8(0x92C5)
 #define REG_POWER_CTRL_92C6     XDATA_REG8(0x92C6)
 #define REG_POWER_CTRL_92C7     XDATA_REG8(0x92C7)
 #define REG_POWER_CTRL_92C8     XDATA_REG8(0x92C8)
-#define REG_POWER_DOMAIN_92E0   XDATA_REG8(0x92E0)
-
-// Power register aliases
-#define REG_POWER_CTRL          REG_POWER_CTRL_92C4
-#define REG_POWER_STATUS        REG_POWER_STATUS_92C2
-#define REG_POWER_STATUS_CTRL   REG_POWER_STATUS_92C2
-#define REG_CLOCK_CONFIG        REG_POWER_CTRL_92C1
+#define REG_POWER_DOMAIN        XDATA_REG8(0x92E0)
 
 // Buffer config registers (0x9300-0x93FF)
 #define REG_BUF_CFG_9300        XDATA_REG8(0x9300)
@@ -161,6 +155,10 @@
 // PCIe Passthrough Registers (0xB210-0xB4C8)
 //=============================================================================
 #define REG_PCIE_FMT_TYPE       XDATA_REG8(0xB210)
+#define REG_PCIE_QUEUE_INDEX_LO XDATA_REG8(0xB80C)  // Queue index low
+#define REG_PCIE_QUEUE_INDEX_HI XDATA_REG8(0xB80D)  // Queue index high
+#define REG_PCIE_QUEUE_FLAGS_LO XDATA_REG8(0xB80E)  // Queue flags low
+#define REG_PCIE_QUEUE_FLAGS_HI XDATA_REG8(0xB80F)  // Queue flags high
 #define REG_PCIE_TLP_CTRL       XDATA_REG8(0xB213)
 #define REG_PCIE_TLP_LENGTH     XDATA_REG8(0xB216)
 #define REG_PCIE_BYTE_EN        XDATA_REG8(0xB217)
@@ -168,7 +166,6 @@
 #define REG_PCIE_ADDR_1         XDATA_REG8(0xB219)
 #define REG_PCIE_ADDR_2         XDATA_REG8(0xB21A)
 #define REG_PCIE_ADDR_3         XDATA_REG8(0xB21B)
-#define REG_PCIE_ADDR_LOW       XDATA_REG8(0xB218)  // Alias
 #define REG_PCIE_ADDR_HIGH      XDATA_REG8(0xB21C)
 #define REG_PCIE_DATA           XDATA_REG8(0xB220)
 #define REG_PCIE_TLP_CPL_HEADER XDATA_REG32(0xB224)
@@ -223,16 +220,11 @@
 #define REG_NVME_DATA_CTRL      XDATA_REG8(0xC414)
 #define REG_NVME_DEV_STATUS     XDATA_REG8(0xC415)
 #define REG_NVME_CMD            XDATA_REG8(0xC420)
-#define REG_NVME_CMD_REG        XDATA_REG8(0xC420)  // Alias
 #define REG_NVME_CMD_OPCODE     XDATA_REG8(0xC421)
 #define REG_NVME_LBA_LOW        XDATA_REG8(0xC422)
 #define REG_NVME_LBA_MID        XDATA_REG8(0xC423)
 #define REG_NVME_LBA_HIGH       XDATA_REG8(0xC424)
-#define REG_NVME_LBA_0          XDATA_REG8(0xC422)  // Alias
-#define REG_NVME_LBA_1          XDATA_REG8(0xC423)  // Alias
-#define REG_NVME_LBA_2          XDATA_REG8(0xC424)  // Alias
 #define REG_NVME_COUNT_LOW      XDATA_REG8(0xC425)
-#define REG_NVME_COUNT          XDATA_REG8(0xC425)  // Alias
 #define REG_NVME_COUNT_HIGH     XDATA_REG8(0xC426)
 #define REG_NVME_ERROR          XDATA_REG8(0xC427)
 #define REG_NVME_QUEUE_CFG      XDATA_REG8(0xC428)
@@ -258,6 +250,7 @@
 #define REG_DMA_ENTRY           XDATA_REG16(0xC462)
 #define REG_CMDQ_DIR_END        XDATA_REG16(0xC470)
 #define REG_NVME_QUEUE_PTR_C471 XDATA_REG8(0xC471)
+#define REG_NVME_BUF_CFG        XDATA_REG8(0xC508)  // NVMe buffer configuration
 #define REG_NVME_QUEUE_INDEX    XDATA_REG8(0xC512)
 #define REG_NVME_QUEUE_C516     XDATA_REG8(0xC516)
 #define REG_NVME_QUEUE_TRIGGER  XDATA_REG8(0xC51A)
@@ -321,6 +314,7 @@
 #define REG_DMA_CHAN_STATUS2    XDATA_REG8(0xC8B7)
 #define REG_DMA_TRIGGER         XDATA_REG8(0xC8B8)
 #define REG_DMA_CONFIG          XDATA_REG8(0xC8D4)
+#define REG_DMA_QUEUE_IDX       XDATA_REG8(0xC8D5)  // DMA queue index
 #define REG_DMA_STATUS          XDATA_REG8(0xC8D6)
 #define REG_DMA_STATUS2         XDATA_REG8(0xC8D8)
 #define REG_DMA_STATUS3         XDATA_REG8(0xC8D9)
@@ -377,10 +371,9 @@
 #define REG_SCSI_DMA_TAG_COUNT  XDATA_REG8(0xCE66)
 #define REG_SCSI_DMA_QUEUE_STAT XDATA_REG8(0xCE67)
 #define REG_SCSI_DMA_STATUS     XDATA_REG16(0xCE6E)
-#define REG_XFER_CTRL_CE6E      XDATA_REG8(0xCE6E)  // Alias
 #define REG_XFER_STATUS_CE86    XDATA_REG8(0xCE86)
 #define REG_XFER_CTRL_CE88      XDATA_REG8(0xCE88)
-#define REG_XFER_STATUS_CE89    XDATA_REG8(0xCE89)
+#define REG_XFER_READY          XDATA_REG8(0xCE89)
 #define REG_XFER_MODE_CE95      XDATA_REG8(0xCE95)
 #define REG_SCSI_DMA_CMD_REG    XDATA_REG8(0xCE96)
 #define REG_SCSI_DMA_RESP_REG   XDATA_REG8(0xCE97)
@@ -417,7 +410,6 @@
 #define REG_CMD_BUSY_STATUS     XDATA_REG8(0xE41C)
 #define REG_CMD_TRIGGER         XDATA_REG8(0xE420)
 #define REG_CMD_PARAM           XDATA_REG8(0xE422)
-#define REG_CMD_OPCODE          XDATA_REG8(0xE422)  // Alias
 #define REG_CMD_STATUS          XDATA_REG8(0xE423)
 #define REG_CMD_ISSUE           XDATA_REG8(0xE424)
 #define REG_CMD_TAG             XDATA_REG8(0xE425)
@@ -463,7 +455,6 @@
 // System Control (0xEF00-0xEFFF)
 //=============================================================================
 #define REG_CRITICAL_CTRL       XDATA_REG8(0xEF4E)
-#define REG_SYSTEM_CTRL         REG_CRITICAL_CTRL   // Alias
 
 //=============================================================================
 // Bit Definitions

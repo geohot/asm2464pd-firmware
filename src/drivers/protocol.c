@@ -441,3 +441,431 @@ void protocol_init(void)
     /* Clear state variables */
     G_SYS_STATUS_PRIMARY = 0;
 }
+
+/*
+ * helper_0d78 - Read 4 bytes from IDATA at R0 into r4-r7
+ * Address: 0x0d78-0x0d83 (12 bytes)
+ *
+ * Reads 4 consecutive bytes from IDATA pointer and returns in r4-r7.
+ * This is a helper for copying IDATA blocks.
+ *
+ * Parameters:
+ *   idata_ptr: IDATA pointer to read from
+ *   out_r4-r7: Output values (passed by reference)
+ */
+static void helper_0d78(__idata uint8_t *idata_ptr, uint8_t *r4, uint8_t *r5, uint8_t *r6, uint8_t *r7)
+{
+    *r4 = idata_ptr[0];
+    *r5 = idata_ptr[1];
+    *r6 = idata_ptr[2];
+    *r7 = idata_ptr[3];
+}
+
+/*
+ * helper_0db9 - Write r4-r7 to 4 bytes at IDATA at R0
+ * Address: 0x0db9-0x0dc4 (12 bytes)
+ *
+ * Writes r4-r7 to 4 consecutive bytes at IDATA pointer.
+ * This is a helper for copying IDATA blocks.
+ *
+ * Parameters:
+ *   idata_ptr: IDATA pointer to write to
+ *   r4-r7: Values to write
+ */
+static void helper_0db9(__idata uint8_t *idata_ptr, uint8_t r4, uint8_t r5, uint8_t r6, uint8_t r7)
+{
+    idata_ptr[0] = r4;
+    idata_ptr[1] = r5;
+    idata_ptr[2] = r6;
+    idata_ptr[3] = r7;
+}
+
+/*
+ * helper_1bcb - USB 4-byte IDATA copy helper
+ * Address: 0x1bcb-0x1bd4 (10 bytes)
+ *
+ * Copies 4 bytes from IDATA[0x6b-0x6e] to IDATA[0x6f-0x72].
+ * Used for USB endpoint state management.
+ *
+ * Original disassembly:
+ *   1bcb: mov r0, #0x6b
+ *   1bcd: lcall 0x0d78    ; read 4 bytes from IDATA[0x6b] into r4-r7
+ *   1bd0: mov r0, #0x6f
+ *   1bd2: ljmp 0x0db9     ; write r4-r7 to IDATA[0x6f]
+ */
+void helper_1bcb(void)
+{
+    __idata uint8_t *src = (__idata uint8_t *)0x6b;
+    __idata uint8_t *dst = (__idata uint8_t *)0x6f;
+    uint8_t r4, r5, r6, r7;
+
+    /* Read 4 bytes from IDATA[0x6b-0x6e] */
+    helper_0d78(src, &r4, &r5, &r6, &r7);
+
+    /* Write 4 bytes to IDATA[0x6f-0x72] */
+    helper_0db9(dst, r4, r5, r6, r7);
+}
+
+/*
+ * helper_523c - Queue processing helper
+ * Address: 0x523c-0x525f (36 bytes)
+ *
+ * Stores queue parameters and optionally triggers USB endpoint.
+ *
+ * Parameters:
+ *   r7: Queue type/index (stored to 0x0203)
+ *   r5: Queue flags (stored to 0x020D)
+ *   r3: Additional flag (stored to 0x020E)
+ *
+ * Original disassembly:
+ *   523c: mov dptr, #0x0203
+ *   523f: mov a, r7
+ *   5240: movx @dptr, a       ; store r7 to 0x0203
+ *   5241: mov dptr, #0x020d
+ *   5244: mov a, r5
+ *   5245: movx @dptr, a       ; store r5 to 0x020D
+ *   5246: inc dptr
+ *   5247: mov a, r3
+ *   5248: movx @dptr, a       ; store r3 to 0x020E
+ *   5249: mov dptr, #0x07e5
+ *   524c: mov a, #0x01
+ *   524e: movx @dptr, a       ; set 0x07E5 = 1
+ *   524f: mov dptr, #0x9000
+ *   5252: movx a, @dptr       ; read USB status
+ *   5253: jb 0xe0.0, 0x525f   ; if bit 0 set, return
+ *   5256: mov dptr, #0xd80c
+ *   5259: mov a, #0x01
+ *   525b: movx @dptr, a       ; set 0xD80C = 1
+ *   525c: lcall 0x1bcb        ; call USB helper
+ *   525f: ret
+ */
+void helper_523c(uint8_t r3, uint8_t r5, uint8_t r7)
+{
+    /* Store queue type to 0x0203 */
+    *(__xdata uint8_t *)0x0203 = r7;
+
+    /* Store queue flags to 0x020D */
+    *(__xdata uint8_t *)0x020D = r5;
+
+    /* Store additional flag to 0x020E */
+    *(__xdata uint8_t *)0x020E = r3;
+
+    /* Set ready flag at 0x07E5 */
+    *(__xdata uint8_t *)0x07E5 = 0x01;
+
+    /* Check USB status bit 0 */
+    if (!(REG_USB_STATUS & 0x01)) {
+        /* Bit 0 not set - trigger endpoint and call helper */
+        *(__xdata uint8_t *)0xD80C = 0x01;
+        helper_1bcb();
+    }
+}
+
+/*
+ * Forward declarations for helpers
+ */
+static void helper_50db(void);
+static void helper_5409(void);
+
+/*
+ * helper_53a7 - DMA completion handler
+ * Address: 0x53a7-0x53bf (25 bytes)
+ *
+ * Handles DMA completion state. Calls helper_50db, then decrements
+ * counter at 0x000A if > 1, otherwise clears it and calls helper_5409.
+ *
+ * Original disassembly:
+ *   53a7: lcall 0x50db          ; Call status update helper
+ *   53aa: mov dptr, #0x000a
+ *   53ad: movx a, @dptr         ; Read counter
+ *   53ae: setb c
+ *   53af: subb a, #0x01         ; Compare with 1
+ *   53b1: jc 0x53b7             ; If counter <= 1, jump to clear
+ *   53b3: movx a, @dptr         ; Read counter again
+ *   53b4: dec a                 ; Decrement
+ *   53b5: movx @dptr, a         ; Store back
+ *   53b6: ret
+ *   53b7: clr a
+ *   53b8: mov dptr, #0x000a
+ *   53bb: movx @dptr, a         ; Clear counter
+ *   53bc: lcall 0x5409          ; Call cleanup helper
+ *   53bf: ret
+ */
+void helper_53a7(void)
+{
+    uint8_t counter;
+
+    /* Call status update helper */
+    helper_50db();
+
+    /* Read counter at 0x000A */
+    counter = *(__xdata uint8_t *)0x000A;
+
+    if (counter > 1) {
+        /* Decrement counter */
+        (*(__xdata uint8_t *)0x000A)--;
+    } else {
+        /* Clear counter and call cleanup */
+        *(__xdata uint8_t *)0x000A = 0;
+        helper_5409();
+    }
+}
+
+/*
+ * helper_53c0 - DMA buffer write helper
+ * Address: 0x53c0-0x53d3 (20 bytes)
+ *
+ * Copies 4 bytes from IDATA[0x6f-0x72] to XDATA 0xD808-0xD80B.
+ * Used to write DMA buffer configuration to hardware.
+ *
+ * Original disassembly:
+ *   53c0: mov r0, #0x72
+ *   53c2: mov a, @r0            ; Read IDATA[0x72]
+ *   53c3: mov dptr, #0xd808
+ *   53c6: movx @dptr, a         ; Write to 0xD808
+ *   53c7: dec r0
+ *   53c8: mov a, @r0            ; Read IDATA[0x71]
+ *   53c9: inc dptr
+ *   53ca: movx @dptr, a         ; Write to 0xD809
+ *   53cb: dec r0
+ *   53cc: mov a, @r0            ; Read IDATA[0x70]
+ *   53cd: inc dptr
+ *   53ce: movx @dptr, a         ; Write to 0xD80A
+ *   53cf: dec r0
+ *   53d0: mov a, @r0            ; Read IDATA[0x6F]
+ *   53d1: inc dptr
+ *   53d2: movx @dptr, a         ; Write to 0xD80B
+ *   53d3: ret
+ */
+void helper_53c0(void)
+{
+    __idata uint8_t *src = (__idata uint8_t *)0x6F;
+
+    /* Copy 4 bytes from IDATA[0x6F-0x72] to XDATA 0xD808-0xD80B */
+    /* Note: Original reads backwards from 0x72 to 0x6F */
+    *(__xdata uint8_t *)0xD808 = src[3];  /* IDATA[0x72] -> 0xD808 */
+    *(__xdata uint8_t *)0xD809 = src[2];  /* IDATA[0x71] -> 0xD809 */
+    *(__xdata uint8_t *)0xD80A = src[1];  /* IDATA[0x70] -> 0xD80A */
+    *(__xdata uint8_t *)0xD80B = src[0];  /* IDATA[0x6F] -> 0xD80B */
+}
+
+/*
+ * helper_039a - Register initialization for 0xD810
+ * Address: 0x039a-0x039d (5 bytes)
+ *
+ * Sets DPTR = 0xD810 and jumps to 0x0300 which is a common
+ * register initialization routine that:
+ * - Pushes r0, ACC, DPL, DPH
+ * - Sets r0 = 0x0a
+ * - Sets SFR 0x96 = 0
+ * - Returns
+ *
+ * This is part of a register initialization table where each entry
+ * sets DPTR to a different register address and calls the common code.
+ *
+ * The effect is to initialize register 0xD810 by writing 0 to it
+ * (value in ACC at entry to 0x0300 is 0x03, but cleared before write).
+ *
+ * Original disassembly:
+ *   039a: mov dptr, #0xd810
+ *   039d: ajmp 0x0300
+ */
+void helper_039a(void)
+{
+    /* Clear the register at 0xD810 */
+    *(__xdata uint8_t *)0xD810 = 0;
+}
+
+/*
+ * helper_50db - Status update and queue management helper
+ * Address: 0x50db-0x5111 (55 bytes)
+ *
+ * Reads queue index from 0x0AF5, checks if < 0x20, then performs
+ * various queue state updates using helper functions.
+ *
+ * Original disassembly:
+ *   50db: mov dptr, #0x0af5
+ *   50de: movx a, @dptr         ; Read queue index
+ *   50df: mov r7, a
+ *   50e0: clr c
+ *   50e1: subb a, #0x20         ; Check if < 32
+ *   50e3: jnc 0x5111            ; If >= 32, return
+ *   50e5: lcall 0x31d5          ; Call helper
+ *   50e8: clr a
+ *   50e9: movx @dptr, a         ; Clear value at dptr
+ *   ... (more queue management)
+ *   5111: ret
+ */
+static void helper_50db(void)
+{
+    uint8_t queue_idx;
+
+    /* Read queue index */
+    queue_idx = *(__xdata uint8_t *)0x0AF5;
+
+    /* Only process if queue index < 0x20 */
+    if (queue_idx >= 0x20) {
+        return;
+    }
+
+    /* TODO: Complex queue management logic with calls to:
+     * - 0x31D5, 0x31E2, 0x325F, 0x31E0
+     * These need to be implemented for full functionality
+     */
+}
+
+/*
+ * helper_5409 - Queue/state cleanup helper
+ * Address: 0x5409-0x5415 (13 bytes)
+ *
+ * Clears various state variables and jumps to helper_039a.
+ *
+ * Original disassembly:
+ *   5409: clr a
+ *   540a: mov dptr, #0x0b2e
+ *   540d: movx @dptr, a         ; Clear 0x0B2E
+ *   540e: mov r0, #0x6a
+ *   5410: mov @r0, a            ; Clear IDATA[0x6A]
+ *   5411: mov dptr, #0x06e6
+ *   5414: movx @dptr, a         ; Clear 0x06E6
+ *   5415: ljmp 0x039a           ; Jump to helper_039a
+ */
+static void helper_5409(void)
+{
+    /* Clear state variables */
+    *(__xdata uint8_t *)0x0B2E = 0;
+    *(__idata uint8_t *)0x6A = 0;
+    *(__xdata uint8_t *)0x06E6 = 0;
+
+    /* Call cleanup handler */
+    helper_039a();
+}
+
+/*
+ * helper_0206 - DMA buffer configuration helper
+ * Address: 0x0206-0x02c4+ (complex)
+ *
+ * Sets up DMA buffer configuration based on flags in r5 and value in r7.
+ * Writes to various DMA control registers (0xD800-0xD80F, 0xC8D4, etc.)
+ *
+ * Parameters:
+ *   r5: Flag byte (bits control different modes)
+ *       - bit 1 (0x02): ?
+ *       - bit 2 (0x04): Use XDATA 0x0056-0x0057 source
+ *       - bit 4 (0x10): Extended mode
+ *   r7: DMA channel/index value
+ *
+ * Original disassembly (simplified):
+ *   0206: Check (r5 & 0x06) != 0
+ *   020b-0229: If yes, set 0xC8D4=0xA0, copy 0x0056-0x0057 to 0x905B-0x905C and 0xD802-0xD803
+ *   022b-0246: If no, set 0xC8D4=(r7|0x80), configure 0xC4ED-0xC4EF, copy to 0xD802-0xD803
+ *   0247-0255: Clear 0xD804-0xD807, 0xD80F
+ *   0256-02c4: Check r5 bit 4, further configuration based on 0x07E5 state
+ */
+void helper_0206(uint8_t r5, uint8_t r7)
+{
+    uint8_t val, r2, r3;
+
+    if (r5 & 0x06) {
+        /* Path when r5 bits 1-2 are set */
+        *(__xdata uint8_t *)0xC8D4 = 0xA0;
+
+        /* Copy buffer info from 0x0056-0x0057 to 0x905B-0x905C and 0xD802-0xD803 */
+        r2 = *(__xdata uint8_t *)0x0056;
+        r3 = *(__xdata uint8_t *)0x0057;
+        *(__xdata uint8_t *)0x905B = r2;
+        *(__xdata uint8_t *)0x905C = r3;
+        *(__xdata uint8_t *)0xD802 = r2;
+        *(__xdata uint8_t *)0xD803 = r3;
+    } else {
+        /* Path when r5 bits 1-2 are clear */
+        *(__xdata uint8_t *)0xC8D4 = r7 | 0x80;
+
+        /* Read and modify 0xC4ED */
+        val = *(__xdata uint8_t *)0xC4ED;
+        val = (val & 0xC0) | r7;
+        *(__xdata uint8_t *)0xC4ED = val;
+
+        /* Read 0xC4EE-0xC4EF and write to 0xD802-0xD803 */
+        r3 = *(__xdata uint8_t *)0xC4EE;
+        val = *(__xdata uint8_t *)0xC4EF;
+        *(__xdata uint8_t *)0xD802 = val;
+        *(__xdata uint8_t *)0xD803 = r3;
+    }
+
+    /* Clear 0xD804-0xD807 and 0xD80F */
+    *(__xdata uint8_t *)0xD804 = 0;
+    *(__xdata uint8_t *)0xD805 = 0;
+    *(__xdata uint8_t *)0xD806 = 0;
+    *(__xdata uint8_t *)0xD807 = 0;
+    *(__xdata uint8_t *)0xD80F = 0;
+
+    /* Check r5 bit 4 for extended mode */
+    if (r5 & 0x10) {
+        /* Extended mode - set 0xD800 = 4, copy from 0x0054 to 0xD807 */
+        *(__xdata uint8_t *)0xD800 = 0x04;
+        *(__xdata uint8_t *)0xD807 = *(__xdata uint8_t *)0x0054;
+        /* r4 = 0x08 for final processing */
+    } else {
+        /* Normal mode - set 0xD800 = 3 */
+        *(__xdata uint8_t *)0xD800 = 0x03;
+
+        /* Check state at 0x07E5 */
+        if (*(__xdata uint8_t *)0x07E5 == 0) {
+            /* Check r5 bit 2 */
+            if (r5 & 0x04) {
+                /* Set 0xC8D4 = 0xA0, 0xD806 = 0x28 */
+                *(__xdata uint8_t *)0xC8D4 = 0xA0;
+                *(__xdata uint8_t *)0xD806 = 0x28;
+            }
+            /* Further processing at 0x028c-0x02c4 omitted for now */
+        }
+    }
+}
+
+/*
+ * helper_45d0 - Transfer control helper
+ * Address: 0x45d0
+ *
+ * Handles transfer control operations.
+ */
+void helper_45d0(uint8_t param)
+{
+    /* TODO: Implement from address 0x45d0 */
+    (void)param;
+}
+
+/*
+ * helper_0421 - Endpoint configuration
+ * Address: 0x0421
+ *
+ * Configures endpoint with given parameter.
+ */
+void helper_0421(uint8_t param)
+{
+    /* TODO: Implement from address 0x0421 */
+    (void)param;
+}
+
+/*
+ * helper_0417 - State helper
+ * Address: 0x0417
+ *
+ * Called during state transitions.
+ */
+void helper_0417(void)
+{
+    /* TODO: Implement from address 0x0417 */
+}
+
+/*
+ * helper_16f3 - Transfer/state helper
+ * Address: 0x16f3
+ *
+ * Called when state matches.
+ */
+void helper_16f3(void)
+{
+    /* TODO: Implement from address 0x16f3 */
+}
+

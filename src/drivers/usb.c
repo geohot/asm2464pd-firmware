@@ -162,6 +162,10 @@ extern void nvme_process_queue_entries(void);  /* 0x488f */
 extern void nvme_state_handler(void);          /* 0x4784 */
 extern void nvme_queue_sync(void);             /* 0x49e9 */
 extern void nvme_queue_process_pending(void);  /* 0x3e81 */
+extern void nvme_queue_helper(void);           /* 0x1196 */
+
+/* External from protocol.c */
+extern void core_handler_4ff2(uint8_t param);  /* 0x4ff2 */
 
 /* Forward declaration - USB master handler (0x10e0)
  * Called at end of endpoint dispatch loop */
@@ -1390,7 +1394,7 @@ void usb_master_handler(void)
         }
 
         /* Call NVMe queue helper at 0x1196 */
-        /* TODO: Implement nvme_queue_helper */
+        nvme_queue_helper();
     }
 
     /* Post-loop processing at 0x113a-0x117a:
@@ -1686,7 +1690,7 @@ void usb_func_1a00(void)
 
     /* Poll CE89 bit 0 until set */
     do {
-        val = REG_XFER_STATUS_CE89;
+        val = REG_XFER_READY;
     } while (!(val & 0x01));
 
     /* Set IDATA[0x39] = 1 */
@@ -1699,7 +1703,7 @@ void usb_func_1a00(void)
     /* Check if IDATA[0x39] == 1 */
     if (idata_39 == 1) {
         /* Check CE89 bit 1 */
-        val = REG_XFER_STATUS_CE89;
+        val = REG_XFER_READY;
         if (!(val & 0x02)) {
             /* Check 0x0AF8 */
             if (G_POWER_INIT_FLAG != 0) {
@@ -2311,7 +2315,7 @@ uint8_t usb_func_1c90(void)
 void usb_func_1c9f(void)
 {
     /* Calls core handler and nvme helper */
-    /* core_handler_4ff2();  TODO: link when implemented */
+    core_handler_4ff2(0);
     /* helper_4e6d();        TODO: link when implemented */
 }
 
@@ -2931,8 +2935,8 @@ uint8_t usb_func_533d(uint8_t val, uint8_t compare)
         return 0;
     }
 
-    REG_XFER_CTRL_CE6E = val;
-    REG_XFER_CTRL_CE6E = val + 1;
+    REG_SCSI_DMA_STATUS = val;
+    REG_SCSI_DMA_STATUS = val + 1;
     return 1;
 }
 
@@ -3282,7 +3286,7 @@ void usb_set_mode_bit(void)
  */
 uint8_t usb_get_config_90e0(void)
 {
-    return REG_USB_SPEED_90E0 & 0x03;
+    return REG_USB_SPEED & 0x03;
 }
 
 /*
@@ -4201,7 +4205,7 @@ void usb_wait_ce89_and_init(void)
     REG_XFER_CTRL_CE88 = val;
 
     /* Wait for bit 0 of CE89 */
-    while ((REG_XFER_STATUS_CE89 & 0x01) == 0);
+    while ((REG_XFER_READY & 0x01) == 0);
 
     *(__idata uint8_t *)0x39 = 1;
 }

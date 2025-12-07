@@ -271,7 +271,7 @@ void main(void)
     G_SYS_FLAGS_07EF = 0x00;
 
     /* Initialize NVMe */
-    REG_NVME_LBA_0 = 0x02;
+    REG_NVME_LBA_LOW = 0x02;
 
     /* Enter main processing loop (never returns) */
     main_loop();
@@ -722,9 +722,9 @@ void handler_0327(void)
     uint8_t val;
 
     /* Set bit 7 of power control register 0x92C0 */
-    val = REG_POWER_CTRL_92C0;
+    val = REG_POWER_ENABLE;
     val = (val & 0x7F) | 0x80;
-    REG_POWER_CTRL_92C0 = val;
+    REG_POWER_ENABLE = val;
 
     /* Configure USB PHY control register */
     REG_USB_PHY_CTRL_91D1 = 0x0F;
@@ -755,7 +755,7 @@ void handler_0327(void)
     REG_USB_EP0_LEN_H = 0xF0;
 
     /* Configure USB mode register */
-    REG_USB_MODE_90E2 = 0x01;
+    REG_USB_MODE = 0x01;
 
     /* Clear bit 0 of USB EP control register */
     REG_USB_EP_CTRL_905E = REG_USB_EP_CTRL_905E & 0xFE;
@@ -1423,7 +1423,7 @@ peripheral_handler:
         if (status & 0x80) {
             REG_BUF_CFG_9301 = 0x80;
             /* Modify 0x92E0: (val & 0xFD) | 0x02 */
-            REG_POWER_DOMAIN_92E0 = (REG_POWER_DOMAIN_92E0 & 0xFD) | 0x02;
+            REG_POWER_DOMAIN = (REG_POWER_DOMAIN & 0xFD) | 0x02;
             /* Call 0x0363 dispatch */
             goto usb_master_handler;
         }
