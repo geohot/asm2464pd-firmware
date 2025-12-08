@@ -12,9 +12,7 @@ In bank 1: 0x10000-0x18000 is 0x8000-0x10000
 
 ghidra.c is ghidra's attempt at C disassembly of the functions, you are welcome to reference it. Note: all the names in there may be wrong.
 
-usb-to-pcie-re is an attempt to reverse engineer this chip. Read usb-to-pcie-re/ASM2x6x/doc/Notes.md
-
-usb.py is tinygrad's library that talks to this chip.
+python/usb.py is tinygrad's library that talks to this chip. python/patch.py is a reflasher for this chip.
 
 Every function you write should match one to one with a function in real firmware. Include the address range of the real function in a comment before our function.
 
