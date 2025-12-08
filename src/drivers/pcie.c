@@ -1090,3 +1090,914 @@ void pcie_error_handler(void)
     /* Clear max log entries */
     G_MAX_LOG_ENTRIES = 0x00;
 }
+
+/*===========================================================================
+ * PCIe Config/Helper Functions (0x9916-0x9aba)
+ *
+ * These are small helper functions for PCIe configuration table access
+ * and transaction management. Most use the table at 0x05B4-0x05C0 which
+ * stores per-endpoint PCIe configuration (34 bytes per entry).
+ *
+ * The helper at 0x0dd1 is a table multiply/add function:
+ *   DPTR = base + (A * B)
+ * where B is stored in the B register.
+ *===========================================================================*/
+
+/*
+ * pcie_store_txn_idx - Store transaction index to 0x05A6
+ * Address: 0x9916-0x9922 (13 bytes)
+ *
+ * Stores R6 to G_PCIE_TXN_COUNT_LO (0x05A6), copies to R7,
+ * calls bank1 helper 0xE77A, stores 1 to IDATA[0x65].
+ *
+ * Original disassembly:
+ *   9916: mov dptr, #0x05a6
+ *   9919: mov a, r6
+ *   991a: movx @dptr, a        ; store txn idx
+ *   991b: mov r7, a
+ *   991c: lcall 0xe77a         ; bank1 helper
+ *   991f: mov r0, #0x65
+ *   9921: mov @r0, #0x01       ; IDATA[0x65] = 1
+ *   9923: ret (actually continues to 9923)
+ */
+void pcie_store_txn_idx(uint8_t idx)
+{
+    G_PCIE_TXN_COUNT_LO = idx;
+    /* Call bank1 helper - simplified */
+    *(__idata uint8_t *)0x65 = 0x01;
+}
+
+/*
+ * pcie_lookup_config_05c0 - Look up in config table at 0x05C0
+ * Address: 0x9923-0x992f (13 bytes)
+ *
+ * Reads index from 0x05A6, multiplies by 0x22 (34),
+ * adds to 0x05C0, returns via ljmp to 0x0dd1.
+ *
+ * Original disassembly:
+ *   9923: mov dptr, #0x05a6
+ *   9926: movx a, @dptr        ; A = txn index
+ *   9927: mov dptr, #0x05c0    ; base table
+ *   992a: mov b, #0x22         ; entry size 34 bytes
+ *   992d: ljmp 0x0dd1          ; table lookup helper
+ */
+__xdata uint8_t *pcie_lookup_config_05c0(void)
+{
+    uint8_t idx = G_PCIE_TXN_COUNT_LO;
+    uint16_t addr = 0x05C0 + ((uint16_t)idx * 0x22);
+    return (__xdata uint8_t *)addr;
+}
+
+/*
+ * pcie_lookup_config_05bd - Look up in config table at 0x05BD
+ * Address: 0x9930-0x994a (27 bytes)
+ *
+ * Reads 0x05A6, multiplies by 0x22, adds to 0x05BD, reads result,
+ * adds 4, stores to IDATA[0x64], carries to IDATA[0x63],
+ * sets R7=0x40, R6=0x01, R5=0, R4=0, then calls 0x0dc5 with DPTR=0xB220.
+ *
+ * Original disassembly:
+ *   9930: mov dptr, #0x05a6
+ *   9933: movx a, @dptr
+ *   9934: mov b, #0x22
+ *   9937: mov dptr, #0x05bd    ; different table offset
+ *   993a: lcall 0x0dd1         ; table lookup
+ *   993d: movx a, @dptr
+ *   993e: add a, #0x04         ; add 4 to result
+ *   9940: mov r0, #0x64
+ *   9942: mov @r0, a           ; IDATA[0x64] = result + 4
+ *   9943: clr a
+ *   9944: rlc a                ; carry to A
+ *   9945: dec r0
+ *   9946: mov @r0, a           ; IDATA[0x63] = carry
+ *   9947: mov r7, #0x40
+ *   9949: mov r6, #0x01
+ *   994b: clr a
+ *   994c: mov r5, a
+ *   994d: mov r4, a
+ *   994e: mov dptr, #0xb220
+ *   9951: ljmp 0x0dc5          ; dword store helper
+ */
+void pcie_setup_buffer_from_config(void)
+{
+    uint8_t idx = G_PCIE_TXN_COUNT_LO;
+    uint16_t addr = 0x05BD + ((uint16_t)idx * 0x22);
+    uint8_t val = XDATA8(addr);
+    uint8_t result = val + 4;
+    uint8_t carry = (result < val) ? 1 : 0;
+
+    *(__idata uint8_t *)0x64 = result;
+    *(__idata uint8_t *)0x63 = carry;
+
+    /* Store 0x00010040 to 0xB220 (PCIe data register) */
+    XDATA8(0xB220) = 0x40;
+    XDATA8(0xB221) = 0x01;
+    XDATA8(0xB222) = 0x00;
+    XDATA8(0xB223) = 0x00;
+}
+
+/*
+ * pcie_shift_r7_to_r6 - Shift R7 right twice and mask
+ * Address: 0x9954-0x9961 (14 bytes)
+ *
+ * Takes R7, shifts right twice (divide by 4), masks to 6 bits,
+ * stores to R6, then does table lookup at 0x05A6 with B=0x22.
+ *
+ * Original disassembly:
+ *   9954: mov a, r7
+ *   9955: rrc a               ; shift right through carry
+ *   9956: rrc a               ; shift right again
+ *   9957: anl a, #0x3f        ; mask to 6 bits
+ *   9959: mov r6, a
+ *   995a: mov dptr, #0x05a6
+ *   995d: movx a, @dptr
+ *   995e: mov b, #0x22
+ *   9961: ret
+ */
+uint8_t pcie_calc_queue_idx(uint8_t val)
+{
+    uint8_t result = (val >> 2) & 0x3F;
+    return result;
+}
+
+/*
+ * pcie_lookup_from_idata26 - Look up using IDATA[0x26] as index
+ * Address: 0x9962-0x9969 (8 bytes)
+ *
+ * Reads IDATA[0x26], multiplies by 0x22, jumps to 0x0dd1.
+ *
+ * Original disassembly:
+ *   9962: mov a, 0x26         ; A = IDATA[0x26]
+ *   9964: mov b, #0x22
+ *   9967: ljmp 0x0dd1
+ */
+__xdata uint8_t *pcie_lookup_from_idata26(void)
+{
+    uint8_t idx = *(__idata uint8_t *)0x26;
+    /* Base address implied by caller's DPTR setup */
+    return (__xdata uint8_t *)(0x05B4 + ((uint16_t)idx * 0x22));
+}
+
+/*
+ * pcie_check_txn_count - Compare transaction counts
+ * Address: 0x996a-0x9976 (13 bytes)
+ *
+ * Reads 0x05A7 into R7, reads 0x0A5B into R6,
+ * subtracts R7 from R6 to check difference.
+ *
+ * Original disassembly:
+ *   996a: mov dptr, #0x05a7
+ *   996d: movx a, @dptr       ; A = [0x05A7]
+ *   996e: mov r7, a
+ *   996f: mov dptr, #0x0a5b
+ *   9972: movx a, @dptr       ; A = [0x0A5B]
+ *   9973: mov r6, a
+ *   9974: clr c
+ *   9975: subb a, r7          ; A = R6 - R7
+ *   9976: ret
+ */
+uint8_t pcie_check_txn_count(void)
+{
+    uint8_t count_hi = G_PCIE_TXN_COUNT_HI;
+    uint8_t count_ref = XDATA8(0x0A5B);
+    return count_ref - count_hi;
+}
+
+/*
+ * pcie_lookup_05b6 - Look up in table at 0x05B6
+ * Address: 0x9977-0x997f (9 bytes)
+ *
+ * Sets DPTR=0x05B6, B=0x22, jumps to table lookup helper.
+ *
+ * Original disassembly:
+ *   9977: mov dptr, #0x05b6
+ *   997a: mov b, #0x22
+ *   997d: ljmp 0x0dd1
+ */
+__xdata uint8_t *pcie_lookup_05b6(uint8_t idx)
+{
+    uint16_t addr = 0x05B6 + ((uint16_t)idx * 0x22);
+    return (__xdata uint8_t *)addr;
+}
+
+/*
+ * pcie_store_to_05b8 - Store R7 to table at 0x05B8
+ * Address: 0x9980-0x9989 (10 bytes)
+ *
+ * Sets DPTR=0x05B8, stores A (from R7), multiplies by 0x22 for lookup.
+ *
+ * Original disassembly:
+ *   9980: mov dptr, #0x05b8
+ *   9983: mov a, r7
+ *   9984: mov b, #0x22
+ *   9987: ljmp 0x0dd1
+ */
+void pcie_store_to_05b8(uint8_t idx, uint8_t val)
+{
+    uint16_t addr = 0x05B8 + ((uint16_t)idx * 0x22);
+    XDATA8(addr) = val;
+}
+
+/*
+ * pcie_store_r6_to_05a6 - Store R6 to 0x05A6 and call helper
+ * Address: 0x998a-0x9995 (12 bytes)
+ *
+ * Stores R6 to 0x05A6, copies to R7, calls 0xE77A, sets IDATA[0x65].
+ *
+ * Original disassembly:
+ *   998a: mov a, r6
+ *   998b: mov dptr, #0x05a6
+ *   998e: movx @dptr, a
+ *   998f: mov r7, a
+ *   9990: lcall 0xe77a
+ *   9993: mov r0, #0x65
+ *   9995: ret
+ */
+void pcie_store_r6_to_05a6(uint8_t val)
+{
+    G_PCIE_TXN_COUNT_LO = val;
+    /* bank1 helper 0xE77A would be called here */
+}
+
+/*
+ * pcie_lookup_r3_multiply - Multiply R3 by 0x22 for table lookup
+ * Address: 0x9996-0x999c (7 bytes)
+ *
+ * Takes R3, multiplies by 0x22, jumps to helper.
+ *
+ * Original disassembly:
+ *   9996: mov a, r3
+ *   9997: mov b, #0x22
+ *   999a: ljmp 0x0dd1
+ */
+__xdata uint8_t *pcie_lookup_r3_multiply(uint8_t idx)
+{
+    /* DPTR base set by caller */
+    return (__xdata uint8_t *)(0x05B4 + ((uint16_t)idx * 0x22));
+}
+
+/*
+ * pcie_init_b296_regs - Initialize PCIe registers at 0xB296
+ * Address: 0x999d-0x99ae (18 bytes)
+ *
+ * Writes 0x01, 0x02, 0x04 to 0xB296 (status clear sequence),
+ * then writes 0x0F to 0xB254 (trigger).
+ *
+ * Original disassembly:
+ *   999d: mov dptr, #0xb296
+ *   99a0: mov a, #0x01
+ *   99a2: movx @dptr, a        ; clear bit 0 flag
+ *   99a3: inc a
+ *   99a4: movx @dptr, a        ; write 0x02
+ *   99a5: mov a, #0x04
+ *   99a7: movx @dptr, a        ; write 0x04
+ *   99a8: mov dptr, #0xb254
+ *   99ab: mov a, #0x0f
+ *   99ad: movx @dptr, a        ; trigger = 0x0F
+ *   99ae: ret
+ */
+void pcie_init_b296_regs(void)
+{
+    REG_PCIE_STATUS = 0x01;  /* Clear flag 0 */
+    REG_PCIE_STATUS = 0x02;  /* Clear flag 1 */
+    REG_PCIE_STATUS = 0x04;  /* Clear flag 2 */
+    REG_PCIE_TRIGGER = 0x0F; /* Trigger transaction */
+}
+
+/*
+ * pcie_read_and_store_idata - Read DPTR and store to IDATA
+ * Address: 0x99af-0x99bb (13 bytes)
+ *
+ * Reads 2 bytes from DPTR+1, adds 2 to second byte,
+ * stores to IDATA[0x64:0x63] with carry propagation.
+ *
+ * Original disassembly:
+ *   99af: movx a, @dptr
+ *   99b0: mov r6, a
+ *   99b1: inc dptr
+ *   99b2: movx a, @dptr
+ *   99b3: add a, #0x02        ; add 2
+ *   99b5: dec r0
+ *   99b6: mov @r0, a          ; store to IDATA
+ *   99b7: clr a
+ *   99b8: addc a, r6          ; add carry to high byte
+ *   99b9: dec r0
+ *   99ba: mov @r0, a
+ *   99bb: ret
+ */
+void pcie_read_and_store_idata(__xdata uint8_t *ptr)
+{
+    uint8_t hi = ptr[0];
+    uint8_t lo = ptr[1];
+    uint8_t new_lo = lo + 2;
+    uint8_t new_hi = hi + ((new_lo < lo) ? 1 : 0);
+
+    *(__idata uint8_t *)0x64 = new_lo;
+    *(__idata uint8_t *)0x63 = new_hi;
+}
+
+/*
+ * pcie_store_r7_to_05b7 - Store R7 to table at 0x05B7
+ * Address: 0x99bc-0x99c5 (10 bytes)
+ *
+ * Sets DPTR=0x05B7, stores R7, multiplies by 0x22.
+ *
+ * Original disassembly:
+ *   99bc: mov dptr, #0x05b7
+ *   99bf: mov a, r7
+ *   99c0: mov b, #0x22
+ *   99c3: ljmp 0x0dd1
+ */
+void pcie_store_r7_to_05b7(uint8_t idx, uint8_t val)
+{
+    uint16_t addr = 0x05B7 + ((uint16_t)idx * 0x22);
+    XDATA8(addr) = val;
+}
+
+/*
+ * pcie_set_0a5b_flag - Set flag at 0x0A5B
+ * Address: 0x99c6-0x99cd (8 bytes)
+ *
+ * Stores A to DPTR, then writes 1 to 0x0A5B.
+ *
+ * Original disassembly:
+ *   99c6: movx @dptr, a
+ *   99c7: mov dptr, #0x0a5b
+ *   99ca: mov a, #0x01
+ *   99cc: movx @dptr, a
+ *   99cd: ret
+ */
+void pcie_set_0a5b_flag(__xdata uint8_t *ptr, uint8_t val)
+{
+    *ptr = val;
+    XDATA8(0x0A5B) = 0x01;
+}
+
+/*
+ * pcie_inc_0a5b - Increment value at 0x0A5B
+ * Address: 0x99ce-0x99d4 (7 bytes)
+ *
+ * Reads 0x0A5B, increments, writes back.
+ *
+ * Original disassembly:
+ *   99ce: mov dptr, #0x0a5b
+ *   99d1: movx a, @dptr
+ *   99d2: inc a
+ *   99d3: movx @dptr, a
+ *   99d4: ret
+ */
+void pcie_inc_0a5b(void)
+{
+    uint8_t val = XDATA8(0x0A5B);
+    XDATA8(0x0A5B) = val + 1;
+}
+
+/*
+ * pcie_lookup_and_store_idata - Table lookup and store result
+ * Address: 0x99d5-0x99df (11 bytes)
+ *
+ * Calls table lookup helper, reads result, stores to IDATA[0x63:0x64].
+ *
+ * Original disassembly:
+ *   99d5: lcall 0x0dd1        ; table lookup
+ *   99d8: movx a, @dptr       ; read result
+ *   99d9: mov r0, #0x63
+ *   99db: mov @r0, #0x00      ; IDATA[0x63] = 0
+ *   99dd: inc r0
+ *   99de: mov @r0, a          ; IDATA[0x64] = result
+ *   99df: ret
+ */
+void pcie_lookup_and_store_idata(uint8_t idx, uint16_t base)
+{
+    uint16_t addr = base + ((uint16_t)idx * 0x22);
+    uint8_t val = XDATA8(addr);
+
+    *(__idata uint8_t *)0x63 = 0x00;
+    *(__idata uint8_t *)0x64 = val;
+}
+
+/*
+ * pcie_write_config_and_trigger - Write to DPTR and trigger PCIe
+ * Address: 0x99e0-0x99ea (11 bytes)
+ *
+ * Stores A to DPTR, reads 0xB480, sets bit 0, writes back.
+ * This triggers a PCIe configuration write.
+ *
+ * Original disassembly:
+ *   99e0: movx @dptr, a       ; write value
+ *   99e1: mov dptr, #0xb480
+ *   99e4: movx a, @dptr       ; read control reg
+ *   99e5: anl a, #0xfe        ; clear bit 0
+ *   99e7: orl a, #0x01        ; set bit 0
+ *   99e9: movx @dptr, a       ; write back
+ *   99ea: ret
+ */
+void pcie_write_config_and_trigger(__xdata uint8_t *ptr, uint8_t val)
+{
+    uint8_t ctrl;
+
+    *ptr = val;
+
+    ctrl = REG_PCIE_LINK_CTRL;
+    ctrl = (ctrl & 0xFE) | 0x01;
+    REG_PCIE_LINK_CTRL = ctrl;
+}
+
+/*
+ * pcie_get_status_bit2 - Extract bit 2 from PCIe status
+ * Address: 0x99eb-0x99f5 (11 bytes)
+ *
+ * Reads 0xB296, masks bit 2, shifts right twice, masks to 6 bits.
+ *
+ * Original disassembly:
+ *   99eb: mov dptr, #0xb296
+ *   99ee: movx a, @dptr
+ *   99ef: anl a, #0x04        ; isolate bit 2
+ *   99f1: rrc a               ; shift right
+ *   99f2: rrc a               ; shift again
+ *   99f3: anl a, #0x3f        ; mask
+ *   99f5: ret
+ */
+uint8_t pcie_get_status_bit2(void)
+{
+    uint8_t val = REG_PCIE_STATUS;
+    val = (val & 0x04) >> 2;
+    return val & 0x3F;
+}
+
+/*
+ * pcie_init_idata_65_63 - Initialize IDATA transfer params
+ * Address: 0x99f6-0x99ff (10 bytes)
+ *
+ * Sets IDATA[0x65]=0x0F, IDATA[0x63]=0x00, increments R0.
+ *
+ * Original disassembly:
+ *   99f6: mov r0, #0x65
+ *   99f8: mov @r0, #0x0f      ; IDATA[0x65] = 0x0F
+ *   99fa: mov r0, #0x63
+ *   99fc: mov @r0, #0x00      ; IDATA[0x63] = 0
+ *   99fe: inc r0
+ *   99ff: ret
+ */
+void pcie_init_idata_65_63(void)
+{
+    *(__idata uint8_t *)0x65 = 0x0F;
+    *(__idata uint8_t *)0x63 = 0x00;
+}
+
+/*
+ * pcie_add_2_to_idata - Add 2 to value and store to IDATA
+ * Address: 0x9a00-0x9a08 (9 bytes)
+ *
+ * Adds 2 to A, stores to IDATA[0x64], propagates carry to IDATA[0x63].
+ *
+ * Original disassembly:
+ *   9a00: add a, #0x02
+ *   9a02: dec r0
+ *   9a03: mov @r0, a          ; store result
+ *   9a04: clr a
+ *   9a05: rlc a               ; get carry
+ *   9a06: dec r0
+ *   9a07: mov @r0, a          ; store carry
+ *   9a08: ret
+ */
+void pcie_add_2_to_idata(uint8_t val)
+{
+    uint8_t result = val + 2;
+    uint8_t carry = (result < val) ? 1 : 0;
+
+    *(__idata uint8_t *)0x64 = result;
+    *(__idata uint8_t *)0x63 = carry;
+}
+
+/*
+ * pcie_lookup_r6_multiply - Multiply R6 by 0x22 for table lookup
+ * Address: 0x9a09-0x9a0f (7 bytes)
+ *
+ * Takes R6, multiplies by 0x22, jumps to helper.
+ *
+ * Original disassembly:
+ *   9a09: mov a, r6
+ *   9a0a: mov b, #0x22
+ *   9a0d: ljmp 0x0dd1
+ */
+__xdata uint8_t *pcie_lookup_r6_multiply(uint8_t idx)
+{
+    /* DPTR base set by caller */
+    return (__xdata uint8_t *)(0x05BD + ((uint16_t)idx * 0x22));
+}
+
+/*
+ * pcie_lookup_05bd - Look up in table at 0x05BD
+ * Address: 0x9a10-0x9a1f (16 bytes)
+ *
+ * Sets DPTR=0x05BD, reads index from 0x05A6, multiplies by 0x22.
+ *
+ * Original disassembly:
+ *   9a10: mov dptr, #0x05bd
+ *   ... (continues with table lookup)
+ */
+__xdata uint8_t *pcie_lookup_05bd(void)
+{
+    uint8_t idx = G_PCIE_TXN_COUNT_LO;
+    uint16_t addr = 0x05BD + ((uint16_t)idx * 0x22);
+    return (__xdata uint8_t *)addr;
+}
+
+/*
+ * pcie_set_byte_enables_0f - Set byte enables to 0x0F
+ * Address: 0x9a3b-0x9a45 (11 bytes)
+ *
+ * Writes 0x0F to REG_PCIE_BYTE_EN (0xB254).
+ * This enables all 4 byte lanes for PCIe transactions.
+ *
+ * Original disassembly:
+ *   9a3b: mov dptr, #0xb254
+ *   9a3e: mov a, #0x0f
+ *   9a40: movx @dptr, a
+ *   ... (may continue)
+ */
+void pcie_set_byte_enables_0f(void)
+{
+    REG_PCIE_TRIGGER = 0x0F;
+}
+
+/*
+ * pcie_setup_buffer_params_ext - Extended buffer parameter setup
+ * Address: 0x9a46-0x9a6b (38 bytes)
+ *
+ * Sets up PCIe buffer parameters for DMA transfers.
+ * Reads configuration from table, calculates addresses.
+ */
+void pcie_setup_buffer_params_ext(uint8_t idx)
+{
+    uint16_t table_addr = 0x05B4 + ((uint16_t)idx * 0x22);
+    uint8_t val;
+
+    val = XDATA8(table_addr);
+    /* Setup buffer pointers based on config */
+    (void)val;
+}
+
+/*
+ * pcie_get_link_speed_masked - Get link speed with mask
+ * Address: 0x9a6c-0x9aa2 (55 bytes)
+ *
+ * Reads link speed from PCIe status registers.
+ * Returns speed code in bits 7:5.
+ */
+uint8_t pcie_get_link_speed_masked(void)
+{
+    uint8_t val = REG_PCIE_LINK_STATUS;
+    return val & 0xE0;  /* Bits 7:5 are link speed */
+}
+
+/*
+ * pcie_clear_address_regs_full - Clear all PCIe address registers
+ * Address: 0x9aa3-0x9ab2 (16 bytes)
+ *
+ * Clears PCIe address registers 0xB218-0xB21B.
+ *
+ * Original disassembly:
+ *   9aa3: mov dptr, #0xb218
+ *   9aa6: clr a
+ *   9aa7: movx @dptr, a
+ *   9aa8: inc dptr
+ *   9aa9: movx @dptr, a
+ *   9aaa: inc dptr
+ *   9aab: movx @dptr, a
+ *   9aac: inc dptr
+ *   9aad: movx @dptr, a
+ *   9aae: ret
+ */
+void pcie_clear_address_regs_full(void)
+{
+    REG_PCIE_ADDR_0 = 0;
+    REG_PCIE_ADDR_1 = 0;
+    REG_PCIE_ADDR_2 = 0;
+    REG_PCIE_ADDR_3 = 0;
+}
+
+/*
+ * pcie_inc_txn_count - Increment transaction count at 0x05A6/0x05A7
+ * Address: 0x9ab3-0x9ab9 (7 bytes)
+ *
+ * Increments the 16-bit transaction counter.
+ *
+ * Original disassembly:
+ *   9ab3: mov dptr, #0x05a6
+ *   9ab6: movx a, @dptr
+ *   9ab7: inc a
+ *   9ab8: movx @dptr, a
+ *   9ab9: ret
+ */
+void pcie_inc_txn_count(void)
+{
+    uint8_t val = G_PCIE_TXN_COUNT_LO;
+    G_PCIE_TXN_COUNT_LO = val + 1;
+}
+
+/*
+ * pcie_tlp_handler_b104 - Main PCIe TLP handler
+ * Address: 0xb104-0xb1ca (~199 bytes)
+ *
+ * Handles PCIe TLP (Transaction Layer Packet) processing.
+ * This is the main entry point for TLP-related operations.
+ *
+ * Uses globals:
+ *   0x0aa4: TLP config base
+ *   0x0aa8-0x0aa9: TLP count high/low
+ *   0x0aaa: TLP status
+ *   IDATA 0x51-0x52: Local counters
+ *
+ * Calls:
+ *   0x0dc5, 0xb820, 0xbe02, 0xb8ae, 0xb848, etc.
+ */
+uint8_t pcie_tlp_handler_b104(void)
+{
+    /* TODO: Implement full TLP handler */
+    /* This is a complex function that processes TLP packets */
+    /* involving queue management and DMA operations */
+    return 1;  /* Return success for now */
+}
+
+/*
+ * pcie_tlp_handler_b28c - Secondary PCIe TLP handler
+ * Address: 0xb28c-0xb401 (~374 bytes)
+ *
+ * Handles secondary TLP processing operations.
+ */
+void pcie_tlp_handler_b28c(void)
+{
+    /* TODO: Implement secondary TLP handler */
+}
+
+/*
+ * pcie_tlp_handler_b402 - Tertiary PCIe TLP handler
+ * Address: 0xb402-0xb623 (~546 bytes)
+ *
+ * Handles tertiary TLP processing operations.
+ */
+void pcie_tlp_handler_b402(void)
+{
+    /* TODO: Implement tertiary TLP handler */
+}
+
+/*
+ * nvme_cmd_setup_b624 - NVMe command setup
+ * Address: 0xb624-0xb6ce (~171 bytes)
+ *
+ * Sets up NVMe command structures for TLP processing.
+ */
+void nvme_cmd_setup_b624(void)
+{
+    /* TODO: Implement NVMe command setup */
+}
+
+/*
+ * nvme_cmd_setup_b6cf - NVMe command setup variant
+ * Address: 0xb6cf-0xb778 (~170 bytes)
+ *
+ * Variant of NVMe command setup.
+ */
+void nvme_cmd_setup_b6cf(void)
+{
+    /* TODO: Implement NVMe command setup variant */
+}
+
+/*
+ * nvme_cmd_setup_b779 - NVMe command setup variant 2
+ * Address: 0xb779-0xb81f (~167 bytes)
+ *
+ * Second variant of NVMe command setup.
+ */
+void nvme_cmd_setup_b779(void)
+{
+    /* TODO: Implement NVMe command setup variant 2 */
+}
+
+/*
+ * nvme_queue_b820 - NVMe queue helper
+ * Address: 0xb820-0xb824 (5 bytes)
+ *
+ * Simple queue operation helper.
+ */
+uint8_t nvme_queue_b820(void)
+{
+    /* Read from queue and return */
+    return XDATA8(0x0aa8);
+}
+
+/*
+ * nvme_queue_b825 - NVMe queue helper 2
+ * Address: 0xb825-0xb832 (14 bytes)
+ *
+ * Queue helper for DMA setup.
+ */
+void nvme_queue_b825(void)
+{
+    /* TODO: Implement queue helper 2 */
+}
+
+/*
+ * nvme_queue_b833 - NVMe queue helper 3
+ * Address: 0xb833-0xb837 (5 bytes)
+ */
+void nvme_queue_b833(void)
+{
+    /* TODO: Implement queue helper 3 */
+}
+
+/*
+ * nvme_queue_b838 - NVMe queue helper 4
+ * Address: 0xb838-0xb847 (16 bytes)
+ */
+void nvme_queue_b838(void)
+{
+    /* TODO: Implement queue helper 4 */
+}
+
+/*
+ * nvme_queue_b848 - NVMe queue with write
+ * Address: 0xb848-0xb84f (8 bytes)
+ *
+ * Reads from DPL, masks, writes to DPTR + param offset.
+ */
+uint8_t nvme_queue_b848(uint8_t param)
+{
+    uint8_t val;
+    /* Original reads from XDATA[DPTR], we use a temp approach */
+    val = XDATA8(0xc8aa + param);  /* Approximation */
+    return val;
+}
+
+/*
+ * nvme_queue_b850 - NVMe queue store
+ * Address: 0xb850-0xb850 (1 byte - just movx)
+ */
+void nvme_queue_b850(void)
+{
+    /* Single instruction - store */
+}
+
+/*
+ * nvme_queue_b851 - NVMe queue increment
+ * Address: 0xb851-0xb880 (48 bytes)
+ *
+ * Queue increment and management.
+ */
+void nvme_queue_b851(void)
+{
+    /* TODO: Implement queue increment */
+}
+
+/*
+ * nvme_handler_b881 - NVMe handler
+ * Address: 0xb881-0xb8a1 (33 bytes)
+ */
+void nvme_handler_b881(void)
+{
+    /* TODO: Implement NVMe handler */
+}
+
+/*
+ * nvme_handler_b8a2 - NVMe handler 2
+ * Address: 0xb8a2-0xb8b8 (23 bytes)
+ */
+void nvme_handler_b8a2(void)
+{
+    /* TODO: Implement NVMe handler 2 */
+}
+
+/*
+ * nvme_handler_b8b9 - NVMe handler 3
+ * Address: 0xb8b9-0xba05 (~333 bytes)
+ *
+ * Large NVMe event handler.
+ */
+void nvme_handler_b8b9(void)
+{
+    /* TODO: Implement NVMe handler 3 */
+}
+
+/*
+ * nvme_handler_ba06 - NVMe handler 4
+ * Address: 0xba06+
+ *
+ * Final NVMe handler in this range.
+ */
+void nvme_handler_ba06(void)
+{
+    /* TODO: Implement NVMe handler 4 */
+}
+
+/*
+ * pcie_interrupt_handler - Main PCIe interrupt handler
+ * Address: 0xa522-0xa62c (~267 bytes)
+ *
+ * This is the main interrupt handler for PCIe events. It:
+ *   1. Checks various status bits and dispatches to sub-handlers
+ *   2. Manages interrupt acknowledgment
+ *   3. Coordinates NVMe completion events
+ *
+ * Uses globals:
+ *   0x0af1: PCIe interrupt status
+ *   0x09fa: PCIe event flags
+ *   0x0a9d-0x0a9e: Transaction state
+ *   0x0ad7: Interrupt control
+ *   0x0ade-0x0adf: Additional state
+ *
+ * Calls sub-handlers at:
+ *   0xa374, 0xa3c4, 0xa34f, 0xa310, 0xa2df, 0xe890, etc.
+ */
+void pcie_interrupt_handler(void)
+{
+    uint8_t status;
+    uint8_t event_flags;
+    uint8_t result;
+
+    /* Phase 1: Check interrupt source 0x03 */
+    /* R1 = 0x03, call 0xa374 to check status */
+    /* If bit 7 set, process queue interrupt */
+
+    status = XDATA8(0x0af1);
+    if (status & 0x10) {
+        /* Check event flags at 0x09fa */
+        event_flags = XDATA8(0x09fa);
+        if (event_flags & 0x81) {
+            /* Call queue handler 0xa62d */
+            /* Set bit 2 in response */
+            XDATA8(0x09fa) = event_flags | 0x04;
+        }
+    }
+
+    /* Phase 2: Check interrupt source 0x8f */
+    /* Similar pattern - check status, dispatch */
+
+    status = XDATA8(0x0af1);
+    if (status & 0x10) {
+        event_flags = XDATA8(0x09fa);
+        if (event_flags & 0x81) {
+            /* Call dispatch 0x0557 */
+            /* If result, call queue handler and set bits */
+            XDATA8(0x09fa) = event_flags | 0x1f;
+        }
+    }
+
+    /* Phase 3: Check bit 1 status */
+    /* Call helper 0xa34f, if bit 1 set, process */
+
+    /* Phase 4: Check bit 0 status */
+    /* Extended processing with state management */
+
+    /* Clear transaction state */
+    XDATA8(0x0a9d) = 0;
+
+    /* Phase 5: Check bit 2 status */
+    /* Error handling path */
+
+    /* Phase 6: Final status checks */
+    /* Bit 3 check with cleanup */
+}
+
+/*
+ * pcie_queue_handler_a62d - Queue event handler
+ * Address: 0xa62d-0xa636 (10 bytes)
+ *
+ * Handles PCIe queue events.
+ *
+ * Original disassembly:
+ *   a62d: lcall 0xe7ae
+ *   a630: mov dptr, #0xe710
+ *   a633: movx a, @dptr
+ *   a634: anl a, #0xe0
+ *   a636: ret
+ */
+uint8_t pcie_queue_handler_a62d(void)
+{
+    /* Call bank 1 handler at 0xe7ae */
+    /* Read status from 0xe710, mask with 0xe0 */
+    return XDATA8(0xe710) & 0xe0;
+}
+
+/*
+ * pcie_set_interrupt_flag - Set interrupt flag
+ * Address: 0xa637-0xa643 (13 bytes)
+ *
+ * Sets interrupt control flag and clears state.
+ *
+ * Original disassembly:
+ *   a637: mov a, #0x01
+ *   a639: mov dptr, #0x0ad7
+ *   a63c: movx @dptr, a
+ *   a63d: mov dptr, #0x0ade
+ *   a640: clr a
+ *   a641: movx @dptr, a
+ *   a642: inc dptr
+ *   a643: ret
+ */
+void pcie_set_interrupt_flag(void)
+{
+    XDATA8(0x0ad7) = 0x01;
+    XDATA8(0x0ade) = 0;
+}

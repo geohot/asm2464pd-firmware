@@ -71,7 +71,7 @@
 //=============================================================================
 // Core USB registers (0x9000-0x901F)
 #define REG_USB_STATUS          XDATA_REG8(0x9000)
-#define REG_PCIE_LINK_STATUS    XDATA_REG8(0xB480)  // PCIe link status (bit 0 = link up)
+#define REG_PCIE_LINK_CTRL      XDATA_REG8(0xB480)  // PCIe link control (bit 0 = link up)
 #define   USB_STATUS_ACTIVE       0x01  // Bit 0: USB active/pending
 #define   USB_STATUS_INDICATOR    0x10  // Bit 4: USB status indicator
 #define   USB_STATUS_CONNECTED    0x80  // Bit 7: USB ready/connected
@@ -536,6 +536,8 @@
 //=============================================================================
 // Debug/Interrupt (0xE600-0xE6FF)
 //=============================================================================
+#define REG_DEBUG_INT_E62F      XDATA_REG8(0xE62F)  // Debug interrupt 0x62F
+#define REG_DEBUG_INT_E65F      XDATA_REG8(0xE65F)  // Debug interrupt 0x65F
 #define REG_DEBUG_INT_E661      XDATA_REG8(0xE661)
 
 //=============================================================================

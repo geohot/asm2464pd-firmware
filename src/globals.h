@@ -206,6 +206,8 @@ __idata __at(0x72) extern uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_FLASH_ERROR_0         XDATA_VAR8(0x0AA8)  /* Flash error flag 0 */
 #define G_FLASH_ERROR_1         XDATA_VAR8(0x0AA9)  /* Flash error flag 1 */
 #define G_FLASH_RESET_0AAA      XDATA_VAR8(0x0AAA)  /* Flash reset flag */
+#define G_STATE_HELPER_0AAB     XDATA_VAR8(0x0AAB)  /* State helper variable */
+#define G_STATE_COUNTER_0AAC    XDATA_VAR8(0x0AAC)  /* State counter/index */
 #define G_FLASH_ADDR_0          XDATA_VAR8(0x0AAD)  /* Flash address byte 0 (low) */
 #define G_FLASH_ADDR_1          XDATA_VAR8(0x0AAE)  /* Flash address byte 1 */
 #define G_FLASH_ADDR_2          XDATA_VAR8(0x0AAF)  /* Flash address byte 2 */
@@ -239,6 +241,7 @@ __idata __at(0x72) extern uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_STATE_CTRL_0B3E       XDATA_VAR8(0x0B3E)  /* State control 0x0B3E */
 #define G_STATE_CTRL_0B3F       XDATA_VAR8(0x0B3F)  /* State control 0x0B3F */
 #define G_DMA_ENDPOINT_0578     XDATA_VAR8(0x0578)  /* DMA endpoint control */
+#define G_XFER_STATE_0AF3       XDATA_VAR8(0x0AF3)  /* Transfer state 0x0AF3 */
 
 //=============================================================================
 // USB/SCSI Buffer Area Control (0xD800-0xDFFF)

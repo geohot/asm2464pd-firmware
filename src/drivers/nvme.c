@@ -2255,3 +2255,1065 @@ void nvme_queue_helper(void)
     /* Mark queue as active */
     *(__xdata uint8_t *)0xC47A = 0xFF;
 }
+
+/*===========================================================================
+ * NVMe Command Engine Functions (0x9500-0x9900)
+ *===========================================================================*/
+
+/* Additional registers for NVMe command engine */
+#define REG_CMD_ISSUE           XDATA_REG8(0xE400)
+#define REG_CMD_TAG             XDATA_REG8(0xE401)
+#define REG_CMD_LBA_0           XDATA_REG8(0xE422)
+#define REG_CMD_LBA_1           XDATA_REG8(0xE423)
+#define REG_CMD_LBA_2           XDATA_REG8(0xE424)
+#define REG_CMD_LBA_3           XDATA_REG8(0xE446)
+#define REG_CMD_COUNT_LOW       XDATA_REG8(0xE425)
+#define REG_CMD_COUNT_HIGH      XDATA_REG8(0xE426)
+#define REG_CMD_CTRL            XDATA_REG8(0xE427)
+#define REG_CMD_TIMEOUT         XDATA_REG8(0xE428)
+#define REG_CMD_PARAM_L         XDATA_REG8(0xE42B)
+#define REG_CMD_PARAM_H         XDATA_REG8(0xE42C)
+#define REG_CMD_PARAM           XDATA_REG8(0xE430)
+#define REG_CMD_STATUS          XDATA_REG8(0xE431)
+#define REG_INT_CTRL_C801       XDATA_REG8(0xC801)
+
+/* Additional globals */
+#define G_CMD_STATE_07C4        XDATA_VAR8(0x07C4)
+#define G_WORK_07BF             XDATA_VAR8(0x07BF)
+#define G_WORK_07C0             XDATA_VAR8(0x07C0)
+#define G_WORK_07C1             XDATA_VAR8(0x07C1)
+#define G_WORK_07C3             XDATA_VAR8(0x07C3)
+#define G_WORK_07D5             XDATA_VAR8(0x07D5)
+#define G_WORK_07DC             XDATA_VAR8(0x07DC)
+#define G_WORK_07DD             XDATA_VAR8(0x07DD)
+#define G_WORK_CC89             XDATA_VAR8(0xCC89)
+#define G_WORK_CC88             XDATA_VAR8(0xCC88)
+#define G_WORK_CC8A             XDATA_VAR8(0xCC8A)
+#define G_WORK_CC99             XDATA_VAR8(0xCC99)
+#define G_WORK_CC9A             XDATA_VAR8(0xCC9A)
+#define G_WORK_CC9B             XDATA_VAR8(0xCC9B)
+#define G_WORK_E41C             XDATA_VAR8(0xE41C)
+#define G_WORK_E405             XDATA_VAR8(0xE405)
+#define G_WORK_E420             XDATA_VAR8(0xE420)
+#define G_WORK_E421             XDATA_VAR8(0xE421)
+#define G_WORK_E409             XDATA_VAR8(0xE409)
+
+/* External function declarations */
+extern void FUN_CODE_e120(uint8_t param1, uint8_t param2);
+extern void FUN_CODE_e73a(void);
+extern void FUN_CODE_dd12(uint8_t param1, uint8_t param2);
+extern void FUN_CODE_e1c6(void);
+
+/*
+ * nvme_cmd_store_and_trigger - Store parameter and trigger command
+ * Address: 0x955d-0x9593 (55 bytes)
+ */
+void nvme_cmd_store_and_trigger(uint8_t param, __xdata uint8_t *ptr)
+{
+    ptr[1] = param;
+    G_WORK_CC89 = 1;
+}
+
+/*
+ * nvme_cmd_store_direct - Store parameter directly
+ * Address: 0x955e-0x9577 (26 bytes)
+ */
+void nvme_cmd_store_direct(uint8_t param, __xdata uint8_t *ptr)
+{
+    *ptr = param;
+    G_WORK_CC89 = 1;
+}
+
+/*
+ * nvme_cmd_store_and_read - Store parameter and read work vars
+ * Address: 0x957b-0x959f (37 bytes)
+ */
+uint8_t nvme_cmd_store_and_read(uint8_t param, __xdata uint8_t *ptr)
+{
+    uint8_t val;
+    *ptr = param;
+    val = G_WORK_07BF;
+    val = G_WORK_07C0;
+    return val;
+}
+
+/*
+ * nvme_cmd_read_offset - Read value at offset+1 from pointer
+ * Address: 0x9580-0x959f
+ */
+uint8_t nvme_cmd_read_offset(__xdata uint8_t *ptr)
+{
+    return ptr[1];
+}
+
+/*
+ * nvme_cmd_issue_with_setup - Issue command with setup call
+ * Address: 0x95a0-0x95a1
+ */
+void nvme_cmd_issue_with_setup(uint8_t param)
+{
+    FUN_CODE_e120(2, 0);
+    REG_CMD_ISSUE = param;
+    REG_CMD_TAG = *(__idata uint8_t *)0x03;  /* BANK0_R3 */
+    G_CMD_STATE_07C4 = 6;
+}
+
+/*
+ * nvme_cmd_issue_alternate - Issue command alternate entry
+ * Address: 0x95a2-0x95a4
+ */
+void nvme_cmd_issue_alternate(uint8_t param)
+{
+    FUN_CODE_e120(0, 0);
+    REG_CMD_ISSUE = param;
+    REG_CMD_TAG = *(__idata uint8_t *)0x03;
+    G_CMD_STATE_07C4 = 6;
+}
+
+/*
+ * nvme_cmd_issue_simple - Simple command issue
+ * Address: 0x95a5-0x95a7
+ */
+void nvme_cmd_issue_simple(uint8_t param)
+{
+    REG_CMD_ISSUE = param;
+    REG_CMD_TAG = *(__idata uint8_t *)0x03;
+    G_CMD_STATE_07C4 = 6;
+}
+
+/*
+ * nvme_cmd_issue_with_tag - Issue command with explicit tag
+ * Address: 0x95a8-0x95aa
+ */
+void nvme_cmd_issue_with_tag(uint8_t param1, uint8_t param2)
+{
+    REG_CMD_ISSUE = param1;
+    REG_CMD_TAG = param2;
+    G_CMD_STATE_07C4 = 6;
+}
+
+/*
+ * nvme_cmd_store_pair_trigger - Store pair and trigger
+ * Address: 0x95ab-0x95ae
+ */
+void nvme_cmd_store_pair_trigger(uint8_t param1, __xdata uint8_t *ptr, uint8_t param2)
+{
+    *ptr = param1;
+    ptr[1] = param2;
+    G_CMD_STATE_07C4 = 6;
+}
+
+/*
+ * nvme_cmd_set_state_6 - Set command state to 6
+ * Address: 0x95af-0x95b5
+ */
+void nvme_cmd_set_state_6(void)
+{
+    G_CMD_STATE_07C4 = 6;
+}
+
+/*
+ * nvme_timer_init_95b6 - Initialize timer/CSR
+ * Address: 0x95b6-0x95be
+ */
+void nvme_timer_init_95b6(void)
+{
+    G_WORK_CC9A = 0;
+    G_WORK_CC9B = 0x50;
+    G_WORK_CC99 = 4;
+    G_WORK_CC99 = 2;
+}
+
+/*
+ * nvme_timer_ack_95bf - Timer CSR acknowledge
+ * Address: 0x95bf-0x95c4
+ */
+void nvme_timer_ack_95bf(void)
+{
+    G_WORK_CC99 = 4;
+    G_WORK_CC99 = 2;
+}
+
+/*
+ * nvme_timer_ack_ptr - Timer CSR acknowledge via pointer
+ * Address: 0x95c5-0x95c8
+ */
+void nvme_timer_ack_ptr(__xdata uint8_t *ptr)
+{
+    *ptr = 2;
+}
+
+/*
+ * nvme_cmd_clear_5_bytes - Clear 5 bytes at pointer
+ * Address: 0x95f9-0x9604
+ */
+void nvme_cmd_clear_5_bytes(__xdata uint8_t *ptr)
+{
+    ptr[0] = 0;
+    ptr[1] = 0;
+    ptr[2] = 0;
+    ptr[3] = 0;
+    ptr[4] = 0;
+}
+
+/*
+ * nvme_cmd_set_bit1_e41c - Set bit 1 on E41C register
+ * Address: 0x9605-0x9607
+ */
+void nvme_cmd_set_bit1_e41c(void)
+{
+    uint8_t val = G_WORK_E41C;
+    G_WORK_E41C = (val & 0xFE) | 1;
+}
+
+/*
+ * nvme_cmd_set_bit1_ptr - Set bit 1 on register via pointer
+ * Address: 0x9608-0x960e
+ */
+void nvme_cmd_set_bit1_ptr(__xdata uint8_t *ptr)
+{
+    *ptr = (*ptr & 0xFE) | 1;
+}
+
+/*
+ * nvme_cmd_shift_6 - Shift value right 6 bits and store
+ * Address: 0x960f-0x9616
+ */
+void nvme_cmd_shift_6(__xdata uint8_t *ptr, uint8_t val)
+{
+    *ptr = val >> 6;
+}
+
+/*
+ * nvme_int_ctrl_set_bit4 - Set bit 4 on interrupt control
+ * Address: 0x9617-0x9620
+ */
+void nvme_int_ctrl_set_bit4(void)
+{
+    uint8_t val = REG_INT_CTRL_C801;
+    REG_INT_CTRL_C801 = (val & 0xEF) | 0x10;
+}
+
+/*
+ * nvme_cmd_clear_cc88 - Clear CC88 and CC8A
+ * Address: 0x9621-0x9626
+ */
+void nvme_cmd_clear_cc88(void)
+{
+    uint8_t val = G_WORK_CC88;
+    G_WORK_CC88 = val & 0xF8;
+    G_WORK_CC8A = 0;
+}
+
+/*
+ * nvme_cmd_store_clear_cc8a - Store param and clear CC8A
+ * Address: 0x9627-0x962d
+ */
+void nvme_cmd_store_clear_cc8a(uint8_t param, __xdata uint8_t *ptr)
+{
+    *ptr = param;
+    G_WORK_CC8A = 0;
+}
+
+/*
+ * nvme_flash_check_xor5 - Check flash counter XOR 5
+ * Address: 0x962e-0x9634
+ */
+uint8_t nvme_flash_check_xor5(void)
+{
+    uint8_t val = G_FLASH_OP_COUNTER;
+    return val ^ 5;
+}
+
+/*
+ * nvme_cmd_clear_e405_setup - Clear E405 and setup E421
+ * Address: 0x9635-0x9646
+ */
+void nvme_cmd_clear_e405_setup(void)
+{
+    uint8_t val = G_WORK_E405;
+    G_WORK_E405 = val & 0xF8;
+    G_WORK_E421 = ((*(__idata uint8_t *)0x05) & 7) << 4;  /* BANK0_R5 */
+}
+
+/*
+ * nvme_cmd_clear_bit4_mask - Clear bit 4 and mask to low 3 bits
+ * Address: 0x9647-0x964e
+ */
+uint8_t nvme_cmd_clear_bit4_mask(__xdata uint8_t *ptr)
+{
+    *ptr = *ptr & 0xEF;
+    return *ptr & 0xF8;
+}
+
+/*
+ * nvme_cmd_set_cc89_2 - Set CC89 to 2
+ * Address: 0x964f-0x9655
+ */
+void nvme_cmd_set_cc89_2(void)
+{
+    G_WORK_CC89 = 2;
+}
+
+/*
+ * nvme_cmd_shift_6_store - Shift 6 and store
+ * Address: 0x9656
+ */
+void nvme_cmd_shift_6_store(uint8_t val, __xdata uint8_t *ptr)
+{
+    *ptr = val >> 6;
+}
+
+/*
+ * nvme_cmd_shift_2_mask3 - Shift 2 and mask to 2 bits
+ * Address: 0x9657-0x965c
+ */
+void nvme_cmd_shift_2_mask3(uint8_t val, __xdata uint8_t *ptr)
+{
+    *ptr = (val >> 2) & 3;
+}
+
+/*
+ * nvme_set_flash_counter_5 - Set flash counter to 5
+ * Address: 0x965d-0x9663
+ */
+void nvme_set_flash_counter_5(void)
+{
+    G_FLASH_OP_COUNTER = 5;
+}
+
+/*
+ * nvme_cmd_dd12_0x10 - Call dd12 with params 0, 0x10
+ * Address: 0x9664-0x9674
+ */
+void nvme_cmd_dd12_0x10(void)
+{
+    FUN_CODE_dd12(0, 0x10);
+}
+
+/*
+ * nvme_lba_combine - Combine LBA with 07DD
+ * Address: 0x9677-0x9683
+ */
+uint8_t nvme_lba_combine(uint8_t val)
+{
+    uint8_t tmp = G_WORK_07DD;
+    return val | (tmp * 4);
+}
+
+/*
+ * nvme_set_flash_counter_1 - Set flash counter to 1
+ * Address: 0x9684-0x9686
+ */
+void nvme_set_flash_counter_1(void)
+{
+    G_FLASH_OP_COUNTER = 1;
+}
+
+/*
+ * nvme_set_ptr_1 - Set pointer value to 1
+ * Address: 0x9687-0x968b
+ */
+void nvme_set_ptr_1(__xdata uint8_t *ptr)
+{
+    *ptr = 1;
+}
+
+/*
+ * nvme_nop_968c - NOP function
+ * Address: 0x968c
+ */
+void nvme_nop_968c(void)
+{
+    /* Empty - NOP */
+}
+
+/*
+ * nvme_lba_combine_07dc - Combine with 07DC
+ * Address: 0x968f-0x969c
+ */
+uint8_t nvme_lba_combine_07dc(__xdata uint8_t *ptr)
+{
+    uint8_t tmp = G_WORK_07DC;
+    return *ptr | (tmp * 4);
+}
+
+/*
+ * nvme_set_flash_counter_call_e1c6 - Set counter and call e1c6
+ * Address: 0x969d-0x96a6
+ */
+uint8_t nvme_set_flash_counter_call_e1c6(uint8_t param1, uint8_t param2)
+{
+    G_FLASH_OP_COUNTER = param1;
+    FUN_CODE_e1c6();
+    return param2;
+}
+
+/*
+ * nvme_nop_96a7 - NOP function
+ * Address: 0x96a7-0x96a8
+ */
+void nvme_nop_96a7(void)
+{
+    /* Empty */
+}
+
+/*
+ * nvme_nop_96a9 - NOP function
+ * Address: 0x96a9-0x96ad
+ */
+void nvme_nop_96a9(void)
+{
+    /* Empty */
+}
+
+/*
+ * nvme_call_e73a - Call e73a and return R7
+ * Address: 0x96ae-0x96b7
+ */
+uint8_t nvme_call_e73a(void)
+{
+    FUN_CODE_e73a();
+    return *(__idata uint8_t *)0x07;  /* BANK0_R7 */
+}
+
+/*
+ * nvme_read_offset_1 - Read at offset+1
+ * Address: 0x96b8-0x96be
+ */
+uint8_t nvme_read_offset_1(uint8_t hi, uint8_t lo)
+{
+    uint16_t addr = ((uint16_t)hi << 8) | lo;
+    return *(__xdata uint8_t *)(addr + 1);
+}
+
+/*
+ * nvme_circular_inc_07c1 - Circular increment 07C1
+ * Address: 0x96bf-0x96d3
+ */
+void nvme_circular_inc_07c1(void)
+{
+    uint8_t c1 = G_WORK_07C1;
+    uint8_t d5 = G_WORK_07D5;
+    G_WORK_07C1 = (c1 + 1) & (d5 - 1);
+}
+
+/*
+ * nvme_cmd_calc_store - Calculate and store to work vars
+ * Address: 0x96d4-0x96d5
+ */
+void nvme_cmd_calc_store(uint8_t param1, uint8_t param2)
+{
+    /* Complex calculation involving PSW carry - simplified */
+    G_WORK_07BF = param2 - 0x1C;
+    G_WORK_07C0 = param1;
+}
+
+/*
+ * nvme_cmd_calc_store_3 - Calculate and store with ptr
+ * Address: 0x96d6
+ */
+void nvme_cmd_calc_store_3(uint8_t param1, __xdata uint8_t *ptr, uint8_t param2)
+{
+    *ptr = param1;
+    G_WORK_07BF = param1 - 0x1C;
+    G_WORK_07C0 = param2;
+}
+
+/*
+ * nvme_cmd_calc_store_2 - Calculate and store 2 params
+ * Address: 0x96d7-0x96ed
+ */
+void nvme_cmd_calc_store_2(uint8_t param1, uint8_t param2)
+{
+    G_WORK_07BF = param1 - 0x1C;
+    G_WORK_07C0 = param2;
+}
+
+/*
+ * nvme_get_07c3_mul2 - Get 07C3 * 2
+ * Address: 0x96ee-0x96ef
+ */
+uint8_t nvme_get_07c3_mul2(void)
+{
+    uint8_t val = G_WORK_07C3;
+    return val * 2;
+}
+
+/*
+ * nvme_cmd_store_e420 - Store to E420 and mask E409
+ * Address: 0x96f7-0x9702
+ */
+void nvme_cmd_store_e420(uint8_t param1, __xdata uint8_t *ptr, uint8_t param2)
+{
+    uint8_t val;
+    *ptr = param1;
+    val = G_WORK_E420;
+    G_WORK_E420 = val & 0xC0;
+    val = G_WORK_E420;
+    G_WORK_E420 = val | param2;
+}
+
+/*
+ * nvme_get_work_07c0 - Get work vars and return 07C0
+ * Address: 0x9703-0x9712
+ */
+uint8_t nvme_get_work_07c0(void)
+{
+    uint8_t val;
+    val = G_WORK_07BF;
+    val = G_WORK_07C0;
+    return val;
+}
+
+/*
+ * nvme_store_e420_mask_e409 - Store E420, mask E409
+ * Address: 0x9713-0x971d
+ */
+uint8_t nvme_store_e420_mask_e409(uint8_t param)
+{
+    uint8_t val;
+    G_WORK_E420 = param;
+    val = G_WORK_E409;
+    return val & 0xF1;
+}
+
+/*
+ * nvme_calc_07c1_addr - Calculate address from 07C1
+ * Address: 0x971e-0x9728
+ */
+uint8_t nvme_calc_07c1_addr(void)
+{
+    uint8_t val = G_WORK_07C1;
+    return val * 0x20 + 0x42;
+}
+
+/*
+ * nvme_set_bit6_ptr - Set bit 6 on pointer
+ * Address: 0x9729-0x9740
+ */
+void nvme_set_bit6_ptr(__xdata uint8_t *ptr)
+{
+    *ptr = (*ptr & 0xBF) | 0x40;
+}
+
+/*===========================================================================
+ * NVMe Queue Management Functions (0xa600-0xa800)
+ *===========================================================================*/
+
+/* Additional globals for queue management */
+#define G_QUEUE_STATE_0AD7      XDATA_VAR8(0x0AD7)
+#define G_QUEUE_STATE_0ADE      XDATA_VAR8(0x0ADE)
+#define G_QUEUE_STATE_0ACB      XDATA_VAR8(0x0ACB)
+#define G_QUEUE_STATE_0ACF      XDATA_VAR8(0x0ACF)
+#define G_QUEUE_STATE_0AE0      XDATA_VAR8(0x0AE0)
+#define G_QUEUE_STATE_0AE1      XDATA_VAR8(0x0AE1)
+#define G_TRANSFER_FLAG_0AF2    XDATA_VAR8(0x0AF2)
+#define G_USB_MODE_90E2         XDATA_VAR8(0x90E2)
+#define G_USB_MODE_9092         XDATA_VAR8(0x9092)
+
+/*
+ * nvme_queue_get_e710_masked - Get E710 register masked
+ * Address: 0xa62d-0xa636
+ */
+uint8_t nvme_queue_get_e710_masked(void)
+{
+    extern void FUN_CODE_e7ae(void);
+    uint8_t val;
+    FUN_CODE_e7ae();
+    val = *(__xdata uint8_t *)0xE710;
+    return val & 0xE0;
+}
+
+/*
+ * nvme_queue_init_0ad7 - Initialize queue state 0AD7
+ * Address: 0xa637-0xa638
+ */
+void nvme_queue_init_0ad7(void)
+{
+    G_QUEUE_STATE_0AD7 = 1;
+    G_QUEUE_STATE_0ADE = 0;
+}
+
+/*
+ * nvme_queue_set_0ad7 - Set queue state 0AD7
+ * Address: 0xa639-0xa63b
+ */
+void nvme_queue_set_0ad7(uint8_t param)
+{
+    G_QUEUE_STATE_0AD7 = param;
+    G_QUEUE_STATE_0ADE = 0;
+}
+
+/*
+ * nvme_queue_store_clear_0ade - Store and clear 0ADE
+ * Address: 0xa63c
+ */
+void nvme_queue_store_clear_0ade(uint8_t param, __xdata uint8_t *ptr)
+{
+    *ptr = param;
+    G_QUEUE_STATE_0ADE = 0;
+}
+
+/*
+ * nvme_queue_clear_0ade - Clear 0ADE
+ * Address: 0xa63d-0xa643
+ */
+void nvme_queue_clear_0ade(void)
+{
+    G_QUEUE_STATE_0ADE = 0;
+}
+
+/*
+ * nvme_queue_init_9100 - Initialize with 9100 read
+ * Address: 0xa660-0xa665
+ */
+uint8_t nvme_queue_init_9100(void)
+{
+    uint8_t val;
+    G_QUEUE_STATE_0AD7 = 1;
+    val = REG_USB_LINK_STATUS;
+    return val & 3;
+}
+
+/*
+ * nvme_queue_get_9100 - Get 9100 masked
+ * Address: 0xa666-0xa66c
+ */
+uint8_t nvme_queue_get_9100(void)
+{
+    uint8_t val = REG_USB_LINK_STATUS;
+    return val & 3;
+}
+
+/*
+ * nvme_queue_and_acb_af2 - AND ACB and AF2
+ * Address: 0xa66d-0xa678
+ */
+uint8_t nvme_queue_and_acb_af2(void)
+{
+    uint8_t v1 = G_QUEUE_STATE_0ACB;
+    uint8_t v2 = G_TRANSFER_FLAG_0AF2;
+    return v2 & v1;
+}
+
+/*
+ * nvme_queue_clear_usb_bit0 - Clear USB status bit 0
+ * Address: 0xa679-0xa67e
+ */
+uint8_t nvme_queue_clear_usb_bit0(void)
+{
+    uint8_t val = REG_USB_STATUS;
+    REG_USB_STATUS = val & 0xFE;
+    val = *(__xdata uint8_t *)0x924C;
+    return val & 0xFE;
+}
+
+/*
+ * nvme_queue_set_usb_config - Set USB config bits
+ * Address: 0xa687-0xa691
+ */
+void nvme_queue_set_usb_config(void)
+{
+    uint8_t val = REG_USB_CONFIG;
+    REG_USB_CONFIG = (val & 0xFD) | 2;
+    G_USB_MODE_9092 = 2;
+}
+
+/*
+ * nvme_queue_set_9092 - Set 9092 register
+ * Address: 0xa692-0xa699
+ */
+void nvme_queue_set_9092(uint8_t param)
+{
+    G_USB_MODE_9092 = param;
+}
+
+/*
+ * nvme_queue_init_9e16 - Initialize 9E16 and 9E1D
+ * Address: 0xa69a-0xa6ac
+ */
+void nvme_queue_init_9e16(void)
+{
+    *(__xdata uint8_t *)0x9E16 = 0x40;
+    *(__xdata uint8_t *)0x9E17 = 0;
+    *(__xdata uint8_t *)0x9E1D = 0x40;
+    *(__xdata uint8_t *)0x9E1E = 0;
+}
+
+/*
+ * nvme_queue_init_905x - Initialize 905F/905D/90E3/90A0
+ * Address: 0xa6ad-0xa6c5
+ */
+void nvme_queue_init_905x(void)
+{
+    uint8_t val;
+    val = *(__xdata uint8_t *)0x905F;
+    *(__xdata uint8_t *)0x905F = val & 0xFE;
+    val = *(__xdata uint8_t *)0x905D;
+    *(__xdata uint8_t *)0x905D = val & 0xFE;
+    *(__xdata uint8_t *)0x90E3 = 1;
+    *(__xdata uint8_t *)0x90A0 = 1;
+}
+
+/*
+ * nvme_queue_config_9006 - Configure 9006 and 9094
+ * Address: 0xa6c6-0xa6db
+ */
+void nvme_queue_config_9006(uint8_t param, __xdata uint8_t *ptr)
+{
+    uint8_t val;
+    *ptr = param;
+    val = REG_USB_EP0_CONFIG;
+    REG_USB_EP0_CONFIG = val & 0xFE;
+    val = REG_USB_EP0_CONFIG;
+    REG_USB_EP0_CONFIG = val & 0x7F;
+    REG_USB_EP_CFG2 = 1;
+    REG_USB_EP_CFG2 = 8;
+}
+
+/*
+ * nvme_queue_calc_0ae0_0ae1 - Calculate from 0AE0/0AE1
+ * Address: 0xa6dc-0xa6ee
+ */
+uint8_t nvme_queue_calc_0ae0_0ae1(uint8_t param)
+{
+    uint8_t v1 = G_QUEUE_STATE_0AE1;
+    uint8_t v0 = G_QUEUE_STATE_0AE0;
+    /* Calculate with carry - simplified */
+    return v0 - ((v1 < param) ? 1 : 0);
+}
+
+/*
+ * nvme_queue_get_e302_shift - Get E302 shifted
+ * Address: 0xa6ef-0xa6f5
+ */
+uint8_t nvme_queue_get_e302_shift(void)
+{
+    uint8_t val = *(__xdata uint8_t *)0xE302;
+    return ((val & 0x30) >> 4) - 2;
+}
+
+/*
+ * nvme_queue_shift_param - Shift parameter
+ * Address: 0xa6f6-0xa6fc
+ */
+uint8_t nvme_queue_shift_param(uint8_t param)
+{
+    return (param >> 4) - 2;
+}
+
+/*
+ * nvme_queue_mask_0acf - Mask 0ACF to 5 bits
+ * Address: 0xa6fd-0xa703
+ */
+uint8_t nvme_queue_mask_0acf(void)
+{
+    uint8_t val = G_QUEUE_STATE_0ACF;
+    return val & 0x1F;
+}
+
+/*
+ * nvme_queue_clear_9003 - Clear 9003 register
+ * Address: 0xa71b-0xa721
+ */
+void nvme_queue_clear_9003(void)
+{
+    REG_USB_EP0_STATUS = 0;
+}
+
+/*
+ * nvme_queue_set_bit0_ptr - Set bit 0 on pointer
+ * Address: 0xa72b-0xa731
+ */
+void nvme_queue_set_bit0_ptr(__xdata uint8_t *ptr)
+{
+    *ptr = (*ptr & 0xFE) | 1;
+}
+
+/*
+ * nvme_queue_get_9090_mask - Get 9090 masked to 7 bits
+ * Address: 0xa732-0xa738
+ */
+uint8_t nvme_queue_get_9090_mask(void)
+{
+    uint8_t val = *(__xdata uint8_t *)0x9090;
+    return val & 0x7F;
+}
+
+/*
+ * nvme_queue_set_90e3_2 - Set 90E3 to 2
+ * Address: 0xa739-0xa73f
+ */
+void nvme_queue_set_90e3_2(void)
+{
+    *(__xdata uint8_t *)0x90E3 = 2;
+}
+
+/*===========================================================================
+ * NVMe Admin Command Functions (0xaa00-0xac00)
+ *===========================================================================*/
+
+/* Additional globals for admin commands */
+#define G_WORK_07CA             XDATA_VAR8(0x07CA)
+#define G_WORK_0A57             XDATA_VAR8(0x0A57)
+#define G_WORK_0A58             XDATA_VAR8(0x0A58)
+#define G_WORK_E434             XDATA_VAR8(0xE434)
+#define G_WORK_E435             XDATA_VAR8(0xE435)
+
+/*
+ * nvme_admin_check_param - Check admin parameter
+ * Address: 0xaa2a-0xaa2f
+ */
+void nvme_admin_check_param(uint8_t param)
+{
+    if (param < 0x80) {
+        return;
+    }
+    /* param >= 0x80, continue processing */
+    return;
+}
+
+/*
+ * nvme_admin_nop_aa30 - NOP function
+ * Address: 0xaa30-0xaa32
+ */
+void nvme_admin_nop_aa30(void)
+{
+    /* Empty - NOP */
+}
+
+/*
+ * nvme_admin_nop_aa33 - NOP function
+ * Address: 0xaa33-0xaa35
+ */
+void nvme_admin_nop_aa33(void)
+{
+    /* Empty - NOP */
+}
+
+/*
+ * nvme_admin_set_state_07c4 - Set command state from 07CA
+ * Address: 0xaafb-0xab0c
+ */
+void nvme_admin_set_state_07c4(void)
+{
+    uint8_t val = G_WORK_07CA;
+    if (val == 2) {
+        G_CMD_STATE_07C4 = 0x16;
+    } else {
+        G_CMD_STATE_07C4 = 0x12;
+    }
+}
+
+/*
+ * nvme_admin_call_dd0e_95a0 - Call dd0e and 95a0
+ * Address: 0xab0d-0xab15
+ */
+void nvme_admin_call_dd0e_95a0(void)
+{
+    extern void FUN_CODE_dd0e(void);
+    FUN_CODE_dd0e();
+    nvme_cmd_issue_with_setup(1);
+}
+
+/*
+ * nvme_admin_abd4 - Admin function ABD4
+ * Address: 0xabd4-0xabd6
+ */
+void nvme_admin_abd4(void)
+{
+    /* Stub - complex function */
+}
+
+/*
+ * nvme_admin_abd7 - Admin function ABD7
+ * Address: 0xabd7-0xabe8
+ */
+void nvme_admin_abd7(uint8_t param)
+{
+    /* Stub - complex function with xdata_store_dword calls */
+}
+
+/*
+ * nvme_admin_abe9 - Admin function ABE9
+ * Address: 0xabe9-0xabff
+ */
+void nvme_admin_abe9(uint8_t param1, uint8_t param2, uint8_t param3)
+{
+    /* Stub - complex function with xdata_store_dword calls */
+}
+
+/*===========================================================================
+ * PCIe TLP/NVMe Handler Functions (0xb100-0xba00)
+ *===========================================================================*/
+
+/* Additional registers for PCIe/flash */
+#define REG_FLASH_CMD           XDATA_REG8(0xC880)
+#define REG_FLASH_CSR           XDATA_REG8(0xC881)
+#define REG_FLASH_ADDR_LO       XDATA_REG8(0xC882)
+#define REG_FLASH_ADDR_MD       XDATA_REG8(0xC883)
+#define REG_FLASH_ADDR_HI       XDATA_REG8(0xC884)
+#define REG_FLASH_DATA_LEN      XDATA_REG8(0xC885)
+#define REG_FLASH_DATA_LEN_HI   XDATA_REG8(0xC886)
+#define REG_TIMER3_CSR          XDATA_REG8(0xCCB9)
+#define REG_CPU_STATUS_CC81     XDATA_REG8(0xCC81)
+#define REG_CPU_STATUS_CC91     XDATA_REG8(0xCC91)
+#define G_WORK_CCCF9            XDATA_VAR8(0xCCF9)
+#define G_WORK_CCD9             XDATA_VAR8(0xCCD9)
+
+/* Additional globals for flash */
+#define G_FLASH_RESET_0AAA      XDATA_VAR8(0x0AAA)
+#define G_FLASH_ERROR_0         XDATA_VAR8(0x0AA8)
+#define G_FLASH_ERROR_1         XDATA_VAR8(0x0AA9)
+#define G_FLASH_LEN_LO          XDATA_VAR8(0x0AAB)
+#define G_FLASH_LEN_HI          XDATA_VAR8(0x0AAC)
+
+/*
+ * nvme_pcie_init_b820 - PCIe/flash init
+ * Address: 0xb820-0xb824
+ */
+void nvme_pcie_init_b820(void)
+{
+    extern void xdata_store_dword(uint16_t addr, uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3);
+    xdata_store_dword(0x0AAD, 0, 0, 0, 0);
+    G_FLASH_LEN_LO = 0;
+    G_FLASH_LEN_HI = 0;
+}
+
+/*
+ * nvme_pcie_init_b825 - PCIe/flash init alternate
+ * Address: 0xb825-0xb832
+ */
+void nvme_pcie_init_b825(void)
+{
+    extern void xdata_store_dword(uint16_t addr, uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3);
+    xdata_store_dword(0x0AAD, 0, 0, 0, 0);
+    G_FLASH_LEN_LO = 0;
+    G_FLASH_LEN_HI = 0;
+}
+
+/*
+ * nvme_pcie_init_b833 - PCIe/flash init without LEN_HI
+ * Address: 0xb833-0xb837
+ */
+void nvme_pcie_init_b833(void)
+{
+    extern void xdata_store_dword(uint16_t addr, uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3);
+    xdata_store_dword(0x0AAD, 0, 0, 0, 0);
+    G_FLASH_LEN_LO = 0;
+}
+
+/*
+ * nvme_pcie_init_b838 - PCIe/flash init minimal
+ * Address: 0xb838-0xb847
+ */
+void nvme_pcie_init_b838(void)
+{
+    extern void xdata_store_dword(uint16_t addr, uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3);
+    xdata_store_dword(0x0AAD, 0, 0, 0, 0);
+}
+
+/*
+ * nvme_pcie_get_b848 - Get flash command setup
+ * Address: 0xb848-0xb84f
+ */
+uint8_t nvme_pcie_get_b848(uint8_t param)
+{
+    /* Returns modified flash command value */
+    return param & 0xFC;
+}
+
+/*
+ * nvme_pcie_store_b850 - Store and trigger
+ * Address: 0xb850
+ */
+void nvme_pcie_store_b850(uint8_t param, __xdata uint8_t *ptr)
+{
+    ptr[1] = param;
+}
+
+/*
+ * nvme_pcie_store_b851 - Store to pointer
+ * Address: 0xb851-0xb8b8
+ */
+void nvme_pcie_store_b851(uint8_t param, __xdata uint8_t *ptr)
+{
+    *ptr = param;
+}
+
+/*
+ * nvme_pcie_handler_b8b9 - PCIe timer/event handler
+ * Address: 0xb8b9-0xba05
+ */
+void nvme_pcie_handler_b8b9(void)
+{
+    extern void handler_e3d8(void);
+    extern void handler_e529(uint8_t param);
+    extern void handler_d676(void);
+    extern void handler_e90b(void);
+    extern void FUN_CODE_be8b(void);
+    extern void FUN_CODE_e883(void);
+    extern void FUN_CODE_df79(void);
+
+    uint8_t val;
+
+    /* Check Timer 3 */
+    val = REG_TIMER3_CSR;
+    if ((val >> 1) & 1) {
+        handler_e3d8();
+        REG_TIMER3_CSR = 2;
+    }
+
+    /* Check CC81 */
+    val = REG_CPU_STATUS_CC81;
+    if ((val >> 1) & 1) {
+        uint8_t cmd = G_FLASH_OP_COUNTER;
+        if (cmd == 0x0E || cmd == 0x0D) {
+            REG_CPU_STATUS_CC81 = 2;
+            if (G_FLASH_CMD_TYPE != 0) {
+                handler_e529(0x3B);
+            }
+            handler_d676();
+        } else {
+            handler_e90b();
+            REG_CPU_STATUS_CC81 = 2;
+        }
+    }
+
+    /* Check CC91 */
+    val = REG_CPU_STATUS_CC91;
+    if ((val >> 1) & 1) {
+        REG_CPU_STATUS_CC91 = 2;
+        /* flash_func_0bc8(0xF8, 0x53, 0xFF) */
+    }
+
+    /* Check CC99 */
+    val = G_WORK_CC99;
+    if ((val >> 1) & 1) {
+        uint8_t cmd = G_FLASH_CMD_TYPE;
+        if (cmd == 2) {
+            handler_e529(0x3C);
+            FUN_CODE_be8b();
+        } else if (cmd == 3) {
+            handler_e529(0xFF);
+        } else {
+            FUN_CODE_e883();
+            G_WORK_CC99 = 2;
+        }
+    }
+
+    /* Check CCD9 */
+    val = G_WORK_CCD9;
+    if ((val >> 1) & 1) {
+        G_WORK_CCD9 = 2;
+        *(__xdata uint8_t *)0x0719 = 2;
+    }
+
+    /* Check CCF9 */
+    val = G_WORK_CCCF9;
+    if ((val >> 1) & 1) {
+        G_WORK_CCCF9 = 2;
+        FUN_CODE_df79();
+    }
+}

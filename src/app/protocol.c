@@ -71,17 +71,12 @@ extern void usb_reset_interface(uint8_t param);
 #define ACTION_CODE_2           0x02
 #define ACTION_CODE_3           0x03
 
-/* XDATA locations for protocol state */
-#define XDATA_STATE_CODE        ((__xdata uint8_t *)0x0002)
-#define XDATA_FLASH_RESET       ((__xdata uint8_t *)0x0AAA)
-#define XDATA_STATE_HELPER_B    ((__xdata uint8_t *)0x0AAB)
-#define XDATA_STATE_COUNTER     ((__xdata uint8_t *)0x0AAC)
-
-/* IDATA locations for core handler */
-#define IDATA_CORE_STATE_L      ((__idata uint8_t *)0x16)
-#define IDATA_CORE_STATE_H      ((__idata uint8_t *)0x17)
-#define IDATA_WORK_0E           ((__idata uint8_t *)0x0E)
-#define IDATA_STATE_6A          ((__idata uint8_t *)0x6A)
+/* Note: XDATA locations for protocol state are now defined in globals.h:
+ *   G_IO_CMD_STATE (0x0002) - I/O command state byte
+ *   G_FLASH_RESET_0AAA (0x0AAA) - Flash reset flag
+ *   G_STATE_HELPER_0AAB (0x0AAB) - State helper variable
+ *   G_STATE_COUNTER_0AAC (0x0AAC) - State counter/index
+ */
 
 /*
  * FUN_CODE_2bea - State action dispatcher
@@ -175,7 +170,7 @@ void protocol_state_machine(void)
     uint8_t action_code;
 
     /* Read current state from XDATA[0x0002] */
-    state_code = *XDATA_STATE_CODE;
+    state_code = G_IO_CMD_STATE;
 
     /* Map state code to action code */
     switch (state_code) {
@@ -205,7 +200,7 @@ void protocol_state_machine(void)
     state_action_dispatch(action_code);
 
     /* Store result to IDATA[0x6A] */
-    *IDATA_STATE_6A = 0;  /* Cleared by original code at 0x4951 */
+    I_STATE_6A = 0;  /* Cleared by original code at 0x4951 */
 }
 
 /*
@@ -248,16 +243,16 @@ void handler_3adb(uint8_t param)
     uint16_t calc_addr;
 
     /* Store event parameter to flash reset flag */
-    *XDATA_FLASH_RESET = param;
+    G_FLASH_RESET_0AAA = param;
 
     /* Call transfer helper to get status */
     transfer_func_16a2();
 
     /* Read state counter and update helper */
-    state_counter = *XDATA_STATE_COUNTER;
-    transfer_func_16b7(*XDATA_FLASH_RESET);
-    state_helper = *XDATA_STATE_COUNTER;
-    *XDATA_STATE_HELPER_B = state_helper;
+    state_counter = G_STATE_COUNTER_0AAC;
+    transfer_func_16b7(G_FLASH_RESET_0AAA);
+    state_helper = G_STATE_COUNTER_0AAC;
+    G_STATE_HELPER_0AAB = state_helper;
 
     /* Update DMA status register */
     dma_status = REG_DMA_STATUS;
@@ -272,7 +267,7 @@ void handler_3adb(uint8_t param)
     computed_val = (uint8_t)((uint16_t)state_counter * 0x10);
 
     /* Compute base address: 0xB800 or 0xB840 based on flash reset flag */
-    if (*XDATA_FLASH_RESET != 0) {
+    if (G_FLASH_RESET_0AAA != 0) {
         calc_addr = 0xB840;
     } else {
         calc_addr = 0xB800;
@@ -284,27 +279,27 @@ void handler_3adb(uint8_t param)
 
     /* Check if state changed */
     state_flag = state_helper_15ac() & 0x01;
-    state_helper = *XDATA_STATE_HELPER_B;
+    state_helper = G_STATE_HELPER_0AAB;
 
     if (state_helper != state_flag) {
         /* State changed - handle transition */
         transfer_func_17ed();
         computed_val = state_helper_15af();
 
-        if (*XDATA_FLASH_RESET != 0) {
+        if (G_FLASH_RESET_0AAA != 0) {
             computed_val += 0x04;
         }
-        *IDATA_STATE_6A = computed_val;  /* Using 0x54 proxy */
+        I_STATE_6A = computed_val;
 
         flash_func_1679();
-        *XDATA_FLASH_RESET = 0x01;
+        G_FLASH_RESET_0AAA = 0x01;
 
         transfer_func_17ed();
         computed_val = state_helper_15af();
         computed_val = (computed_val >> 1) & 0x07;
 
-        usb_calc_queue_addr(*IDATA_STATE_6A);
-        *XDATA_FLASH_RESET = computed_val;
+        usb_calc_queue_addr(I_STATE_6A);
+        G_FLASH_RESET_0AAA = computed_val;
 
         /* Flash function does not return */
         flash_func_0bc8();
@@ -314,10 +309,10 @@ void handler_3adb(uint8_t param)
     dma_clear_status();
 
     /* Update state if counter changed */
-    if (*XDATA_STATE_COUNTER != *XDATA_FLASH_RESET) {
+    if (G_STATE_COUNTER_0AAC != G_FLASH_RESET_0AAA) {
         transfer_func_16a2();
-        *XDATA_FLASH_RESET = *XDATA_STATE_COUNTER;
-        transfer_func_16b7(*XDATA_STATE_HELPER_B);
+        G_FLASH_RESET_0AAA = G_STATE_COUNTER_0AAC;
+        transfer_func_16b7(G_STATE_HELPER_0AAB);
     }
 }
 
@@ -395,8 +390,8 @@ void core_handler_4ff2(uint8_t param_2)
     val_lo = 0;  /* Would be from @DPTR */
     val_hi = 0;  /* Would be from @DPTR+1 */
 
-    *IDATA_CORE_STATE_L = val_lo;
-    *IDATA_CORE_STATE_H = val_hi;
+    I_CORE_STATE_L = val_lo;
+    I_CORE_STATE_H = val_hi;
 }
 
 /*
@@ -409,7 +404,7 @@ void core_handler_4ff2(uint8_t param_2)
 void protocol_dispatch(void)
 {
     /* Check if there are events to process */
-    uint8_t state = *XDATA_STATE_CODE;
+    uint8_t state = G_IO_CMD_STATE;
 
     if (state != 0) {
         protocol_state_machine();
@@ -434,9 +429,9 @@ void protocol_init(void)
     dma_clear_status();
 
     /* Clear state counters */
-    *XDATA_FLASH_RESET = 0;
-    *XDATA_STATE_HELPER_B = 0;
-    *XDATA_STATE_COUNTER = 0;
+    G_FLASH_RESET_0AAA = 0;
+    G_STATE_HELPER_0AAB = 0;
+    G_STATE_COUNTER_0AAC = 0;
 
     /* Initialize DMA channels 0-3 */
     for (i = 0; i < 4; i++) {
@@ -548,21 +543,21 @@ void helper_1bcb(void)
 void helper_523c(uint8_t r3, uint8_t r5, uint8_t r7)
 {
     /* Store queue type to 0x0203 */
-    *(__xdata uint8_t *)0x0203 = r7;
+    G_DMA_MODE_SELECT = r7;
 
     /* Store queue flags to 0x020D */
-    *(__xdata uint8_t *)0x020D = r5;
+    G_DMA_PARAM1 = r5;
 
     /* Store additional flag to 0x020E */
-    *(__xdata uint8_t *)0x020E = r3;
+    G_DMA_PARAM2 = r3;
 
     /* Set ready flag at 0x07E5 */
-    *(__xdata uint8_t *)0x07E5 = 0x01;
+    G_TRANSFER_ACTIVE = 0x01;
 
     /* Check USB status bit 0 */
     if (!(REG_USB_STATUS & USB_STATUS_ACTIVE)) {
         /* Bit 0 not set - trigger endpoint and call helper */
-        *(__xdata uint8_t *)0xD80C = 0x01;
+        REG_USB_EP_CSW_STATUS = 0x01;
         helper_1bcb();
     }
 }
@@ -605,14 +600,14 @@ void helper_53a7(void)
     helper_50db();
 
     /* Read counter at 0x000A */
-    counter = *(__xdata uint8_t *)0x000A;
+    counter = G_EP_CHECK_FLAG;
 
     if (counter > 1) {
         /* Decrement counter */
-        (*(__xdata uint8_t *)0x000A)--;
+        G_EP_CHECK_FLAG--;
     } else {
         /* Clear counter and call cleanup */
-        *(__xdata uint8_t *)0x000A = 0;
+        G_EP_CHECK_FLAG = 0;
         helper_5409();
     }
 }
@@ -645,14 +640,12 @@ void helper_53a7(void)
  */
 void helper_53c0(void)
 {
-    __idata uint8_t *src = (__idata uint8_t *)0x6F;
-
-    /* Copy 4 bytes from IDATA[0x6F-0x72] to XDATA 0xD808-0xD80B */
+    /* Copy 4 bytes from IDATA[0x6F-0x72] to CSW residue 0xD808-0xD80B */
     /* Note: Original reads backwards from 0x72 to 0x6F */
-    *(__xdata uint8_t *)0xD808 = src[3];  /* IDATA[0x72] -> 0xD808 */
-    *(__xdata uint8_t *)0xD809 = src[2];  /* IDATA[0x71] -> 0xD809 */
-    *(__xdata uint8_t *)0xD80A = src[1];  /* IDATA[0x70] -> 0xD80A */
-    *(__xdata uint8_t *)0xD80B = src[0];  /* IDATA[0x6F] -> 0xD80B */
+    USB_CSW->residue0 = I_BUF_CTRL_GLOBAL;   /* IDATA[0x72] -> 0xD808 */
+    USB_CSW->residue1 = I_BUF_THRESH_HI;     /* IDATA[0x71] -> 0xD809 */
+    USB_CSW->residue2 = I_BUF_THRESH_LO;     /* IDATA[0x70] -> 0xD80A */
+    USB_CSW->residue3 = I_BUF_FLOW_CTRL;     /* IDATA[0x6F] -> 0xD80B */
 }
 
 /*
@@ -679,7 +672,7 @@ void helper_53c0(void)
 void helper_039a(void)
 {
     /* Clear the register at 0xD810 */
-    *(__xdata uint8_t *)0xD810 = 0;
+    REG_USB_EP_CTRL_10 = 0;
 }
 
 /*
@@ -780,8 +773,8 @@ static void helper_50db(void)
     *ptr = val_r5;
 
     /* Check if IDATA[0x0D] == R7, if so update IDATA[0x0D] with R6 */
-    if (*(__idata uint8_t *)0x0D == queue_idx) {
-        *(__idata uint8_t *)0x0D = val_r6;
+    if (I_QUEUE_IDX == queue_idx) {
+        I_QUEUE_IDX = val_r6;
     }
 }
 
@@ -804,9 +797,9 @@ static void helper_50db(void)
 static void helper_5409(void)
 {
     /* Clear state variables */
-    *(__xdata uint8_t *)0x0B2E = 0;
-    *(__idata uint8_t *)0x6A = 0;
-    *(__xdata uint8_t *)0x06E6 = 0;
+    G_USB_TRANSFER_FLAG = 0;
+    I_STATE_6A = 0;
+    G_STATE_FLAG_06E6 = 0;
 
     /* Call cleanup handler */
     helper_039a();
@@ -839,55 +832,55 @@ void helper_0206(uint8_t r5, uint8_t r7)
 
     if (r5 & 0x06) {
         /* Path when r5 bits 1-2 are set */
-        *(__xdata uint8_t *)0xC8D4 = 0xA0;
+        REG_DMA_CONFIG = 0xA0;
 
         /* Copy buffer info from 0x0056-0x0057 to 0x905B-0x905C and 0xD802-0xD803 */
-        r2 = *(__xdata uint8_t *)0x0056;
-        r3 = *(__xdata uint8_t *)0x0057;
-        *(__xdata uint8_t *)0x905B = r2;
-        *(__xdata uint8_t *)0x905C = r3;
-        *(__xdata uint8_t *)0xD802 = r2;
-        *(__xdata uint8_t *)0xD803 = r3;
+        r2 = G_USB_ADDR_HI_0056;
+        r3 = G_USB_ADDR_LO_0057;
+        REG_USB_EP_BUF_HI = r2;
+        REG_USB_EP_BUF_LO = r3;
+        REG_USB_EP_BUF_DATA = r2;
+        REG_USB_EP_BUF_PTR_LO = r3;
     } else {
         /* Path when r5 bits 1-2 are clear */
-        *(__xdata uint8_t *)0xC8D4 = r7 | 0x80;
+        REG_DMA_CONFIG = r7 | 0x80;
 
-        /* Read and modify 0xC4ED */
-        val = *(__xdata uint8_t *)0xC4ED;
+        /* Read and modify NVMe DMA control */
+        val = REG_NVME_DMA_CTRL_ED;
         val = (val & 0xC0) | r7;
-        *(__xdata uint8_t *)0xC4ED = val;
+        REG_NVME_DMA_CTRL_ED = val;
 
-        /* Read 0xC4EE-0xC4EF and write to 0xD802-0xD803 */
-        r3 = *(__xdata uint8_t *)0xC4EE;
-        val = *(__xdata uint8_t *)0xC4EF;
-        *(__xdata uint8_t *)0xD802 = val;
-        *(__xdata uint8_t *)0xD803 = r3;
+        /* Read NVMe DMA addr and write to USB endpoint buffer */
+        r3 = REG_NVME_DMA_ADDR_LO;
+        val = REG_NVME_DMA_ADDR_HI;
+        REG_USB_EP_BUF_DATA = val;
+        REG_USB_EP_BUF_PTR_LO = r3;
     }
 
-    /* Clear 0xD804-0xD807 and 0xD80F */
-    *(__xdata uint8_t *)0xD804 = 0;
-    *(__xdata uint8_t *)0xD805 = 0;
-    *(__xdata uint8_t *)0xD806 = 0;
-    *(__xdata uint8_t *)0xD807 = 0;
-    *(__xdata uint8_t *)0xD80F = 0;
+    /* Clear CSW tag bytes and control 0F */
+    USB_CSW->tag0 = 0;
+    USB_CSW->tag1 = 0;
+    USB_CSW->tag2 = 0;
+    USB_CSW->tag3 = 0;
+    REG_USB_EP_CTRL_0F = 0;
 
     /* Check r5 bit 4 for extended mode */
     if (r5 & 0x10) {
         /* Extended mode - set 0xD800 = 4, copy from 0x0054 to 0xD807 */
-        *(__xdata uint8_t *)0xD800 = 0x04;
-        *(__xdata uint8_t *)0xD807 = *(__xdata uint8_t *)0x0054;
+        REG_USB_EP_BUF_CTRL = 0x04;
+        USB_CSW->tag3 = G_BUFFER_LENGTH_HIGH;
         /* r4 = 0x08 for final processing */
     } else {
         /* Normal mode - set 0xD800 = 3 */
-        *(__xdata uint8_t *)0xD800 = 0x03;
+        REG_USB_EP_BUF_CTRL = 0x03;
 
         /* Check state at 0x07E5 */
-        if (*(__xdata uint8_t *)0x07E5 == 0) {
+        if (G_TRANSFER_ACTIVE == 0) {
             /* Check r5 bit 2 */
             if (r5 & 0x04) {
-                /* Set 0xC8D4 = 0xA0, 0xD806 = 0x28 */
-                *(__xdata uint8_t *)0xC8D4 = 0xA0;
-                *(__xdata uint8_t *)0xD806 = 0x28;
+                /* Set DMA config = 0xA0, USB EP status = 0x28 */
+                REG_DMA_CONFIG = 0xA0;
+                USB_CSW->tag2 = 0x28;
             }
             /* Further processing at 0x028c-0x02c4 omitted for now */
         }
@@ -919,7 +912,7 @@ void helper_45d0(uint8_t param)
     uint8_t result;
 
     /* Clear state at 0x044D */
-    *(__xdata uint8_t *)0x044D = 0;
+    G_LOG_INIT_044D = 0;
 
     /* TODO: The full implementation requires:
      * - Call to 0x166f with (param + 0x7c) to get index
@@ -948,7 +941,7 @@ void helper_0421(uint8_t param)
 {
     (void)param;
     /* Clear/initialize the register at 0xE65F */
-    *(__xdata uint8_t *)0xE65F = 0;
+    REG_DEBUG_INT_E65F = 0;
 }
 
 /*
@@ -967,7 +960,7 @@ void helper_0421(uint8_t param)
 void helper_0417(void)
 {
     /* Clear/initialize the register at 0xE62F */
-    *(__xdata uint8_t *)0xE62F = 0;
+    REG_DEBUG_INT_E62F = 0;
 }
 
 /*
@@ -1038,29 +1031,29 @@ uint8_t helper_3f4a(void)
     uint8_t val_06e5, val_044b;
 
     /* 0x3f4a: Check 0x07EF - if non-zero, return 0 */
-    if (*(__xdata uint8_t *)0x07EF != 0) {
+    if (G_SYS_FLAGS_07EF != 0) {
         /* 0x3fda path: return 0 */
         helper_523c(0, 0x3A, 2);
         return 5;
     }
 
     /* 0x3f53: Call usb_func_1c5d with dptr=0x0464 */
-    usb_func_1c5d((__xdata uint8_t *)0x0464);
+    usb_func_1c5d(&G_SYS_STATUS_PRIMARY);
 
     /* 0x3f59: Clear 0x07E5 */
-    *(__xdata uint8_t *)0x07E5 = 0;
+    G_TRANSFER_ACTIVE = 0;
 
     /* 0x3f5e: Call usb_set_dma_mode_params(0) */
     usb_set_dma_mode_params(0);
 
     /* 0x3f61: Check 0x0002 */
-    if (*(__xdata uint8_t *)0x0002 != 0) {
+    if (G_IO_CMD_STATE != 0) {
         /* 0x3f67: Clear 0x0B2F */
         G_USB_TRANSFER_FLAG = 0;
         /* Then jump to 0x3f82 */
     } else {
         /* 0x3f6e: Check 0xB480 bit 0 (PCIe link status) */
-        if (!(REG_PCIE_LINK_STATUS & 0x01)) {
+        if (!(REG_PCIE_LINK_CTRL & 0x01)) {
             return 5;  /* PCIe link not ready */
         }
 
@@ -1088,14 +1081,14 @@ uint8_t helper_3f4a(void)
     status = nvme_get_pcie_count_config();
     if (status == 4) {
         /* 0x3fe6: Branch for mode 4 */
-        val_06e5 = *(__xdata uint8_t *)0x06E5;
-        val_044b = *(__xdata uint8_t *)0x044B;
+        val_06e5 = G_MAX_LOG_ENTRIES;
+        val_044b = G_LOG_COUNTER_044B;
 
         if (val_06e5 == val_044b) {
             /* Check 0x0AF8 */
             if (G_POWER_INIT_FLAG == 0) {
                 /* Check 0xB480 bit 0 */
-                if (!(REG_PCIE_LINK_STATUS & 0x01)) {
+                if (!(REG_PCIE_LINK_CTRL & 0x01)) {
                     helper_04da(2);
                 }
 
@@ -1112,7 +1105,7 @@ uint8_t helper_3f4a(void)
     }
 
     /* 0x3f98: Check 0x06E8 */
-    if (*(__xdata uint8_t *)0x06E8 != 0) {
+    if (G_WORK_06E8 != 0) {
         goto check_044c;
     }
 
@@ -1126,7 +1119,7 @@ uint8_t helper_3f4a(void)
 
     /* 0x3fa4: Check table entry at 0x0464 index */
     {
-        uint8_t idx = *(__xdata uint8_t *)0x0464;
+        uint8_t idx = G_SYS_STATUS_PRIMARY;
         uint16_t table_addr = 0x057E + (idx * 0x0A);
         uint8_t table_val = *(__xdata uint8_t *)table_addr;
 
@@ -1139,9 +1132,9 @@ uint8_t helper_3f4a(void)
 
 check_044c:
     /* 0x3fba: Check 0x044C */
-    if (*(__xdata uint8_t *)0x044C == 0) {
+    if (G_LOG_ACTIVE_044C == 0) {
         /* Check 0x0002 */
-        if (*(__xdata uint8_t *)0x0002 == 0) {
+        if (G_IO_CMD_STATE == 0) {
             /* Check 0x0AF6 */
             if (G_XFER_STATE_0AF6 != 0) {
                 return 0x0B;
@@ -1149,7 +1142,7 @@ check_044c:
         }
 
         /* 0x3fcc: Clear 0x044C, set R3=1 */
-        *(__xdata uint8_t *)0x044C = 0;
+        G_LOG_ACTIVE_044C = 0;
         /* R3=1, R5=4, R7=2 -> return 5 via helper_523c */
         helper_523c(1, 4, 2);
         return 5;
@@ -1233,14 +1226,14 @@ void helper_4f77(uint8_t param)
     uint8_t state_val;
 
     /* Store param to 0x0A84 */
-    *(__xdata uint8_t *)0x0A84 = param;
+    G_STATE_WORK_0A84 = param;
 
     /* Read IDATA[0x16:0x17] and compare */
     /* The actual comparison logic is complex, involving subtract_16 */
-    stored_param = *(__xdata uint8_t *)0x0A84;
+    stored_param = G_STATE_WORK_0A84;
 
     /* Check if param matches state at 0x0AF3 */
-    state_val = *(__xdata uint8_t *)0x0AF3;
+    state_val = G_XFER_STATE_0AF3;
 
     if (stored_param == state_val) {
         /* Match - early return would be 1 */
@@ -1450,7 +1443,7 @@ void helper_4e6d(void)
     /* Read from 0x054F + computed offset and store to 0x0217 */
     index = G_SYS_STATUS_SECONDARY;
     offset = helper_1b9d(index);
-    *(__xdata uint8_t *)0x0217 = offset;
+    G_DMA_OFFSET = offset;
 }
 
 /*
@@ -1472,7 +1465,7 @@ void helper_4e6d(void)
 void transfer_helper_1709(void)
 {
     /* Write 0xFF to CE43 */
-    *(__xdata uint8_t *)0xCE43 = 0xFF;
+    REG_SCSI_DMA_PARAM3 = 0xFF;
 
     /* The DPTR is left at 0xCE42 for caller to use */
     /* In C we can't set DPTR directly, but caller will use next address */
@@ -1683,7 +1676,7 @@ void helper_3147(void)
  */
 void helper_3168(void)
 {
-    uint8_t idx = *(__idata uint8_t *)0x38;
+    uint8_t idx = I_WORK_38;
     __xdata uint8_t *ptr;
 
     /* Clear value at 0x00C2 + idx */
@@ -1712,8 +1705,8 @@ uint16_t helper_3181(void)
 {
     uint8_t lo, hi;
 
-    lo = *(__xdata uint8_t *)0x910D;
-    hi = *(__xdata uint8_t *)0x910E;
+    lo = REG_USB_STATUS_0D;
+    hi = REG_USB_STATUS_0E;
 
     return ((uint16_t)hi << 8) | lo;
 }
@@ -1840,93 +1833,93 @@ void helper_36ab_impl(void)
     uint8_t val;
 
     /* Check if either 0x053E or 0x0552 is non-zero */
-    if (*(__xdata uint8_t *)0x053E == 0 &&
-        *(__xdata uint8_t *)0x0552 == 0) {
+    if (G_SCSI_TRANSFER_FLAG == 0 &&
+        G_SCSI_STATUS_FLAG == 0) {
         /* Both zero - skip transfer setup */
         return;
     }
 
     /* Initialize CE73-CE74: Set CE73=0x20, CE74=0x00 */
-    *(__xdata uint8_t *)0xCE73 = 0x20;
-    *(__xdata uint8_t *)0xCE74 = 0x00;
+    REG_SCSI_BUF_CTRL0 = 0x20;
+    REG_SCSI_BUF_CTRL1 = 0x00;
 
     /* Initialize CE80-CE82: CE81=0xFF, CE80=0x7F, CE82=0x3F */
-    *(__xdata uint8_t *)0xCE81 = 0xFF;
-    *(__xdata uint8_t *)0xCE80 = 0x7F;
-    *(__xdata uint8_t *)0xCE82 = 0x3F;
+    REG_SCSI_CMD_LIMIT_HI = 0xFF;
+    REG_SCSI_CMD_LIMIT_LO = 0x7F;
+    REG_SCSI_CMD_MODE = 0x3F;
 
     /* Read 0x0547 and compute CE44 value */
-    val = *(__xdata uint8_t *)0x0547;
+    val = G_SCSI_DEVICE_IDX;
     val = val - 0x09;  /* subb with carry clear */
 
     /* Read CE44, mask upper nibble, OR with computed value */
     {
-        uint8_t ce44_val = *(__xdata uint8_t *)0xCE44;
+        uint8_t ce44_val = REG_SCSI_DMA_PARAM4;
         ce44_val = (ce44_val & 0xF0) | (val & 0x0F);
-        *(__xdata uint8_t *)0xCE44 = ce44_val;
+        REG_SCSI_DMA_PARAM4 = ce44_val;
     }
 
     /* Get value from 0x057A table and configure CE44 upper nibble */
-    val = helper_31ea((__xdata uint8_t *)0x057A);
+    val = helper_31ea(&G_EP_LOOKUP_TABLE);
     {
-        uint8_t ce44_val = *(__xdata uint8_t *)0xCE44;
+        uint8_t ce44_val = REG_SCSI_DMA_PARAM4;
         ce44_val = (ce44_val & 0x0F) | ((val << 4) & 0xF0);
-        *(__xdata uint8_t *)0xCE44 = ce44_val;
+        REG_SCSI_DMA_PARAM4 = ce44_val;
     }
 
     /* Update CE45 */
     {
-        uint8_t ce45_val = *(__xdata uint8_t *)0xCE45;
-        val = *(__xdata uint8_t *)0x0547 - 0x09;
+        uint8_t ce45_val = REG_SCSI_DMA_PARAM5;
+        val = G_SCSI_DEVICE_IDX - 0x09;
         ce45_val = (ce45_val & 0xF0) | (val & 0x0F);
-        *(__xdata uint8_t *)0xCE45 = ce45_val;
+        REG_SCSI_DMA_PARAM5 = ce45_val;
     }
 
     /* Read from 0x0543 (4 bytes) and write to CE76 */
     /* This uses the dword load helper 0x0d84 */
     {
-        uint8_t b0 = *(__xdata uint8_t *)0x0543;
-        uint8_t b1 = *(__xdata uint8_t *)0x0544;
-        uint8_t b2 = *(__xdata uint8_t *)0x0545;
-        uint8_t b3 = *(__xdata uint8_t *)0x0546;
+        uint8_t b0 = G_SCSI_LBA_0;
+        uint8_t b1 = G_SCSI_LBA_1;
+        uint8_t b2 = G_SCSI_LBA_2;
+        uint8_t b3 = G_SCSI_LBA_3;
 
-        *(__xdata uint8_t *)0xCE76 = b0;
-        *(__xdata uint8_t *)0xCE77 = b1;
-        *(__xdata uint8_t *)0xCE78 = b2;
-        *(__xdata uint8_t *)0xCE79 = b3;
+        REG_SCSI_BUF_ADDR0 = b0;
+        REG_SCSI_BUF_ADDR1 = b1;
+        REG_SCSI_BUF_ADDR2 = b2;
+        REG_SCSI_BUF_ADDR3 = b3;
     }
 
     /* Read 0x053F-0x0542 and write to CE75 */
     {
-        uint8_t b0 = *(__xdata uint8_t *)0x053F;
-        *(__xdata uint8_t *)0xCE75 = b0;
+        uint8_t b0 = G_SCSI_BUF_LEN_0;
+        REG_SCSI_BUF_LEN_LO = b0;
     }
 
     /* Read 0x053D and write to CE70 */
-    *(__xdata uint8_t *)0xCE70 = *(__xdata uint8_t *)0x053D;
+    REG_SCSI_TRANSFER_CTRL = G_SCSI_CMD_TYPE;
 
     /* Check 0x054F - if non-zero, call helper with CEF9 */
-    if (*(__xdata uint8_t *)0x054F != 0) {
+    if (G_SCSI_MODE_FLAG != 0) {
         /* Would call 0x3133 with dptr=0xCEF9 */
         /* Simplified: just set CEF9 to some value */
     }
 
     /* Clear CE72 */
-    *(__xdata uint8_t *)0xCE72 = 0;
+    REG_SCSI_TRANSFER_MODE = 0;
 
     /* Clear bits in CE83 */
     {
-        uint8_t ce83_val = *(__xdata uint8_t *)0xCE83;
+        uint8_t ce83_val = REG_SCSI_CMD_FLAGS;
         ce83_val &= 0xEF;  /* Clear bit 4 */
-        *(__xdata uint8_t *)0xCE83 = ce83_val;
+        REG_SCSI_CMD_FLAGS = ce83_val;
 
-        ce83_val = *(__xdata uint8_t *)0xCE83;
+        ce83_val = REG_SCSI_CMD_FLAGS;
         ce83_val &= 0xDF;  /* Clear bit 5 */
-        *(__xdata uint8_t *)0xCE83 = ce83_val;
+        REG_SCSI_CMD_FLAGS = ce83_val;
 
-        ce83_val = *(__xdata uint8_t *)0xCE83;
+        ce83_val = REG_SCSI_CMD_FLAGS;
         ce83_val &= 0xBF;  /* Clear bit 6 */
-        *(__xdata uint8_t *)0xCE83 = ce83_val;
+        REG_SCSI_CMD_FLAGS = ce83_val;
     }
 
     /* Continue with more register setup... */
@@ -1956,23 +1949,23 @@ void FUN_CODE_23f7(uint8_t param)
     uint8_t temp;
 
     /* Store param to 0x0AA2 and call helper 0x1659 */
-    *(__xdata uint8_t *)0x0AA2 = param;
+    G_STATE_PARAM_0AA2 = param;
 
     /* Read result and store to 0x0AA3, then process */
     /* This calls dma_complex_transfer internally */
 
-    /* Read 0x0AA3 and OR with 0x80, write to 0xC8D7 */
-    state_val = *(__xdata uint8_t *)0x0AA3;
+    /* Read 0x0AA3 and OR with 0x80, write to DMA ctrl register */
+    state_val = G_STATE_RESULT_0AA3;
     state_val |= 0x80;
-    *(__xdata uint8_t *)0xC8D7 = state_val;  /* DMA ctrl register */
+    REG_DMA_CTRL = state_val;  /* DMA ctrl register */
 
     /* Read 0x0AA2 and check state */
-    state_val = *(__xdata uint8_t *)0x0AA2;
+    state_val = G_STATE_PARAM_0AA2;
 
     /* Main state dispatch based on state_val */
     if (state_val == 0x06) {
         /* State 6: Check 0x0574 */
-        if (*(__xdata uint8_t *)0x0574 == 0) {
+        if (G_LOG_PROCESS_STATE == 0) {
             /* Call 0x15dc and process result */
         }
         /* Call 0x17a9 and 0x1d43 */
@@ -2000,7 +1993,7 @@ void FUN_CODE_23f7(uint8_t param)
 
     } else if (state_val == 0x09) {
         /* State 9: Check 0x0574 for sub-states */
-        temp = *(__xdata uint8_t *)0x0574;
+        temp = G_LOG_PROCESS_STATE;
         if (temp == 0x01 || temp == 0x02 || temp == 0x07 || temp == 0x08) {
             /* Read 0x0575 and continue with table lookup */
         } else {

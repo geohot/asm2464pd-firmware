@@ -105,7 +105,6 @@ extern void dispatch_0426(uint8_t param);
 #define REG_BUFFER_THRESHOLD_LOW  XDATA_REG8(0xCE82)
 #define REG_BUFFER_FLOW_CTRL    XDATA_REG8(0xCE83)
 #define REG_UART_THR_RBR        XDATA_REG8(0xC000)
-#define XDATA_REG8(addr)        (*(__xdata volatile uint8_t *)(addr))
 
 /* Forward declarations */
 static void scsi_setup_buffer_length(uint8_t hi, uint8_t lo);
