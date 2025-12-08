@@ -159,7 +159,13 @@ uint8_t int_get_usb_status(void)
  */
 uint8_t int_check_system_event(void)
 {
-    return (REG_INT_SYSTEM & 0x01);
+    uint8_t status = REG_INT_SYSTEM & 0x01;
+
+    if (status) {
+        system_interrupt_handler();
+    }
+
+    return status;
 }
 
 /*
@@ -177,7 +183,13 @@ uint8_t int_check_system_event(void)
  */
 uint8_t int_check_nvme_queue(void)
 {
-    return (REG_INT_PCIE_NVME & INT_PCIE_NVME_STATUS);
+    uint8_t status = REG_INT_PCIE_NVME & INT_PCIE_NVME_STATUS;
+
+    if (status) {
+        pcie_nvme_event_handler();
+    }
+
+    return status;
 }
 
 /*
@@ -195,7 +207,13 @@ uint8_t int_check_nvme_queue(void)
  */
 uint8_t int_check_pcie_event(void)
 {
-    return (REG_INT_PCIE_NVME & INT_PCIE_NVME_EVENT);
+    uint8_t status = REG_INT_PCIE_NVME & INT_PCIE_NVME_EVENT;
+
+    if (status) {
+        pcie_event_bit5_handler();
+    }
+
+    return status;
 }
 
 /*
@@ -213,7 +231,13 @@ uint8_t int_check_pcie_event(void)
  */
 uint8_t int_check_nvme_complete(void)
 {
-    return (REG_INT_PCIE_NVME & INT_PCIE_NVME_TIMER);
+    uint8_t status = REG_INT_PCIE_NVME & INT_PCIE_NVME_TIMER;
+
+    if (status) {
+        pcie_timer_bit4_handler();
+    }
+
+    return status;
 }
 
 /*
@@ -233,7 +257,13 @@ uint8_t int_check_nvme_complete(void)
  */
 uint8_t int_check_timer(void)
 {
-    return (REG_INT_SYSTEM & INT_SYSTEM_TIMER);
+    uint8_t status = REG_INT_SYSTEM & INT_SYSTEM_TIMER;
+
+    if (status) {
+        system_timer_handler();
+    }
+
+    return status;
 }
 
 /*===========================================================================
