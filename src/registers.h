@@ -210,10 +210,18 @@
 #define   PCIE_STATUS_ERROR       0x01  // Bit 0: Error flag
 #define   PCIE_STATUS_COMPLETE    0x02  // Bit 1: Completion status
 #define   PCIE_STATUS_BUSY        0x04  // Bit 2: Busy flag
+#define REG_PCIE_TUNNEL_CTRL    XDATA_REG8(0xB401)  // PCIe tunnel control
+#define   PCIE_TUNNEL_ENABLE      0x01  // Bit 0: Tunnel enable
 #define REG_PCIE_CTRL_B402      XDATA_REG8(0xB402)
 #define   PCIE_CTRL_B402_BIT0     0x01  // Bit 0: Control flag 0
 #define   PCIE_CTRL_B402_BIT1     0x02  // Bit 1: Control flag 1
+#define REG_PCIE_LINK_PARAM_B404 XDATA_REG8(0xB404) // PCIe link parameters
+#define   PCIE_LINK_PARAM_MASK    0x0F  // Bits 0-3: Link parameters
 #define REG_PCIE_LANE_COUNT     XDATA_REG8(0xB424)
+#define REG_PCIE_LINK_STATE     XDATA_REG8(0xB434)  // PCIe link state (low nibble = lane mask)
+#define REG_PCIE_LANE_CONFIG    XDATA_REG8(0xB436)  // PCIe lane configuration
+#define   PCIE_LANE_CFG_LO_MASK   0x0F  // Bits 0-3: Low config
+#define   PCIE_LANE_CFG_HI_MASK   0xF0  // Bits 4-7: High config
 #define REG_PCIE_LINK_STATUS_ALT XDATA_REG16(0xB4AE)
 #define REG_PCIE_LANE_MASK      XDATA_REG8(0xB4C8)
 
@@ -553,6 +561,7 @@
 //=============================================================================
 #define REG_CMD_STATUS_E402     XDATA_REG8(0xE402)
 #define REG_CMD_CTRL_E403       XDATA_REG8(0xE403)
+#define REG_CMD_CFG_E404        XDATA_REG8(0xE404)
 #define REG_CMD_CFG_E405        XDATA_REG8(0xE405)
 #define REG_CMD_CONFIG          XDATA_REG8(0xE40B)
 #define REG_CMD_CTRL_E40F       XDATA_REG8(0xE40F)

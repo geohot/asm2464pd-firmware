@@ -278,3 +278,228 @@ uint8_t phy_check_usb_state(void)
     val >>= 1;    /* Shift right */
     return val;
 }
+
+/*
+ * phy_register_config - PHY/Register Configuration
+ * Address: 0x0589-0x058d (5 bytes) -> dispatches to bank 0 0xD894
+ *
+ * Function at 0xD894:
+ * PHY and system register configuration handler.
+ * Configures PCIe/USB interface registers.
+ *
+ * Algorithm:
+ *   1. Call 0xBC8F, mask with 0xFD, call 0x0BE6 (write)
+ *   2. Read 0xC809, clear bit 1, set bit 1, write back
+ *   3. Call 0xB031 helper
+ *   4. R1=0x02, call 0xBCB1, mask with 0xFE, call 0x0BE6
+ *   5. Inc R1, write 0x01 via 0x0BE6
+ *   6. Dec R1, call 0x0BC8, mask with 0xFD, call 0x0BE6
+ *   7. Inc R1, write 0x02 via 0x0BE6
+ *   8. R2=0x12, R1=0x1E, call 0x0BC8
+ *   9. Mask with 0xFE, set bit 0, ljmp 0x0BE6
+ *
+ * Original disassembly:
+ *   d894: lcall 0xbc8f
+ *   d897: anl a, #0xfd           ; clear bit 1
+ *   d899: lcall 0x0be6           ; write register
+ *   d89c: mov dptr, #0xc809
+ *   d89f: movx a, @dptr
+ *   d8a0: anl a, #0xfd           ; clear bit 1
+ *   d8a2: orl a, #0x02           ; set bit 1
+ *   d8a4: movx @dptr, a
+ *   d8a5: lcall 0xb031           ; helper
+ *   ... (continues with register configuration)
+ */
+void phy_register_config(void)
+{
+    uint8_t val;
+
+    /* Configure interrupt control 2 - clear bit 1, set bit 1 */
+    val = REG_INT_CTRL_C809;
+    val = (val & 0xFD) | 0x02;
+    REG_INT_CTRL_C809 = val;
+
+    /* Read state flag and check bit 1 */
+    val = G_STATE_FLAG_0AF1;
+    if (val & STATE_FLAG_INIT) {
+        /* If bit 1 set, call handler 0x057A with R7=0x03 */
+        /* This would handle a specific condition */
+    }
+
+    /* Configure PCIe control register */
+    val = REG_PCIE_CTRL_B402;
+    val = val & ~PCIE_CTRL_B402_BIT0;  /* Clear bit 0 */
+    REG_PCIE_CTRL_B402 = val;
+    val = REG_PCIE_CTRL_B402;
+    val = val & ~PCIE_CTRL_B402_BIT1;  /* Clear bit 1 */
+    REG_PCIE_CTRL_B402 = val;
+}
+
+/*===========================================================================
+ * PCIe/PHY Lane Configuration Functions (eGPU Priority)
+ *===========================================================================*/
+
+/* Forward declarations for helpers */
+extern void pcie_lane_config_helper(uint8_t); /* 0xc089 - in stubs.c */
+
+/*
+ * pcie_save_ctrl_state - Save PCIe control bit 1 state
+ * Address: 0xe84d-0xe85b (15 bytes)
+ *
+ * Saves bit 1 of REG_PCIE_CTRL_B402 to G_PCIE_CTRL_SAVE_0B44.
+ * Then reads B402, clears bit 1, and writes back.
+ *
+ * Original disassembly:
+ *   e84d: mov dptr, #0xb402
+ *   e850: movx a, @dptr
+ *   e851: anl a, #0x02        ; mask bit 1
+ *   e853: mov dptr, #0x0b44
+ *   e856: movx @dptr, a       ; save to 0x0b44
+ *   e857: lcall 0xccac        ; read B402 & 0xfd
+ *   e85a: movx @dptr, a       ; store result
+ *   e85b: ret
+ */
+void pcie_save_ctrl_state(void)
+{
+    uint8_t val;
+
+    /* Save bit 1 of B402 */
+    val = REG_PCIE_CTRL_B402;
+    G_PCIE_CTRL_SAVE_0B44 = val & PCIE_CTRL_B402_BIT1;
+
+    /* Read B402, clear bit 1, store */
+    val = REG_PCIE_CTRL_B402;
+    G_PCIE_CTRL_SAVE_0B44 = val & ~PCIE_CTRL_B402_BIT1;
+}
+
+/*
+ * pcie_restore_ctrl_state - Restore PCIe control bit 1 state
+ * Address: 0xe85c-0xe868 (13 bytes)
+ *
+ * If saved state (0x0b44) is non-zero, reads B402, sets bit 1, writes back.
+ *
+ * Original disassembly:
+ *   e85c: mov dptr, #0x0b44
+ *   e85f: movx a, @dptr
+ *   e860: jz 0xe868           ; if zero, return
+ *   e862: lcall 0xccac        ; read B402 & 0xfd
+ *   e865: orl a, #0x02        ; set bit 1
+ *   e867: movx @dptr, a       ; write to 0x0b44
+ *   e868: ret
+ */
+void pcie_restore_ctrl_state(void)
+{
+    uint8_t val;
+
+    if (G_PCIE_CTRL_SAVE_0B44 != 0) {
+        val = REG_PCIE_CTRL_B402;
+        val = (val & ~PCIE_CTRL_B402_BIT1) | PCIE_CTRL_B402_BIT1;
+        G_PCIE_CTRL_SAVE_0B44 = val;
+    }
+}
+
+/*
+ * pcie_lane_config - Configure PCIe lane parameters
+ * Address: 0xd436-0xd47e (73 bytes)
+ *
+ * Configures PCIe lane settings for USB4/Thunderbolt tunneling.
+ * This is critical for eGPU passthrough functionality.
+ *
+ * Parameters:
+ *   lane_mask: Lane configuration mask (0x0F = all lanes enabled)
+ *
+ * Algorithm:
+ *   1. Save param to G_FLASH_ERROR_0 (0x0aa8)
+ *   2. Call pcie_save_ctrl_state (0xe84d) - save B402 bit 1
+ *   3. Reload param, call pcie_lane_config_helper (0xc089)
+ *   4. If param != 0x0F, set bit 0 of REG_PCIE_TUNNEL_CTRL (0xb401)
+ *   5. Call pcie_restore_ctrl_state (0xe85c)
+ *   6. Read param, mask with 0x0E, merge into REG_PCIE_LANE_CONFIG low nibble
+ *   7. Read REG_PCIE_LINK_PARAM_B404, XOR with 0x0F, swap nibbles,
+ *      merge into REG_PCIE_LANE_CONFIG high nibble
+ *
+ * Original disassembly:
+ *   d436: mov dptr, #0x0aa8
+ *   d439: mov a, r7
+ *   d43a: movx @dptr, a       ; save param
+ *   d43b: lcall 0xe84d        ; pcie_save_ctrl_state
+ *   d43e: mov dptr, #0x0aa8
+ *   d441: movx a, @dptr       ; reload param
+ *   d442: mov r7, a
+ *   d443: lcall 0xc089        ; pcie_lane_config_helper
+ *   d446: mov dptr, #0x0aa8
+ *   d449: movx a, @dptr
+ *   d44a: xrl a, #0x0f        ; XOR with 0x0F
+ *   d44c: jz 0xd458           ; if result is 0x0F, skip
+ *   d44e: mov dptr, #0xb401
+ *   d451: lcall 0xcc8b        ; set bit 0
+ *   d454: movx a, @dptr
+ *   d455: anl a, #0xfe        ; clear bit 0
+ *   d457: movx @dptr, a
+ *   d458: lcall 0xe85c        ; pcie_restore_ctrl_state
+ *   d45b: mov dptr, #0x0aa8
+ *   d45e: movx a, @dptr
+ *   d45f: anl a, #0x0e        ; mask bits 1-3
+ *   d461: mov r7, a
+ *   d462: mov dptr, #0xb436
+ *   d465: movx a, @dptr
+ *   d466: anl a, #0xf0        ; keep high nibble
+ *   d468: orl a, r7           ; merge low nibble
+ *   d469: movx @dptr, a
+ *   d46a: mov dptr, #0xb404
+ *   d46d: movx a, @dptr
+ *   d46e: anl a, #0x0f        ; mask low nibble
+ *   d470: xrl a, #0x0f        ; invert
+ *   d472: swap a              ; swap nibbles
+ *   d473: anl a, #0xf0        ; keep high nibble
+ *   d475: mov r7, a
+ *   d476: mov dptr, #0xb436
+ *   d479: movx a, @dptr
+ *   d47a: anl a, #0x0f        ; keep low nibble
+ *   d47c: orl a, r7           ; merge high nibble
+ *   d47d: movx @dptr, a
+ *   d47e: ret
+ */
+void pcie_lane_config(uint8_t lane_mask)
+{
+    uint8_t val, val2;
+
+    /* Save parameter */
+    G_FLASH_ERROR_0 = lane_mask;
+
+    /* Save PCIe control state */
+    pcie_save_ctrl_state();
+
+    /* Reload param and call lane config helper */
+    val = G_FLASH_ERROR_0;
+    pcie_lane_config_helper(val);
+
+    /* If param != 0x0F, configure tunnel control */
+    val = G_FLASH_ERROR_0;
+    if ((val ^ 0x0F) != 0) {
+        /* Set then clear bit 0 of tunnel control */
+        REG_PCIE_TUNNEL_CTRL = (REG_PCIE_TUNNEL_CTRL & ~PCIE_TUNNEL_ENABLE) | PCIE_TUNNEL_ENABLE;
+        val = REG_PCIE_TUNNEL_CTRL;
+        val &= ~PCIE_TUNNEL_ENABLE;
+        REG_PCIE_TUNNEL_CTRL = val;
+    }
+
+    /* Restore PCIe control state */
+    pcie_restore_ctrl_state();
+
+    /* Configure lane config register - low nibble */
+    val = G_FLASH_ERROR_0;
+    val &= 0x0E;  /* Mask bits 1-3 */
+    val2 = REG_PCIE_LANE_CONFIG;
+    val2 = (val2 & PCIE_LANE_CFG_HI_MASK) | val;
+    REG_PCIE_LANE_CONFIG = val2;
+
+    /* Configure lane config register - high nibble from B404 */
+    val = REG_PCIE_LINK_PARAM_B404;
+    val &= PCIE_LINK_PARAM_MASK;  /* Mask low nibble */
+    val ^= 0x0F;                   /* Invert */
+    val = (val << 4);              /* Swap to high nibble */
+    val2 = REG_PCIE_LANE_CONFIG;
+    val2 = (val2 & PCIE_LANE_CFG_LO_MASK) | val;
+    REG_PCIE_LANE_CONFIG = val2;
+}

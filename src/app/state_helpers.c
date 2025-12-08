@@ -1388,3 +1388,132 @@ handler_epilogue:
         *ptr = r6_val;
     }
 }
+
+/*
+ * event_state_handler - Event handler
+ * Address: 0x0494-0x0498 (5 bytes) -> dispatches to bank 1 0xE56F
+ *
+ * Function at 0xE56F (file offset 0x1656F):
+ * Event state machine handler called when events & 0x81 is set.
+ *
+ * Algorithm:
+ *   1. Read XDATA[0x0AEE], check bit 3
+ *   2. If bit 3 set: R7=1, call 0xE6F0
+ *   3. Read XDATA[0x09EF], check bit 0
+ *   4. If bit 0 not set, check XDATA[0x0991]
+ *   5. If 0x0991 == 0, ljmp to 0xEE11
+ *   6. If 0x098E == 1, R7=0x0A, call 0xABC9
+ *   7. Write 0x84 to 0x097A
+ *   8. Continue with helper calls for state processing
+ *
+ * Original disassembly:
+ *   e56f: movx a, @dptr         ; read from DPTR (0x0AEE set earlier)
+ *   e570: jnb 0xe0.3, 0xe578    ; if bit 3 not set, skip
+ *   e573: mov r7, #0x01
+ *   e575: lcall 0xe6f0          ; helper call
+ *   e578: mov dptr, #0x09ef
+ *   e57b: movx a, @dptr
+ *   e57c: jnb 0xe0.0, 0xe596    ; if bit 0 not set, skip to check
+ *   e57f: sjmp 0xe587           ; else skip
+ *   e581-e596: branch logic for 0x0991 check
+ *   e596: mov dptr, #0x097a
+ *   e599: mov a, #0x84
+ *   e59b: movx @dptr, a         ; write 0x84 to 0x097A
+ *   e59c: ret
+ */
+void event_state_handler(void)
+{
+    uint8_t val;
+    uint8_t r7;
+
+    /* Read state flag and check bit 3 */
+    val = G_STATE_CHECK_0AEE;
+    if (val & 0x08) {
+        /* Call helper at 0xE6F0 with R7=1 */
+        r7 = 0x01;
+        /* Helper function would be called here */
+        (void)r7;
+    }
+
+    /* Read event state */
+    val = G_EVENT_CHECK_09EF;
+    if ((val & 0x01) == 0) {
+        /* Check loop state */
+        val = G_LOOP_STATE_0991;
+        if (val != 0) {
+            /* Check loop check for state 1 */
+            val = G_LOOP_CHECK_098E;
+            if (val == 0x01) {
+                /* Call helper 0xABC9 with R7=0x0A */
+                r7 = 0x0A;
+                (void)r7;
+            }
+        } else {
+            /* State 0: ljmp to 0xEE11 */
+            /* This would dispatch to another handler */
+        }
+    }
+
+    /* Write final state 0x84 to event init */
+    G_EVENT_INIT_097A = 0x84;
+}
+
+/*
+ * error_state_config - Error/State handler
+ * Address: 0x0606-0x060a (5 bytes) -> dispatches to bank 1 0xB230
+ *
+ * Function at 0xB230 (file offset 0x13230):
+ * Error and state management handler. Configures various control registers
+ * for error handling and link state management.
+ *
+ * Algorithm:
+ *   1. Call helper 0x96B7 to get value, modify bits, call 0x980D
+ *   2. Read 0xE7FC, clear bits 0-1 and write back
+ *   3. Call helpers 0x968E, 0x99E0 for state setup
+ *   4. Write 0xA0 to register via 0x0BE6 helper
+ *   5. Clear 0x06EC, set up R4:R5=0x0271 for transfer params
+ *   6. Configure 0x0C7A with value 0x3E and mask 0x80
+ *   7. Call 0x97EF, then configure 0xCCD8, 0xC801, 0xCCDA
+ *
+ * Original disassembly:
+ *   b230: anl a, #0xef           ; clear bit 4
+ *   b232: orl a, #0x10           ; set bit 4
+ *   b234: lcall 0x96b7           ; helper
+ *   b237: lcall 0x980d           ; helper
+ *   b23a: mov dptr, #0xe7fc
+ *   b23d: movx a, @dptr
+ *   b23e: anl a, #0xfc           ; clear bits 0-1
+ *   b240: movx @dptr, a
+ *   ... (continues with state configuration)
+ */
+void error_state_config(void)
+{
+    uint8_t val;
+
+    /* Configure REG_LINK_MODE_CTRL - clear bits 0-1 */
+    val = REG_LINK_MODE_CTRL;
+    val = val & 0xFC;
+    REG_LINK_MODE_CTRL = val;
+
+    /* Clear error counter */
+    G_MISC_FLAG_06EC = 0x00;
+
+    /* Configure CPU DMA control - clear bit 4 */
+    val = REG_CPU_DMA_CCD8;
+    val = val & 0xEF;
+    REG_CPU_DMA_CCD8 = val;
+
+    /* Configure interrupt control - clear bit 4, set bit 4 */
+    val = REG_INT_CTRL_C801;
+    val = (val & 0xEF) | 0x10;
+    REG_INT_CTRL_C801 = val;
+
+    /* Configure CPU DMA control - clear bits 0-2, set bits 0-2 to 4 */
+    val = REG_CPU_DMA_CCD8;
+    val = (val & 0xF8) | 0x04;
+    REG_CPU_DMA_CCD8 = val;
+
+    /* Write 0x00 to CPU DMA control A, 0xC8 to CPU DMA control B */
+    REG_CPU_DMA_CCDA = 0x00;
+    REG_CPU_DMA_CCDB = 0xC8;
+}

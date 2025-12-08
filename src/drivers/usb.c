@@ -4387,3 +4387,79 @@ void usb_xfer_flash_dispatch_8a89(uint8_t param)
     /* Call flash dispatch - this is a bank switch + jump that doesn't return */
     /* flash_func_0bc8(0xEF, 0x4C, 0xFF); */
 }
+
+/*
+ * usb_buffer_dispatch - USB Buffer dispatch handler
+ * Address: 0x039a-0x039e (5 bytes) -> dispatches to bank 0 0xD810
+ *
+ * Function at 0xD810:
+ * Buffer transfer and USB endpoint dispatch handler.
+ * Checks various status registers and initiates buffer transfers.
+ *
+ * Algorithm:
+ *   1. Read 0x0B41, if zero return
+ *   2. Read 0x9091, if bit 0 set return
+ *   3. Read 0x07E4, if != 1 return
+ *   4. Read 0x9000, check bit 0
+ *   5. If bit 0 set, read 0xC471 and check bit 0
+ *   6. Read G_EP_CHECK_FLAG (0x000A), if non-zero, exit specific branch
+ *   7. Write 0x04, 0x02, 0x01 sequence to 0xCC17
+ *
+ * Original disassembly:
+ *   d810: mov dptr, #0x0b41
+ *   d813: movx a, @dptr
+ *   d814: jz 0xd851              ; if zero, return
+ *   d816: mov dptr, #0x9091
+ *   d819: movx a, @dptr
+ *   d81a: jb 0xe0.0, 0xd851      ; if bit 0 set, return
+ *   ... (complex state checking)
+ */
+void usb_buffer_dispatch(void)
+{
+    uint8_t val;
+
+    /* Check USB state - if zero, exit */
+    val = G_USB_STATE_0B41;
+    if (val == 0) {
+        return;
+    }
+
+    /* Check interrupt flags bit 0 - if set, exit */
+    val = REG_INT_FLAGS_EX0;
+    if (val & 0x01) {
+        return;
+    }
+
+    /* Check system flags - must equal 1 */
+    val = G_SYS_FLAGS_BASE;
+    if (val != 0x01) {
+        return;
+    }
+
+    /* Check USB status bit 0 */
+    val = REG_USB_STATUS;
+    if (val & 0x01) {
+        /* Check NVMe queue pointer bit 0 */
+        val = REG_NVME_QUEUE_PTR_C471;
+        if (val & 0x01) {
+            return;
+        }
+
+        /* Check G_EP_CHECK_FLAG */
+        val = G_EP_CHECK_FLAG;
+        if (val != 0) {
+            return;
+        }
+    } else {
+        /* Check USB peripheral status bit 6 */
+        val = REG_USB_PERIPH_STATUS;
+        if (val & 0x40) {
+            return;
+        }
+    }
+
+    /* Initiate buffer transfer - write sequence to timer CSR */
+    REG_TIMER1_CSR = TIMER_CSR_CLEAR;
+    REG_TIMER1_CSR = TIMER_CSR_EXPIRED;
+    REG_TIMER1_CSR = TIMER_CSR_ENABLE;
+}

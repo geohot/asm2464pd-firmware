@@ -419,3 +419,205 @@ void timer1_check_and_ack(void)
     /* Note: setb EA done by caller or at end of routine */
 }
 
+/*
+ * timer_link_status_handler - Timer/Link status handler
+ * Address: 0x04d0-0x04d4 (5 bytes) -> dispatches to 0xCE79
+ *
+ * Function at 0xCE79 (94 bytes):
+ * Handles timer and link status checks:
+ * 1. Checks REG_LINK_STATUS_CC3F bits 1,2 and calls helper if set
+ * 2. Configures timer/link registers (0xCC30, 0xCC33, 0xCC3B, etc.)
+ * 3. Clears bits in PHY_CONFIG (0xC233)
+ * 4. Performs timing delays with polling
+ * 5. Polls status registers until link ready
+ *
+ * Original disassembly:
+ *   ce79: mov dptr, #0xcc3f
+ *   ce7c: movx a, @dptr       ; read REG_LINK_STATUS_CC3F
+ *   ce7d: jb 0xe0.1, 0xce84   ; if bit 1 set, call helper
+ *   ce80: movx a, @dptr
+ *   ce81: jnb 0xe0.2, 0xce87  ; if bit 2 not set, skip helper
+ *   ce84: lcall 0xd0d3        ; clear bits in CC3F, set flags
+ *   ce87: lcall 0xcf28        ; configure timer regs
+ *   ce8a: lcall 0x0610        ; dispatch to bank 1 0xED02
+ *   ce8d: mov dptr, #0xc233
+ *   ce90: movx a, @dptr
+ *   ce91: anl a, #0xfc        ; clear bits 0-1
+ *   ce93: movx @dptr, a
+ *   ce94: lcall 0xbd5e        ; set bit 2, clear bit 2 of @DPTR
+ *   ce97-cea6: timing delay loop
+ *   cea7-ceab: more timing delay
+ *   ceb0-cec5: poll 0xE712 and 0xCC11 until ready
+ *   cec6: lcall 0xe8ef
+ *   cecb: lcall 0xdd42
+ *   cece: ljmp 0xd996
+ */
+void timer_link_status_handler(void)
+{
+    uint8_t status;
+    uint8_t val;
+
+    /* Read link status register */
+    status = REG_CPU_CTRL_CC3F;
+
+    /* Check if bit 1 or bit 2 is set - if so, call helper to clear flags */
+    if ((status & 0x02) || (status & 0x04)) {
+        /* Helper at 0xD0D3:
+         * - Calls 0xBD2A (set bit 2, clear bit 2)
+         * - Delay loop with R4:R5=0x0009
+         * - Reads 0xCC3F, clears bit 1
+         * - Modifies register, sets bit 5, clears bit 6
+         * - More delay loops
+         * - Clears bit 7 of 0xCC3D
+         */
+        REG_CPU_CTRL_CC3F = (REG_CPU_CTRL_CC3F & 0xFB) | 0x04;  /* Set bit 2 */
+        /* Note: Full helper implementation would include delays */
+        REG_CPU_CTRL_CC3F = REG_CPU_CTRL_CC3F & 0xFD;  /* Clear bit 1 */
+        REG_CPU_CTRL_CC3D = REG_CPU_CTRL_CC3D & 0x7F;  /* Clear bit 7 */
+    }
+
+    /* Helper at 0xCF28: Configure timer/link registers
+     * - Reads 0xCC30, calls 0xBCEB, 0xBD49, sets bit 2
+     * - Writes 0x04 to 0xCC33
+     * - Clears bit 2 of 0xE324
+     * - Clears bit 0 of 0xCC3B
+     * - Sets bits in 0xCC39, 0xCC3A
+     * - Clears bit 0 of 0xCC3E
+     * - Configures 0xCA81
+     */
+    val = REG_CPU_CTRL_CC30;
+    val = (val & 0xFB) | 0x04;  /* Set bit 2 */
+    REG_CPU_CTRL_CC30 = val;
+
+    REG_CPU_EXEC_STATUS_2 = 0x04;
+
+    REG_LINK_CTRL_E324 = REG_LINK_CTRL_E324 & 0xFB;  /* Clear bit 2 */
+    REG_CPU_CTRL_CC3B = REG_CPU_CTRL_CC3B & 0xFE;  /* Clear bit 0 */
+
+    /* Set bits 5,6 in 0xCC3A */
+    REG_CPU_CTRL_CC3A = (REG_CPU_CTRL_CC3A & 0x9F) | 0x60;
+
+    REG_CPU_CTRL_CC3E = REG_CPU_CTRL_CC3E & 0xFE;  /* Clear bit 0 */
+
+    /* Dispatch to bank 1 handler at 0xED02 via 0x0610 */
+    jump_bank_1(0xED02);
+
+    /* Clear bits 0-1 of PHY config register */
+    REG_PHY_CONFIG = REG_PHY_CONFIG & 0xFC;
+
+    /* Helper at 0xBD5E: read @DPTR, clear bit 2, set bit 2 */
+    val = REG_PHY_CONFIG;
+    val = (val & 0xFB) | 0x04;  /* Set bit 2 */
+    REG_PHY_CONFIG = val;
+
+    /* Timing delay - R4:R5=0x0014, R7=0x02 */
+    /* In original firmware this calls 0xE80A delay function */
+
+    /* Clear bit 2 of PHY config */
+    REG_PHY_CONFIG = REG_PHY_CONFIG & 0xFB;
+
+    /* More timing delay - R4:R5=0x000A, R7=0x03 */
+
+    /* Polling loop: wait for status bits in link status and timer */
+    do {
+        status = REG_LINK_STATUS_E712;
+        /* Check bit 0 - if set, call helper and exit */
+        if (status & 0x01) {
+            break;
+        }
+        /* Check bit 1 (from value ANDed with 0x02, shifted right) */
+        if ((status & 0x02) != 0) {
+            break;
+        }
+        /* Check bit 1 of timer CSR - if not set, continue polling */
+    } while ((REG_TIMER0_CSR & TIMER_CSR_EXPIRED) == 0);
+
+    /* Final handlers - would call 0xE8EF, 0xDD42, then jump to 0xD996 */
+    /* These handle completion of the timer/link setup */
+}
+
+/*
+ * system_interrupt_handler - System Interrupt Handler
+ * Address: 0x0520-0x0524 (5 bytes) -> dispatches to bank 0 0xB4BA
+ *
+ * Function at 0xB4BA:
+ * System interrupt handler called when system status bit 0 is set.
+ * Handles link status changes and timer events.
+ *
+ * Algorithm:
+ *   1. Read 0xCC23, check bit 1
+ *   2. If bit 1 set: call 0xE3D8, write 0x02 to 0xCC23
+ *   3. Read 0xCC81, check bit 1
+ *   4. If bit 1 set: read 0x07BD, compare with 0x0E or 0x0D
+ *   5. Configure 0xCC81 with value 0x02
+ *   6. Check 0x07BC and dispatch accordingly
+ *
+ * Original disassembly:
+ *   b4ba: mov dptr, #0xcc23
+ *   b4bd: movx a, @dptr
+ *   b4be: jnb 0xe0.1, 0xb4ca     ; if bit 1 not set, skip
+ *   b4c1: lcall 0xe3d8           ; helper
+ *   b4c4: mov dptr, #0xcc23
+ *   b4c7: mov a, #0x02
+ *   b4c9: movx @dptr, a          ; write 0x02
+ *   ... (continues with state machine)
+ */
+void system_interrupt_handler(void)
+{
+    uint8_t val;
+    uint8_t state;
+
+    /* Read timer 3 CSR and check bit 1 */
+    val = REG_TIMER3_CSR;
+    if (val & TIMER_CSR_EXPIRED) {
+        /* Call helper 0xE3D8 */
+        /* Write 0x02 to acknowledge */
+        REG_TIMER3_CSR = TIMER_CSR_EXPIRED;
+    }
+
+    /* Read CPU status 81 and check bit 1 */
+    val = REG_CPU_STATUS_CC81;
+    if (val & 0x02) {
+        /* Read state from G_FLASH_OP_COUNTER */
+        state = G_FLASH_OP_COUNTER;
+
+        if (state == 0x0E || state == 0x0D) {
+            /* Write 0x02 to CPU status 81 */
+            REG_CPU_STATUS_CC81 = 0x02;
+
+            /* Check G_FLASH_CMD_TYPE for further dispatch */
+            val = G_FLASH_CMD_TYPE;
+            if (val != 0) {
+                /* Call helper 0xE529 with R7=0x3B */
+            }
+            /* Call helper 0xD676 */
+        } else {
+            /* Call 0xE90B for other states */
+            REG_CPU_STATUS_CC81 = 0x02;
+        }
+    }
+
+    /* Read CPU status 91 and check bit 1 */
+    val = REG_CPU_STATUS_CC91;
+    if (val & 0x02) {
+        REG_CPU_STATUS_CC91 = 0x02;  /* Acknowledge */
+    }
+}
+
+/*
+ * system_timer_handler - System Timer Handler
+ * Address: 0x0642-0x0646 (5 bytes)
+ *
+ * Dispatches to bank 1 code at 0xEF4E (file offset 0x16F4E)
+ * Called from ext1_isr when system status bit 4 is set.
+ *
+ * Original disassembly:
+ *   0642: mov dptr, #0xef4e
+ *   0645: ajmp 0x0311
+ */
+extern void error_handler_system_timer(void);  /* Bank 1: file 0x16F4E */
+void system_timer_handler(void)
+{
+    error_handler_system_timer();
+}
+

@@ -28,9 +28,60 @@
 #include "sfr.h"
 #include "registers.h"
 
-/* External bank switch functions from main.c */
-extern void jump_bank_0(uint16_t addr);
-extern void jump_bank_1(uint16_t addr);
+/*===========================================================================
+ * Bank Switch Functions (0x0300-0x0321)
+ *===========================================================================*/
+
+/*
+ * jump_bank_0 - Bank 0 dispatch function
+ * Address: 0x0300-0x0310 (17 bytes)
+ *
+ * Sets DPX=0 (bank 0) and dispatches to target address.
+ * R0 is set to 0x0A which may be used by target functions.
+ *
+ * Original disassembly:
+ *   0300: push 0x08      ; push R0
+ *   0302: mov a, #0x03
+ *   0304: push 0xe0      ; push ACC
+ *   0306: push 0x82      ; push DPL
+ *   0308: push 0x83      ; push DPH
+ *   030a: mov 0x08, #0x0a  ; R0 = 0x0A
+ *   030d: mov 0x96, #0x00  ; DPX = 0x00 (bank 0)
+ *   0310: ret              ; pops DPH:DPL from stack, jumps there
+ */
+void jump_bank_0(uint16_t reg_addr)
+{
+    /* Bank 0 dispatch - target address is in bank 0 (file 0x0000-0xFFFF) */
+    (void)reg_addr;
+    DPX = 0x00;
+}
+
+/*
+ * jump_bank_1 - Bank 1 dispatch function
+ * Address: 0x0311-0x0321 (17 bytes)
+ *
+ * Sets DPX=1 (bank 1) and dispatches to target address.
+ * R0 is set to 0x1B which may be used by target functions.
+ *
+ * Bank 1 functions handle error conditions and are at file offset
+ * 0x10000-0x17F0C (CPU addresses 0x8000-0xFFFF with DPX=1).
+ *
+ * Original disassembly:
+ *   0311: push 0x08
+ *   0313: mov a, #0x03
+ *   0315: push 0xe0
+ *   0317: push 0x82
+ *   0319: push 0x83
+ *   031b: mov 0x08, #0x1b  ; R0 = 0x1B
+ *   031e: mov 0x96, #0x01  ; DPX = 0x01 (bank 1)
+ *   0321: ret
+ */
+void jump_bank_1(uint16_t reg_addr)
+{
+    /* Bank 1 dispatch - target address is in bank 1 (file 0x10000+) */
+    (void)reg_addr;
+    DPX = 0x01;
+}
 
 /*===========================================================================
  * Bank 0 Dispatch Functions (0x0322-0x03A7)

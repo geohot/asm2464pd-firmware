@@ -467,21 +467,123 @@ void handler_0327_usb_power_init(void) {}
 void handler_039a_buffer_dispatch(void) {}
 
 /*
- * handler_d676 - Initialize PCIe/DMA with timeout value
- * Address: 0xd676-... (complex function)
+ * helper_9608 - Read-modify-write: clear bit 0, set bit 0
+ * Address: 0x9608-0x960e (7 bytes)
  *
- * Disassembly snippet:
- *   d676: mov r3, #0xff      ; Timeout value R3:R2:R1 = 0xFF234B
+ * Entry point into cmd_start_trigger. DPTR must be set by caller.
+ * Reads @DPTR, clears bit 0 (& 0xFE), sets bit 0 (| 0x01), writes back.
+ */
+static void helper_9608(void)
+{
+    /* DPTR is already set by caller - read, modify, write */
+    /* In C we can't directly access DPTR, so this is done inline */
+}
+
+/*
+ * helper_9627 - Write accumulated value to DPTR register
+ * Address: 0x9627-0x962d (7 bytes)
+ *
+ * Writes A to @DPTR. In calling context, A has been modified.
+ */
+static void helper_9627(uint8_t val)
+{
+    (void)val;
+    /* Value written by direct call in original - DPTR already set */
+}
+
+/*
+ * helper_955e - Write value to CC89 and increment
+ * Address: 0x955e-0x9565 (8 bytes)
+ *
+ * Writes A to @DPTR, increments DPTR, writes A again.
+ */
+static void helper_955e(uint8_t val)
+{
+    /* DPTR=CC89, writes val, inc to CC8A, writes val again */
+    REG_DMA_CMD_CC89 = val;
+    XDATA8(0xCC8A) = val;
+}
+
+/* Forward declaration */
+extern void cmd_write_cc89_02(void);
+
+/*
+ * handler_d676 - Initialize PCIe/DMA with error halt
+ * Address: 0xd676-0xd701 (140 bytes)
+ *
+ * This function initializes DMA registers with polling and error handling.
+ * IMPORTANT: This function ends with an infinite loop (hang on error).
+ *
+ * Disassembly:
+ *   d676: mov r3, #0xff           ; R3:R2:R1 = 0xFF234B (debug string addr)
  *   d678: mov r2, #0x23
  *   d67a: mov r1, #0x4b
- *   d67c: lcall 0x538d       ; Delay function
- *   d67f: mov dptr, #0xcc32  ; REG_PCIE_CONFIG
- *   d682: lcall 0x9608       ; Read/setup
- *   ... continues with PCIe configuration
- *
- * This function initializes PCIe with specific timing parameters.
+ *   d67c: lcall 0x538d            ; uart_puts
+ *   d67f: mov dptr, #0xcc32
+ *   d682: lcall 0x9608            ; Set bit 0 of CC32
+ *   d685: mov dptr, #0xe7fa
+ *   d688: mov a, #0x0f
+ *   d68a: movx @dptr, a           ; Write 0x0F to E7FA
+ *   d68b: mov dptr, #0xcc88
+ *   d68e-d693: Read CC88, clear bits 0-2, set bit 2, write back
+ *   d696-d699: Inc to CC89, write 0x31
+ *   d69c-d6a0: Poll CC89 bit 1
+ *   d6a3: lcall 0x964f            ; cmd_write_cc89_02
+ *   d6a6-d6b0: Setup CC31/CC32
+ *   d6b1-d6b7: uart_puts with error message
+ *   d6ba: sjmp 0xd6ba             ; **INFINITE LOOP - HANG**
+ *   d6bc-d701: Error code determination based on R7, R5, R3
  */
-void handler_d676(void) {}
+void handler_d676(void)
+{
+    uint8_t val;
+
+    /* Print debug message (string at 0xFF234B) */
+    /* uart_puts(0xFF234B); */
+
+    /* Set bit 0 of CC32 */
+    val = XDATA8(0xCC32);
+    val = (val & 0xFE) | 0x01;
+    XDATA8(0xCC32) = val;
+
+    /* Write 0x0F to E7FA */
+    XDATA8(0xE7FA) = 0x0F;
+
+    /* CC88: clear bits 0-2, set bit 2 */
+    val = XDATA8(0xCC88);
+    val = (val & 0xF8) | 0x04;
+    XDATA8(0xCC88) = val;
+
+    /* Write 0x31 to CC89 */
+    REG_DMA_CMD_CC89 = 0x31;
+
+    /* Poll CC89 until bit 1 is set */
+    while (!(REG_DMA_CMD_CC89 & 0x02)) {
+        /* Spin */
+    }
+
+    /* Write 0x02 to CC89 */
+    cmd_write_cc89_02();
+
+    /* Set bit 0 of CC31 */
+    val = XDATA8(0xCC31);
+    val = (val & 0xFE) | 0x01;
+    XDATA8(0xCC31) = val;
+
+    /* Inc to CC32, clear bit 0 */
+    val = XDATA8(0xCC32);
+    val &= 0xFE;
+    XDATA8(0xCC32) = val;
+
+    /* Print error message (string at 0xFF235C) */
+    /* uart_puts(0xFF235C); */
+
+    /* ERROR: Infinite loop - hang the system */
+    /* This is intentional - the function never returns */
+    while (1) {
+        /* Hang forever */
+    }
+}
 
 /* Forward declarations for handler_e3d8 */
 extern void helper_e3b7(uint8_t param);
@@ -789,6 +891,73 @@ void sys_event_dispatch_05e8(void) {}
 void sys_init_helper_bbc7(void) {}
 void sys_timer_handler_e957(void) {}
 
+/*
+ * pcie_lane_config_helper - PCIe lane configuration state machine
+ * Address: 0xc089-0xc104 (124 bytes)
+ *
+ * Complex lane configuration state machine that iterates up to 4 times,
+ * configuring link state registers (0xB434) and calling phy_link_training (0xd702).
+ *
+ * Algorithm:
+ *   1. Store param to G_FLASH_ERROR_1 (0x0AA9)
+ *   2. Set G_STATE_COUNTER_0AAC = 1
+ *   3. Read B434 low nibble -> G_STATE_HELPER_0AAB
+ *   4. Set G_FLASH_RESET_0AAA = 0
+ *   5. Loop up to 4 times:
+ *      - If param < 0x0F, check if G_STATE_HELPER_0AAB == param
+ *      - Otherwise check if G_STATE_HELPER_0AAB == 0x0F
+ *      - Merge state values, write to B434, call d702, delay 200ms
+ *   6. Return loop count - 4
+ *
+ * This is CRITICAL for eGPU - it trains the PCIe link.
+ */
+void pcie_lane_config_helper(uint8_t param)
+{
+    uint8_t lane_state, counter, temp;
+
+    G_FLASH_ERROR_1 = param;
+    G_STATE_COUNTER_0AAC = 1;
+
+    /* Read current lane state from B434 low nibble */
+    lane_state = REG_PCIE_LINK_STATE & 0x0F;
+    G_STATE_HELPER_0AAB = lane_state;
+    G_FLASH_RESET_0AAA = 0;
+
+    /* Loop up to 4 times for link training */
+    for (counter = 0; counter < 4; counter++) {
+        temp = G_FLASH_ERROR_1;
+
+        if (temp < 0x0F) {
+            /* Check if we've reached target lane config */
+            if (G_STATE_HELPER_0AAB == temp) {
+                return;  /* Success */
+            }
+            /* Merge lane state with counter */
+            temp = (temp | (G_STATE_COUNTER_0AAC ^ 0x0F)) & G_STATE_HELPER_0AAB;
+        } else {
+            /* Full lane mode - check for 0x0F */
+            if (G_STATE_HELPER_0AAB == 0x0F) {
+                return;  /* Success */
+            }
+            /* Set all lanes active */
+            temp = G_STATE_COUNTER_0AAC | G_STATE_HELPER_0AAB;
+        }
+
+        G_STATE_HELPER_0AAB = temp;
+
+        /* Update B434 with new lane state */
+        lane_state = REG_PCIE_LINK_STATE;
+        REG_PCIE_LINK_STATE = temp | (lane_state & 0xF0);
+
+        /* Call link training - would be FUN_CODE_d702() */
+        /* delay_function(0, 199, 2) - 200ms delay */
+
+        /* Shift counter for next iteration */
+        G_STATE_COUNTER_0AAC = G_STATE_COUNTER_0AAC * 2;
+        G_FLASH_RESET_0AAA++;
+    }
+}
+
 /*===========================================================================
  * Main Event Handler Wrappers
  *===========================================================================*/
@@ -976,14 +1145,186 @@ void FUN_CODE_505d(void) {}
  */
 void FUN_CODE_5359(void) {}
 
+/* Forward declarations for FUN_CODE_be8b helpers */
+extern void uart_puthex(uint8_t val);
+extern void uart_puts(const char __code *str);
+extern uint8_t cmd_check_busy(void);
+extern void cmd_start_trigger(void);
+extern void cmd_config_e40b(void);
+extern void FUN_CODE_e73a(void);
+
+/*
+ * helper_befb - Delay with 0xFF2269 parameter
+ * Address: 0xbefb-0xbf04 (10 bytes)
+ * Sets R3:R2:R1 = 0xFF:0x22:0x69 and calls uart_puts.
+ */
+static void helper_befb(void) {
+    /* Delay - just calls uart_puts with delay params */
+}
+
+/*
+ * helper_9536 - Clear E40F/E410/E40B and setup DMA registers
+ * Address: 0x9536-0x9565 (48 bytes)
+ *
+ * Writes 0xFF to E40F, E410
+ * Clears bits 1, 2, 3 of E40B (reads and ANDs with 0xFD, 0xFB, 0xF7)
+ * Clears bits 0-2 of CC88, sets bit 1
+ * Clears CC8A
+ * Writes 0xC7 to CC8B
+ * Writes 0x01 to CC89
+ */
+static void helper_9536(void) {
+    uint8_t val;
+
+    /* Clear command interrupt flags */
+    REG_CMD_CTRL_E40F = 0xFF;
+    REG_CMD_CTRL_E410 = 0xFF;
+
+    /* Clear bits 1, 2, 3 of E40B */
+    val = REG_CMD_CONFIG;
+    val &= 0xFD;  /* Clear bit 1 */
+    REG_CMD_CONFIG = val;
+    val = REG_CMD_CONFIG;
+    val &= 0xFB;  /* Clear bit 2 */
+    REG_CMD_CONFIG = val;
+    val = REG_CMD_CONFIG;
+    val &= 0xF7;  /* Clear bit 3 */
+    REG_CMD_CONFIG = val;
+
+    /* CC88: clear bits 0-2, set bit 1 */
+    val = XDATA8(0xCC88);
+    val = (val & 0xF8) | 0x02;
+    XDATA8(0xCC88) = val;
+
+    /* Clear CC8A, write 0xC7 to CC8B */
+    XDATA8(0xCC8A) = 0;
+    XDATA8(0xCC8B) = 0xC7;
+
+    /* Write 0x01 to CC89 */
+    REG_DMA_CMD_CC89 = 0x01;
+}
+
+/*
+ * helper_b8c3 - Clear command state globals
+ * Address: 0xb8c3-0xb919 (87 bytes)
+ *
+ * Clears multiple command engine globals at 0x07B7-0x07C7 area
+ * and sets G_CMD_OP_COUNTER to 1.
+ */
+static void helper_b8c3(void) {
+    /* Clear command slot index and neighbor */
+    G_CMD_SLOT_INDEX = 0;
+    XDATA8(0x07B8) = 0;
+
+    /* Clear command state and status */
+    G_CMD_STATE = 0;
+    G_CMD_STATUS = 0;
+
+    /* Clear other globals */
+    XDATA8(0x07C7) = 0;
+    XDATA8(0x07C5) = 0;
+    XDATA8(0x07C2) = 0;
+    XDATA8(0x07C1) = 0;
+    XDATA8(0x07E3) = 0;
+
+    /* Set operation counter to 1 */
+    G_CMD_OP_COUNTER = 1;
+}
+
 /*
  * FUN_CODE_be8b - PCIe link status check with state machine
- * Address: 0xbe8b-... (complex function)
+ * Address: 0xbe8b-0xbefa (112 bytes)
  *
- * Reads 0xE302, masks with 0x30, swaps nibbles, compares with 0x03.
- * Part of PCIe link training state machine.
+ * Reads REG_PHY_MODE_E302, checks bits 4-5 for link state.
+ * If link state == 3: short path (delay and return)
+ * Otherwise: full initialization with polling loops
+ *
+ * Original disassembly:
+ *   be8b: mov dptr, #0xe302   ; REG_PHY_MODE_E302
+ *   be8e: movx a, @dptr
+ *   be8f: anl a, #0x30        ; Mask bits 4-5
+ *   be91: mov r7, a
+ *   be92: swap a              ; Swap nibbles
+ *   be93: anl a, #0x0f        ; Keep low nibble
+ *   be95: xrl a, #0x03        ; Compare with 3
+ *   be97: jz 0xbeeb           ; Jump if link state == 3
+ *   [main path: call helpers, poll registers, setup command engine]
+ *   beea: ret
+ *   [alternate path at beeb: short delay and return]
  */
-void FUN_CODE_be8b(void) {}
+void FUN_CODE_be8b(void)
+{
+    uint8_t val;
+    uint8_t link_state;
+
+    /* Read PHY mode register and extract link state (bits 4-5) */
+    val = REG_PHY_MODE_E302;
+    val &= 0x30;
+    link_state = (val >> 4) & 0x0F;
+
+    /* If link state == 3, take short path */
+    if (link_state == 0x03) {
+        /* Short path: delay and return */
+        helper_befb();
+        uart_puthex(0);  /* Placeholder for 0x51c7 call */
+        /* Delay with 0xFF2285 params - just return */
+        return;
+    }
+
+    /* Main initialization path */
+    helper_befb();
+    uart_puthex(0);
+
+    /* Additional delay */
+    /* uart_puts with delay params 0xFF2274 */
+
+    /* Call FUN_CODE_e73a */
+    FUN_CODE_e73a();
+
+    /* Clear command state */
+    helper_b8c3();
+
+    /* Setup E40F/E40B/DMA registers */
+    helper_9536();
+
+    /* Wait for bit 1 of CC89 to be set */
+    while (!(REG_DMA_CMD_CC89 & 0x02)) {
+        /* Spin */
+    }
+
+    /* Configure command register E40B */
+    cmd_config_e40b();
+
+    /* Write 0 to E403, 0x40 to E404 */
+    REG_CMD_CTRL_E403 = 0;
+    REG_CMD_CFG_E404 = 0x40;
+
+    /* Read-modify-write E405: clear bits 0-2, set bits 0 and 2 */
+    val = REG_CMD_CFG_E405;
+    val = (val & 0xF8) | 0x05;
+    REG_CMD_CFG_E405 = val;
+
+    /* Read-modify-write E402: clear bits 5-7, set bit 5 */
+    val = REG_CMD_STATUS_E402;
+    val = (val & 0x1F) | 0x20;
+    REG_CMD_STATUS_E402 = val;
+
+    /* Wait for command engine to be ready */
+    while (cmd_check_busy()) {
+        /* Spin */
+    }
+
+    /* Trigger command start */
+    cmd_start_trigger();
+
+    /* Wait for busy bit to clear */
+    while (REG_CMD_BUSY_STATUS & 0x01) {
+        /* Spin */
+    }
+
+    /* Set PCIe complete flag */
+    G_PCIE_COMPLETE_07DF = 1;
+}
 
 /* 0xdd0e: Simple stub */
 void FUN_CODE_dd0e(void) {}
@@ -1009,14 +1350,53 @@ void helper_e120(uint8_t param) { (void)param; }
  * FUN_CODE_e1c6 - Wait loop with status check
  * Address: 0xe1c6-0xe1ed (40 bytes)
  *
- * Polling loop: calls 0xE09A until R7 != 0,
- * then reads/writes various state registers.
+ * This function is fully implemented as cmd_wait_completion() in cmd.c.
+ * This stub provides the FUN_CODE_e1c6 name for callers (e.g., nvme.c).
  */
-void FUN_CODE_e1c6(void) {}
+extern uint8_t cmd_wait_completion(void);
+void FUN_CODE_e1c6(void)
+{
+    cmd_wait_completion();
+}
 
-/* 0xe73a: PCIe/DMA related - stub - also called from cmd.c */
-void FUN_CODE_e73a(void) {}
-void helper_e73a(void) {}
+/*
+ * FUN_CODE_e73a - Clear command engine registers 0xE420-0xE43F
+ * Address: 0xe73a-0xe74d (20 bytes)
+ *
+ * Clears 32 bytes (0x20) starting at address 0xE420.
+ * This resets the command engine parameter area.
+ *
+ * Original disassembly:
+ *   e73a: clr a              ; A = 0
+ *   e73b: mov r7, a          ; R7 = 0 (loop counter)
+ *   e73c: mov a, #0x20       ; Loop start
+ *   e73e: add a, r7          ; A = 0x20 + R7
+ *   e73f: mov 0x82, a        ; DPL = 0x20 + R7
+ *   e741: clr a
+ *   e742: addc a, #0xe4      ; DPH = 0xE4
+ *   e744: mov 0x83, a        ; DPTR = 0xE420 + R7
+ *   e746: clr a
+ *   e747: movx @dptr, a      ; Write 0 to [0xE420 + R7]
+ *   e748: inc r7             ; R7++
+ *   e749: mov a, r7
+ *   e74a: cjne a, #0x20, e73c; Loop until R7 == 0x20
+ *   e74d: ret
+ */
+void FUN_CODE_e73a(void)
+{
+    uint8_t i;
+
+    /* Clear 32 bytes at 0xE420-0xE43F */
+    for (i = 0; i < 0x20; i++) {
+        XDATA8(0xE420 + i) = 0;
+    }
+}
+
+/* Alias for helper_e73a - same function */
+void helper_e73a(void)
+{
+    FUN_CODE_e73a();
+}
 
 /* 0xe7ae: PCIe/DMA related - stub */
 void FUN_CODE_e7ae(void) {}

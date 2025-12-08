@@ -2,50 +2,149 @@
 
 ## Progress Summary
 - Total functions in ghidra.c: ~720
-- Functions implemented: ~360 (50%)
-- Functions remaining: ~360 (50%)
+- Functions implemented: ~380 (53%)
+- Functions remaining: ~340 (47%)
+
+---
+
+## USB4 eGPU Passthrough Priority
+
+For USB4 eGPU passthrough (PCIe tunneling without NVMe/SCSI translation), the following
+subsystems are critical. These should be prioritized if the goal is eGPU support.
+
+### PHY/Link Initialization (Critical)
+These functions bring up the USB4 and PCIe links:
+
+- [ ] `0xd436` - PHY configuration (main PHY init) **HIGH PRIORITY**
+- [ ] `0xd47f` - PHY handler
+- [ ] `0xd4c8` - PHY handler
+- [ ] `0xd511` - PHY lane configuration
+- [ ] `0xd559` - PHY signal settings
+- [ ] `0xd630` - PHY extended config
+- [ ] `0xd702` - PHY link training
+- [ ] `0xd78a` - PHY status polling
+- [ ] `0xd7cd` - PHY completion handler
+- [ ] `0xd8d5` - PHY error handler
+- [ ] `0xe8a9` - PHY event handler (Bank 1)
+
+### PCIe Passthrough/Tunneling (Critical)
+These handle PCIe TLP forwarding - the core of eGPU support:
+
+- [ ] `0x9916` - PCIe config space setup **HIGH PRIORITY**
+- [ ] `0x991a` - PCIe BAR configuration
+- [ ] `0x9923` - PCIe link config
+- [ ] `0x992a` - PCIe capability setup
+- [ ] `0x9930` - PCIe extended config
+- [ ] `0x99e0` - PCIe write config space **HIGH PRIORITY**
+- [ ] `0x9a6c` - PCIe link speed negotiation **HIGH PRIORITY**
+- [ ] `0xa522` - PCIe interrupt handler **HIGH PRIORITY**
+- [ ] `0xb104` - PCIe TLP handler **HIGH PRIORITY**
+- [ ] `0xb28c` - PCIe completion handler
+- [ ] `0xb402` - PCIe error handler
+- [ ] `0xe00c` - PCIe error recovery (Bank 1)
+
+### Power Management (Important)
+USB suspend/resume and PCIe power states:
+
+- [ ] `0xd02a` - Power state machine **HIGH PRIORITY**
+- [ ] `0xd118` - Power domain control
+- [ ] `0xd17a` - Power sequencing
+- [ ] `0xd1f2` - Clock gating
+- [ ] `0xd1fe` - Power resume
+- [ ] `0xd211` - Power suspend
+- [ ] `0xd916` - PHY/power handler **HIGH PRIORITY**
+- [ ] `0xda13` - L1 power state
+- [ ] `0xda51` - L2 power state
+- [ ] `0xdb45` - Power event handler
+- [ ] `0xdc2d` - USB suspend handler
+- [ ] `0xdc9d` - USB resume handler
+
+### Interrupt/Event Handling (Important)
+Link events and error handling:
+
+- [ ] `0xca0d` - System state handler **HIGH PRIORITY**
+- [ ] `0xc5ff` - Event dispatcher
+- [ ] `0xc6d3` - Link event handler
+- [ ] `0xc73c` - PCIe event handler
+- [ ] `0xc80d` - USB event handler
+- [ ] `0xc874` - Combined event handler
+- [ ] `0xc8db` - Error event handler
+- [ ] `0xe06b` - Bank 1 event handler
+- [ ] `0xe0f4` - Link status event
+
+### Bank Switch Infrastructure (Required)
+Core dispatching for Bank 1 functions:
+
+- [ ] `0xbcaf` - Bank switch helper **HIGH PRIORITY**
+- [ ] `0xbcde` - Bank switch read helper **HIGH PRIORITY**
+- [ ] `0xbc88` - Bank switch read
+- [ ] `0xbcc4` - Bank switch write
+
+### NOT Needed for eGPU (Can Skip)
+These sections are NVMe/SCSI specific and not needed for eGPU passthrough:
+
+- SCSI/USB Mass Storage (0x4000-0x5800) - CBW/CSW, SCSI commands
+- NVMe Command Engine (0x9500-0x9700) - NVMe command building
+- NVMe Queue Management (0xa600-0xa800) - Submission/completion queues
+- NVMe Admin Commands (0xaa00-0xac00) - Identify, Create IO Queue
+- SCSI DMA Control (0xCE00-0xCE9F) - Block transfer state machines
+
+### Estimated Scope
+- **Functions needed for eGPU**: ~60 functions (~18% of total)
+- **Functions that can be skipped**: ~200+ functions
+- **Shared infrastructure**: ~80 functions (init, power, interrupts)
+
+---
 
 ## Recent Completions
 
-### Code Organization (bank1.c removed)
-All functions from bank1.c have been moved to appropriate files:
-- [x] Error handlers → `src/app/error_log.c`
-  - `error_clear_system_flags` (0xE920, was `error_clear_e760_flags`)
-  - `error_handler_pcie_nvme` (0xE911, was `error_handler_e911`)
-  - `error_handler_recovery` (0xB230, was `error_handler_b230`)
-  - `error_handler_pcie_bit5` (0xA066, was `error_handler_a066`)
-  - `error_handler_system_unused` (0xEF4E, was `error_handler_ef4e`)
-- [x] Event handlers → `src/app/protocol.c`
-  - `event_state_machine_e56f` (0xE56F, was `event_handler_e56f`)
-  - `event_queue_process_e762` (0xE762, was `handler_e762`)
-  - `status_update_handler_e677` (0xE677, was `handler_e677`)
-- [x] PCIe handlers → `src/drivers/pcie.c`
-  - `pcie_state_clear_ed02` (0xED02, was `handler_ed02`)
-  - `pcie_handler_unused_eef9` (0xEEF9, was `handler_eef9`)
-- [x] System init → `src/main.c`
-  - `system_init_from_flash` (0x8D77, was `system_init_from_flash_8d77`)
+### Function Renames in main.c (ISR handlers)
+- [x] `handler_04d0` → `timer_link_status_handler` (0xCE79)
+- [x] `handler_04b2` → `reserved_stub_handler` (0xE971)
+- [x] `handler_4fb6` → `main_polling_handler`
+- [x] `handler_0327` → `usb_power_init` (0xB1CB)
+- [x] `handler_0494` → `event_state_handler` (Bank1:0xE56F)
+- [x] `handler_0606` → `error_state_config` (Bank1:0xB230)
+- [x] `handler_0589` → `phy_register_config` (0xD894)
+- [x] `handler_0525` → `flash_command_handler` (0xBAA0)
+- [x] `handler_039a` → `usb_buffer_dispatch` (0xD810)
+- [x] `handler_0520` → `system_interrupt_handler` (0xB4BA)
+- [x] `handler_052f` → `pcie_nvme_event_handler` (0xAF5E)
+- [x] `handler_0570` → `pcie_error_dispatch` (Bank1:0xE911)
+- [x] `handler_061a` → `pcie_event_bit5_handler` (Bank1:0xA066)
+- [x] `handler_0593` → `pcie_timer_bit4_handler` (0xC105)
+- [x] `handler_0642` → `system_timer_handler` (Bank1:0xEF4E)
 
-### SCSI Function Renames (src/app/scsi.c)
-- [x] `scsi_state_handler_40d9` → `scsi_state_dispatch`
-- [x] `scsi_action_handler_419d` → `scsi_setup_action`
-- [x] `scsi_mode_setup_425f` → `scsi_init_transfer_mode`
-- [x] `scsi_dma_handler_43d3` → `scsi_dma_dispatch`
-- [x] `scsi_cbw_validate_51ef` → `scsi_cbw_validate`
-- [x] `scsi_csw_handler_4904` → `scsi_csw_build`
-- [x] `scsi_queue_handler_480c` → `scsi_nvme_queue_process`
-- [x] Plus ~20 more SCSI function renames
+### Function Renames in state_helpers.c
+- [x] `handler_d07f` → `usb_mode_config_d07f`
+- [x] `handler_e214` → `nvme_queue_config_e214`
+- [x] `handler_e8ef` → `power_init_complete_e8ef`
+- [x] `handler_2608` → `dma_queue_state_handler`
 
-### Register/Global Cleanup
-- [x] Moved all local register definitions from scsi.c to registers.h
-- [x] Moved all local global definitions from scsi.c to globals.h
-- [x] Added USB FIFO status bitfields
-- [x] Added SCSI DMA register definitions
+### Function Renames in error_log.c
+- [x] `error_handler_system_unused` → `error_handler_system_timer`
+
+### Dispatch Function Direct Call Replacements
+- [x] `dispatch_039f` → `handler_d916` (0xD916)
+- [x] `dispatch_04fd` → `handler_e96c` (0xE96C)
+- [x] `dispatch_04ee` → `handler_e6fc` (0xE6FC)
+- [x] `dispatch_04e9` → `handler_e8e4` (0xE8E4)
+- [x] `dispatch_044e` → `handler_e91d` (0xE91D)
+- [x] `dispatch_032c` → `phy_power_config_handler` (0x92C5)
+- [x] `dispatch_0340` → `handler_bf8e` (0xBF8E)
+- [x] `dispatch_0534` → `handler_d6bc` (0xD6BC)
+- [x] `dispatch_0638` → `handler_e478` (Bank1:0xE478)
+
+### Code Organization
+- [x] bank1.c removed - functions moved to appropriate files
+- [x] All register definitions in registers.h
+- [x] All global definitions in globals.h
 
 ---
 
 ## Dispatch/Jump Table Functions (0x0300-0x0650)
 
-These are critical dispatch stubs that route to various handlers. Many use bank switching.
+These are dispatch stubs that route to various handlers via bank switching.
 
 ### Bank Switch Dispatch (0x0300-0x0400)
 - [ ] `0x0322` - Bank dispatch stub
@@ -138,8 +237,6 @@ These are critical dispatch stubs that route to various handlers. Many use bank 
 
 ## Utility Functions (0x0c00-0x0e00)
 
-Low-level helper functions for memory operations and calculations.
-
 - [ ] `0x0c9e` - Utility function
 - [ ] `0x0cab` - Utility function (computation helper)
 - [ ] `0x0cb9` - Utility function
@@ -180,8 +277,6 @@ Low-level helper functions for memory operations and calculations.
 
 ## USB Functions (0x1b00-0x1c80)
 
-USB protocol handling and endpoint management.
-
 - [ ] `0x1b2d` - USB function
 - [ ] `0x1b2e` - USB function
 - [ ] `0x1b30` - USB function
@@ -198,9 +293,7 @@ USB protocol handling and endpoint management.
 
 ## Protocol State Machines (0x2300-0x3200)
 
-Complex state machines for protocol handling.
-
-- [ ] `0x23f7` - Complex state helper (893 bytes) - PRIORITY
+- [ ] `0x23f7` - Complex state helper (893 bytes) - **PRIORITY**
 - [ ] `0x2814` - Queue processing
 - [ ] `0x2a10` - State machine
 - [ ] `0x2db7` - State machine
@@ -219,8 +312,6 @@ Complex state machines for protocol handling.
 ---
 
 ## SCSI/USB Mass Storage (0x4000-0x5800)
-
-SCSI command handling and USB Mass Storage.
 
 ### SCSI Command Handlers
 - [ ] `0x4013` - SCSI handler
@@ -270,8 +361,6 @@ SCSI command handling and USB Mass Storage.
 
 ## Bank 1 Functions (0x8000+)
 
-Functions in code bank 1 (addresses 0x8000-0xFFFF when bank switched).
-
 ### Low Bank 1 (0x8000-0x9000)
 - [x] `0x839c` - pcie_addr_store_839c (in pcie.c)
 - [x] `0x83b9` - pcie_addr_store_83b9 (in pcie.c)
@@ -291,13 +380,11 @@ Functions in code bank 1 (addresses 0x8000-0xFFFF when bank switched).
 - [ ] `0x8a7e` - Bank 1 function
 - [ ] `0x8a89` - Bank 1 function
 - [ ] `0x8d6e` - Bank 1 function
-- [x] `0x8d77` - system_init_from_flash (moved to main.c)
+- [x] `0x8d77` - system_init_from_flash (in main.c)
 
 ---
 
 ## NVMe/Command Engine (0x9500-0x9b00)
-
-NVMe command submission and queue management.
 
 ### Command Helpers (0x9500-0x9700)
 - [ ] `0x955d` - Command helper
@@ -446,7 +533,7 @@ NVMe command submission and queue management.
 - [ ] `0xa3d2` - NVMe handler
 - [ ] `0xa3db` - NVMe handler
 - [ ] `0xa3eb` - NVMe handler
-- [ ] `0xa522` - PCIe interrupt handler - PRIORITY
+- [ ] `0xa522` - PCIe interrupt handler - **PRIORITY**
 
 ### NVMe Queue Management (0xa600-0xa800)
 - [ ] `0xa62d` - Queue management
@@ -529,8 +616,6 @@ NVMe command submission and queue management.
 
 ## Register Helper Functions (0xbb00-0xbe00)
 
-Register read/write helper functions with bit manipulation.
-
 - [ ] `0xbb37` - Register helper
 - [ ] `0xbb44` - Register helper
 - [ ] `0xbb47` - Register helper
@@ -554,12 +639,12 @@ Register read/write helper functions with bit manipulation.
 - [ ] `0xbc88` - Register helper (bank switch read)
 - [ ] `0xbc98` - Register helper
 - [ ] `0xbca5` - Register helper
-- [ ] `0xbcaf` - Register helper (bank switch)
+- [ ] `0xbcaf` - Register helper (bank switch) - **PRIORITY**
 - [ ] `0xbcb8` - Register helper
 - [ ] `0xbcc4` - Register helper
 - [ ] `0xbcd0` - Register helper
 - [ ] `0xbcd7` - Register helper
-- [ ] `0xbcde` - Register helper (bank switch read)
+- [ ] `0xbcde` - Register helper (bank switch read) - **PRIORITY**
 - [ ] `0xbce7` - Register helper
 - [ ] `0xbcf2` - Register helper
 - [ ] `0xbcfe` - Register helper
@@ -579,13 +664,11 @@ Register read/write helper functions with bit manipulation.
 - [ ] `0xbe02` - Register helper
 - [ ] `0xbe8b` - Register helper
 - [ ] `0xbefb` - Register helper
-- [ ] `0xbf0f` - Register helper (bf0f)
+- [ ] `0xbf0f` - Register helper
 
 ---
 
 ## Error Log Functions (0xc000-0xc500)
-
-Error logging and state tracking.
 
 - [ ] `0xc089` - Error log
 - [ ] `0xc17f` - Error handler
@@ -616,8 +699,6 @@ Error logging and state tracking.
 
 ## Event Handlers (0xc500-0xd000)
 
-System event handling and state machines.
-
 - [ ] `0xc5ff` - Event handler
 - [ ] `0xc6d3` - Event handler
 - [ ] `0xc73c` - Event handler
@@ -626,7 +707,7 @@ System event handling and state machines.
 - [ ] `0xc8db` - Event handler
 - [ ] `0xc942` - Event handler
 - [ ] `0xc9a8` - Event handler
-- [ ] `0xca0d` - System state handler - PRIORITY
+- [ ] `0xca0d` - System state handler - **PRIORITY**
 - [ ] `0xcad5` - Event handler
 - [ ] `0xcad6` - Event handler
 - [ ] `0xcadf` - Event handler
@@ -665,8 +746,6 @@ System event handling and state machines.
 
 ## Power Management/PHY (0xd000-0xe000)
 
-Power management and PHY configuration.
-
 - [ ] `0xd02a` - Power handler
 - [ ] `0xd118` - Power handler
 - [ ] `0xd17a` - Power handler
@@ -678,7 +757,7 @@ Power management and PHY configuration.
 - [ ] `0xd26f` - Power handler
 - [ ] `0xd30b` - Power handler
 - [ ] `0xd3ed` - Power handler
-- [ ] `0xd436` - PHY config - PRIORITY
+- [ ] `0xd436` - PHY config - **PRIORITY**
 - [ ] `0xd47f` - PHY handler
 - [ ] `0xd4c8` - PHY handler
 - [ ] `0xd511` - PHY handler
@@ -688,7 +767,7 @@ Power management and PHY configuration.
 - [ ] `0xd78a` - PHY handler
 - [ ] `0xd7cd` - PHY handler
 - [ ] `0xd8d5` - PHY handler
-- [ ] `0xd916` - PHY/power handler - PRIORITY
+- [ ] `0xd916` - PHY/power handler - **PRIORITY**
 - [ ] `0xd956` - Power handler
 - [ ] `0xda13` - Power handler
 - [ ] `0xda51` - Power handler
@@ -721,8 +800,6 @@ Power management and PHY configuration.
 
 ## Bank 1 High Address Handlers (0xe000-0xf000)
 
-Interrupt handlers and high-priority events (Bank 1).
-
 ### Event Handlers (0xe000-0xe200)
 - [ ] `0xe00c` - PCIe error handler
 - [ ] `0xe06b` - Event handler
@@ -738,7 +815,7 @@ Interrupt handlers and high-priority events (Bank 1).
 - [ ] `0xe352` - Transfer handler
 - [ ] `0xe374` - Transfer handler
 - [ ] `0xe396` - Transfer handler
-- [ ] `0xe3b7` - NVMe event dispatch - PRIORITY
+- [ ] `0xe3b7` - NVMe event dispatch - **PRIORITY**
 
 ### NVMe Events (0xe400-0xe600)
 - [ ] `0xe478` - NVMe event
@@ -747,7 +824,8 @@ Interrupt handlers and high-priority events (Bank 1).
 - [ ] `0xe50d` - NVMe event handler
 - [ ] `0xe5cb` - NVMe event
 - [ ] `0xe5fe` - NVMe event
-- [x] `0xe677` - status_update_handler_e677 (moved to protocol.c)
+- [x] `0xe56f` - event_state_machine_e56f (in protocol.c)
+- [x] `0xe677` - status_update_handler_e677 (in protocol.c)
 - [ ] `0xe68f` - NVMe event
 - [ ] `0xe6a7` - NVMe event
 - [ ] `0xe6d2` - NVMe event
@@ -756,9 +834,8 @@ Interrupt handlers and high-priority events (Bank 1).
 - [ ] `0xe726` - NVMe event
 - [ ] `0xe730` - NVMe event
 - [ ] `0xe73a` - NVMe event
-- [x] `0xe56f` - event_state_machine_e56f (moved to protocol.c)
 - [ ] `0xe74e` - Bank 1 event handler
-- [x] `0xe762` - event_queue_process_e762 (moved to protocol.c)
+- [x] `0xe762` - event_queue_process_e762 (in protocol.c)
 - [ ] `0xe775` - NVMe event
 - [ ] `0xe77a` - NVMe event handler
 - [ ] `0xe788` - NVMe event
@@ -780,53 +857,85 @@ Interrupt handlers and high-priority events (Bank 1).
 - [ ] `0xe8e4` - Power init handler
 - [ ] `0xe8f9` - NVMe event
 - [ ] `0xe902` - NVMe event handler
-- [x] `0xe911` - error_handler_pcie_nvme (moved to error_log.c)
-- [x] `0xe920` - error_clear_system_flags (moved to error_log.c)
+- [x] `0xe911` - error_handler_pcie_nvme (in error_log.c)
+- [x] `0xe920` - error_clear_system_flags (in error_log.c)
 - [ ] `0xe91d` - Error handler
 - [ ] `0xe933` - Error handler
 - [ ] `0xe957` - Error handler
 - [ ] `0xe95f` - Error handler
 - [ ] `0xe974` - Error handler
 - [ ] `0xea7c` - Error handler
-- [x] `0xed02` - pcie_state_clear_ed02 (moved to pcie.c)
+- [x] `0xed02` - pcie_state_clear_ed02 (in pcie.c)
 - [ ] `0xed23` - Bank 1 handler
-- [x] `0xeef9` - pcie_handler_unused_eef9 (moved to pcie.c)
-- [x] `0xef4e` - error_handler_system_unused (moved to error_log.c)
+- [x] `0xeef9` - pcie_handler_unused_eef9 (in pcie.c)
+- [x] `0xef4e` - error_handler_system_timer (in error_log.c)
+
+---
+
+## Poorly Named Functions Still Remaining
+
+Functions using generic names that need better names:
+
+### stubs.c (~52 functions)
+- [ ] `helper_1579`, `helper_157d`, `helper_15d4`, `helper_15ef`
+- [ ] `helper_15f1`, `helper_1646`, `helper_166f`, `helper_16e9`
+- [ ] `helper_16eb`, `helper_1b0b`, `helper_1b2e`, `helper_1b30`
+- [ ] `helper_1c13`, `helper_0cab`, `helper_328a`, `helper_3298`
+- [ ] `helper_3578`, `handler_d676`, `handler_e3d8`, `helper_dd42`
+- [ ] `helper_e6d2`, `handler_e529`, `handler_e90b`, `helper_e3b7`
+- [ ] `helper_e396`, `helper_d17a`
+- [ ] `FUN_CODE_1b07`, `FUN_CODE_1c9f`, `FUN_CODE_050c`, `FUN_CODE_0511`
+- [ ] `FUN_CODE_11a2`, `FUN_CODE_5038`, `FUN_CODE_5043`, `FUN_CODE_5046`
+- [ ] `FUN_CODE_504f`, `FUN_CODE_505d`, `FUN_CODE_5359`, `FUN_CODE_be8b`
+- [ ] `FUN_CODE_dd0e`, `FUN_CODE_dd12`, `FUN_CODE_df79`, `FUN_CODE_e120`
+- [ ] `FUN_CODE_e1c6`, `FUN_CODE_e73a`, `FUN_CODE_e7ae`, `FUN_CODE_e883`
+
+### protocol.c (~103 occurrences)
+- [ ] `handler_3adb`, `helper_0d78`, `helper_0db9`, `helper_1bcb`
+- [ ] `helper_523c`, `helper_50db`, `helper_5409`, `helper_53a7`
+- [ ] `helper_53c0`, `helper_039a`, `helper_0206`, `helper_45d0`
+- [ ] `helper_0421`, `helper_0417`, `helper_16f3`, `helper_3f4a`
+- [ ] `helper_1d1d`, `helper_1c9f`, `helper_4f77`, `helper_11a2`
+- [ ] `helper_5359`, `helper_1cd4`, `helper_1cc8`, `helper_1c22`
+- [ ] `helper_1b9a`, `helper_1b9d`, `helper_4e6d`, `helper_466b`
+- [ ] `FUN_CODE_1bec`, `FUN_CODE_1b30`, `FUN_CODE_1b8d`, `FUN_CODE_1b0b`
+- [ ] `FUN_CODE_1b3f`, `FUN_CODE_1c43`, `FUN_CODE_2a10`
+
+### state_helpers.c (~59 occurrences)
+- [ ] `helper_1687`, `helper_16de`, `helper_1633`, `helper_15d0`
+- [ ] `helper_179d`, `handler_280a`
+
+### usb.c (~56 occurrences)
+- [ ] Various `helper_XXXX` and `handler_XXXX` functions
+
+### scsi.c (~72 occurrences)
+- [ ] Various `helper_XXXX` and `handler_XXXX` functions
 
 ---
 
 ## Priority Functions
 
-These functions are most critical for firmware operation:
+Most critical for firmware operation:
 
-1. **`0x23f7`** - Complex state machine helper (~893 bytes) - Core protocol handler
-2. **`0xa522`** - PCIe interrupt handler - Handles PCIe events
-3. **`0xca0d`** - System state handler - Core event dispatch
-4. **`0xd436`** - PHY configuration - PHY register setup
-5. **`0xd916`** - PHY/power handler - Power state management
-6. **`0xe3b7`** - NVMe event dispatch - Routes NVMe events
-7. **`0xbcde`** - Bank switch read helper - Required for bank 1 access
-8. **`0xbcaf`** - Bank switch helper - Required for bank 1 access
+1. `0x23f7` - Complex state machine helper (~893 bytes)
+2. `0xa522` - PCIe interrupt handler
+3. `0xca0d` - System state handler
+4. `0xd436` - PHY configuration
+5. `0xd916` - PHY/power handler
+6. `0xe3b7` - NVMe event dispatch
+7. `0xbcde` - Bank switch read helper
+8. `0xbcaf` - Bank switch helper
 
 ---
 
 ## Notes
 
 ### Bank Switching
-The ASM2464PD uses 8051 bank switching for extended code space:
 - Bank 0: 0x0000-0xFFFF (default)
-- Bank 1: 0x8000-0xFFFF is mapped to code addresses 0x10000-0x17FFF
-
-Functions in Bank 1 are called via dispatch stubs at 0x0300-0x0650.
-
-**Note:** bank1.c has been removed. Bank 1 functions are now organized by functionality:
-- Error handlers in `src/app/error_log.c`
-- Event handlers in `src/app/protocol.c`
-- PCIe handlers in `src/drivers/pcie.c`
-- System init in `src/main.c`
+- Bank 1: 0x8000-0xFFFF mapped to 0x10000-0x17FFF
+- Dispatch stubs at 0x0300-0x0650 handle bank switching
 
 ### Register Map
-Key register regions:
 - 0x9000-0x92FF: USB registers
 - 0xB200-0xB4FF: PCIe registers
 - 0xC400-0xC4FF: NVMe command engine

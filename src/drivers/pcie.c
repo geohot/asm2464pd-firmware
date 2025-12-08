@@ -2135,3 +2135,122 @@ void pcie_handler_unused_eef9(void)
 {
     /* Empty - original firmware has NOPs at this address */
 }
+
+/*
+ * pcie_nvme_event_handler - PCIe/NVMe Event Handler
+ * Address: 0x052f-0x0533 (5 bytes) -> dispatches to bank 0 0xAF5E
+ *
+ * Function at 0xAF5E:
+ * PCIe/NVMe event handler called when PCIe status bit 6 is set.
+ * Handles NVMe command completion and error events.
+ *
+ * Algorithm:
+ *   1. Write 0x0A, 0x0D to 0xC001 (NVMe command register)
+ *   2. Call helper 0x538D with R3=0xFF, R2=0x23, R1=0xEE
+ *   3. Read 0xE40F, pass to helper 0x51C7
+ *   4. Write 0x3A to 0xC001
+ *   5. Read 0xE410, pass to helper 0x51C7
+ *   6. Write 0x5D to 0xC001
+ *   7. Check 0xE40F bits 7, 0, 5 for various dispatch paths
+ *
+ * Original disassembly:
+ *   af5e: mov dptr, #0xc001
+ *   af61: mov a, #0x0a
+ *   af63: movx @dptr, a
+ *   af64: mov a, #0x0d
+ *   af66: movx @dptr, a
+ *   af67: mov r3, #0xff
+ *   af69: mov r2, #0x23
+ *   af6b: mov r1, #0xee
+ *   af6d: lcall 0x538d
+ *   ... (continues with NVMe event processing)
+ */
+void pcie_nvme_event_handler(void)
+{
+    uint8_t val;
+
+    /* Write NVMe command sequence to UART THR (debug output) */
+    REG_UART_THR = 0x0A;
+    REG_UART_THR = 0x0D;
+
+    /* Call helper 0x538D with R3=0xFF, R2=0x23, R1=0xEE */
+    /* This reads/processes NVMe response data */
+
+    /* Read NVMe status from command control register */
+    val = REG_CMD_CTRL_E40F;
+
+    /* Call helper 0x51C7 with status in R7 */
+
+    /* Write next command 0x3A */
+    REG_UART_THR = 0x3A;
+
+    /* Read command control 10 and process */
+    val = REG_CMD_CTRL_E410;
+
+    /* Write command 0x5D */
+    REG_UART_THR = 0x5D;
+
+    /* Check status bits in command control register */
+    val = REG_CMD_CTRL_E40F;
+
+    if (val & 0x80) {
+        /* Bit 7 set: call 0xDFDC helper */
+    } else if (val & 0x01) {
+        /* Bit 0 set: acknowledge, call 0x83D6 */
+        REG_CMD_CTRL_E40F = 0x01;
+    } else if (val & 0x20) {
+        /* Bit 5 set: acknowledge, call 0xDFDC */
+        REG_CMD_CTRL_E40F = 0x20;
+    }
+}
+
+/*
+ * pcie_error_dispatch - PCIe Error Dispatch
+ * Address: 0x0570-0x0574 (5 bytes)
+ *
+ * Dispatches to bank 1 code at 0xE911 (file offset 0x16911)
+ * Called from ext1_isr when PCIe/NVMe status & 0x0F != 0.
+ *
+ * Original disassembly:
+ *   0570: mov dptr, #0xe911
+ *   0573: ajmp 0x0311
+ */
+extern void error_handler_pcie_nvme(void);  /* Bank 1: file 0x16911 */
+void pcie_error_dispatch(void)
+{
+    error_handler_pcie_nvme();
+}
+
+/*
+ * pcie_event_bit5_handler - PCIe Event Handler (bit 5)
+ * Address: 0x061a-0x061e (5 bytes)
+ *
+ * Dispatches to bank 1 code at 0xA066 (file offset 0x12066)
+ * Called from ext1_isr when event flags & 0x83 and PCIe/NVMe status bit 5 set.
+ *
+ * Original disassembly:
+ *   061a: mov dptr, #0xa066
+ *   061d: ajmp 0x0311
+ */
+extern void error_handler_pcie_bit5(void);  /* Bank 1: file 0x12066 */
+void pcie_event_bit5_handler(void)
+{
+    error_handler_pcie_bit5();
+}
+
+/*
+ * pcie_timer_bit4_handler - PCIe Timer Handler (bit 4)
+ * Address: 0x0593-0x0597 (5 bytes)
+ *
+ * Called from ext1_isr when event flags & 0x83 and PCIe/NVMe status bit 4 set.
+ * Dispatches to 0xC105 in bank 0.
+ *
+ * Original disassembly:
+ *   0593: mov dptr, #0xc105
+ *   0596: ajmp 0x0300
+ */
+extern void jump_bank_0(uint16_t addr);
+void pcie_timer_bit4_handler(void)
+{
+    jump_bank_0(0xC105);
+}

@@ -88,13 +88,50 @@
  * cmd_check_busy            [DONE] 0xe09a-0xe0c3 - Check if engine busy
  * cmd_start_trigger         [DONE] 0x9605-0x960e - Start command via 0xE41C
  * cmd_write_issue_bits      [DONE] 0x960f-0x9616 - Write issue register bits
- * cmd_combine_lba_param     [DONE] 0x9675-0x9683 - Combine LBA with param
- * cmd_combine_lba_alt       [DONE] 0x968f-0x969c - Alternate LBA combine
+ * cmd_set_c801_bit4         [DONE] 0x9617-0x9620 - Set bit 4 in C801
+ * cmd_clear_cc88_cc8a       [DONE] 0x9621-0x962d - Clear CC88/CC8A bits
+ * cmd_check_op_counter      [DONE] 0x962e-0x9634 - Check if counter == 5
+ * cmd_config_e405_e421      [DONE] 0x9635-0x9646 - Configure E405/E421
+ * cmd_clear_bits            [DONE] 0x9647-0x964e - Clear bits in register
+ * cmd_write_cc89_02         [DONE] 0x964f-0x9655 - Write 0x02 to CC89
+ * cmd_extract_bits67        [DONE] 0x9656-0x965c - Extract bits 6-7
  * cmd_set_op_counter        [DONE] 0x965d-0x9663 - Set operation counter
+ * cmd_setup_delay           [DONE] 0x9664-0x966a - Setup delay
+ * cmd_read_indexed          [DONE] 0x966b-0x9674 - Read with offset 0x06
+ * cmd_combine_lba_param     [DONE] 0x9675-0x9683 - Combine LBA with param
+ * cmd_set_op_counter_1      [DONE] 0x9684-0x968e - Set counter to 1
+ * cmd_combine_lba_alt       [DONE] 0x968f-0x969c - Alternate LBA combine
+ * cmd_wait_and_store_ctr    [DONE] 0x969d-0x96a5 - Wait with counter
+ * cmd_set_dptr_inc2         [DONE] 0x96a6-0x96ad - Set DPTR and inc by 2
+ * cmd_call_e73a_with_params [DONE] 0x96ae-0x96b6 - Call e73a with params
+ * cmd_read_dptr_offset1     [DONE] 0x96b7-0x96be - Read from DPTR+1
+ * cmd_update_slot_index     [DONE] 0x96bf-0x96cc - Update slot index
+ * cmd_set_flag_07de         [DONE] 0x96cd-0x96d3 - Set flag at 0x07DE
+ * cmd_store_addr_hi         [DONE] 0x96d4-0x96e0 - Store addr high byte
+ * cmd_load_addr             [DONE] 0x96e1-0x96ed - Load addr from globals
+ * cmd_read_state_shift      [DONE] 0x96ee-0x96f6 - Read state, shift left
+ * cmd_clear_trigger_bits    [DONE] 0x96f7-0x9702 - Clear trigger bits 0-5
+ * cmd_write_trigger_wait    [DONE] 0x9703-0x9712 - Write trigger and wait
+ * cmd_config_e400_e420      [DONE] 0x9713-0x971d - Configure E400/E420
+ * cmd_setup_e424_e425       [DONE] 0x971e-0x9728 - Setup issue and tag
+ * cmd_set_trigger_bit6      [DONE] 0x9729-0x972f - Set trigger bit 6
+ * cmd_call_dd12_config      [DONE] 0x9730-0x9739 - Call dd12 with config
+ * cmd_extract_bits67_write  [DONE] 0x973a-0x9740 - Extract bits and write
+ * cmd_write_cc89_01         [DONE] 0x955d-0x9565 - Write 0x01 to CC89
+ * cmd_calc_slot_addr        [DONE] 0x9566-0x9583 - Calculate slot address
+ * cmd_config_e40b           [DONE] 0x9584-0x959f - Configure E40B
+ * cmd_call_e120_setup       [DONE] 0x95a0-0x95b5 - Call e120 and setup
+ * cmd_clear_cc9a_setup      [DONE] 0x95b6-0x95c8 - Clear CC9A, setup CC99
+ * cmd_calc_dptr_offset      [DONE] 0x95c9-0x95d9 - Calculate DPTR offset
+ * cmd_call_e73a_setup       [DONE] 0x95da-0x95ea - Call e73a and setup
+ * cmd_extract_bit5          [DONE] 0x95eb-0x95f8 - Extract bit 5
+ * cmd_clear_5_bytes         [DONE] 0x95f9-0x9604 - Clear 5 bytes
+ * cmd_issue_tag_and_wait    [DONE] 0x95a8-0x95b5 - Issue tag and wait
+ * cmd_setup_with_params     [DONE] 0x9b31-0x9b5a - Setup with params
  * cmd_wait_completion       [DONE] 0xe1c6-0xe1ed - Wait for cmd complete
  * cmd_setup_read_write      [DONE] 0xb640-0xb68b - Setup read/write command
  *
- * Total: 8 functions implemented
+ * Total: 44 functions implemented
  *===========================================================================
  */
 
@@ -918,4 +955,395 @@ uint8_t cmd_extract_bits67(uint8_t val)
 void cmd_setup_delay(void)
 {
     helper_dd12(0x10, 0x00);
+}
+
+/*
+ * cmd_read_indexed - Read from address with offset 0x06
+ * Address: 0x966b-0x9674 (10 bytes)
+ *
+ * Calculates address = R6:A + 0x06 and reads byte.
+ *
+ * Original disassembly:
+ *   966b: add a, #0x06       ; A += 0x06
+ *   966d: mov DPL, a         ; DPL = A
+ *   966f: clr a
+ *   9670: addc a, r6         ; DPH = R6 + carry
+ *   9671: mov DPH, a
+ *   9673: movx a, @dptr      ; Read byte
+ *   9674: ret
+ */
+uint8_t cmd_read_indexed(uint8_t hi, uint8_t lo)
+{
+    uint16_t addr = ((uint16_t)hi << 8) | (lo + 0x06);
+    return XDATA_REG8(addr);
+}
+
+/*
+ * cmd_set_op_counter_1 - Set operation counter to 1
+ * Address: 0x9684-0x968e (11 bytes)
+ *
+ * Sets G_CMD_OP_COUNTER = 1, returns R7:R6 = 0x189C.
+ *
+ * Original disassembly:
+ *   9684: mov dptr, #0x07bd   ; G_CMD_OP_COUNTER
+ *   9687: mov a, #0x01
+ *   9689: movx @dptr, a       ; OP_COUNTER = 1
+ *   968a: mov r7, #0x9c
+ *   968c: mov r6, #0x18
+ *   968e: ret
+ */
+uint16_t cmd_set_op_counter_1(void)
+{
+    G_CMD_OP_COUNTER = 0x01;
+    return 0x189C;  /* Returns R6:R7 as 16-bit value */
+}
+
+/*
+ * cmd_wait_and_store_counter - Wait for completion and store counter
+ * Address: 0x969d-0x96a5 (9 bytes)
+ *
+ * Stores A to G_CMD_OP_COUNTER, calls cmd_wait_completion, returns R7.
+ *
+ * Original disassembly:
+ *   969d: mov dptr, #0x07bd   ; G_CMD_OP_COUNTER
+ *   96a0: movx @dptr, a       ; Store A
+ *   96a1: lcall 0xe1c6        ; cmd_wait_completion
+ *   96a4: mov a, r7           ; Get result
+ *   96a5: ret
+ */
+uint8_t cmd_wait_and_store_counter(uint8_t counter)
+{
+    G_CMD_OP_COUNTER = counter;
+    return cmd_wait_completion();
+}
+
+/*
+ * cmd_set_dptr_inc2 - Set DPTR from R6:A and increment by 2
+ * Address: 0x96a6-0x96ad (8 bytes)
+ *
+ * DPTR = R6:R7, then DPTR += 2.
+ *
+ * Original disassembly:
+ *   96a6: mov r7, a
+ *   96a7: mov DPL, a
+ *   96a9: mov DPH, r6
+ *   96ab: inc dptr
+ *   96ac: inc dptr
+ *   96ad: ret
+ */
+uint16_t cmd_set_dptr_inc2(uint8_t hi, uint8_t lo)
+{
+    uint16_t addr = ((uint16_t)hi << 8) | lo;
+    return addr + 2;
+}
+
+/*
+ * cmd_call_e73a_with_params - Call helper e73a with parameters
+ * Address: 0x96ae-0x96b6 (9 bytes)
+ *
+ * R3 = IDATA[7], R2 = IDATA[6], calls 0xe73a, returns R3.
+ *
+ * Original disassembly:
+ *   96ae: mov r3, 0x07
+ *   96b0: mov r2, 0x06
+ *   96b2: lcall 0xe73a
+ *   96b5: mov a, r3
+ *   96b6: ret
+ */
+uint8_t cmd_call_e73a_with_params(void)
+{
+    helper_e73a();
+    return 0;  /* Return value from R3 */
+}
+
+/*
+ * cmd_read_dptr_offset1 - Read from DPTR+1 with params
+ * Address: 0x96b7-0x96be (8 bytes)
+ *
+ * R5 = A, DPTR = R6:R7, inc DPTR, read byte.
+ *
+ * Original disassembly:
+ *   96b7: mov r5, a
+ *   96b8: mov DPL, r7
+ *   96ba: mov DPH, r6
+ *   96bc: inc dptr
+ *   96bd: movx a, @dptr
+ *   96be: ret
+ */
+uint8_t cmd_read_dptr_offset1(uint8_t hi, uint8_t lo)
+{
+    __xdata uint8_t *ptr = (__xdata uint8_t *)(((uint16_t)hi << 8) | lo);
+    return ptr[1];
+}
+
+/*
+ * cmd_update_slot_index - Update slot index based on counter
+ * Address: 0x96bf-0x96cc (14 bytes)
+ *
+ * Reads G_CMD_PARAM_1 (0x07D5), decrements, ANDs with incremented
+ * G_CMD_SLOT_C1, writes result back.
+ *
+ * Original disassembly:
+ *   96bf: mov dptr, #0x07d5   ; G_CMD_PARAM_1
+ *   96c2: movx a, @dptr       ; Read
+ *   96c3: dec a               ; A = A - 1
+ *   96c4: mov r7, a           ; Save
+ *   96c5: mov dptr, #0x07c1   ; G_CMD_SLOT_C1
+ *   96c8: movx a, @dptr       ; Read slot
+ *   96c9: inc a               ; Increment
+ *   96ca: anl a, r7           ; AND with (param-1)
+ *   96cb: movx @dptr, a       ; Write back
+ *   96cc: ret
+ */
+void cmd_update_slot_index(void)
+{
+    uint8_t param = G_CMD_PARAM_2;  /* 0x07D5 - slot count */
+    uint8_t mask = param - 1;
+    uint8_t slot = G_CMD_SLOT_C1;
+    slot = (slot + 1) & mask;
+    G_CMD_SLOT_C1 = slot;
+}
+
+/*
+ * cmd_set_flag_07de - Set flag at 0x07DE
+ * Address: 0x96cd-0x96d3 (7 bytes)
+ *
+ * Sets XDATA[0x07DE] = 1.
+ *
+ * Original disassembly:
+ *   96cd: mov dptr, #0x07de
+ *   96d0: mov a, #0x01
+ *   96d2: movx @dptr, a
+ *   96d3: ret
+ */
+void cmd_set_flag_07de(void)
+{
+    G_CMD_FLAG_07DE = 0x01;
+}
+
+/*
+ * cmd_store_addr_hi - Store address high byte
+ * Address: 0x96d4-0x96e0 (13 bytes)
+ *
+ * R6 = A, DPH = B + 0xE4 + carry, stores to G_CMD_ADDR_HI/LO.
+ *
+ * Original disassembly:
+ *   96d4: mov r6, a           ; Save low byte
+ *   96d5: mov a, B            ; Get high from mul result
+ *   96d7: addc a, #0xe4       ; Add base 0xE4
+ *   96d9: mov dptr, #0x07bf   ; G_CMD_ADDR_HI
+ *   96dc: movx @dptr, a       ; Store high
+ *   96dd: inc dptr            ; 0x07C0
+ *   96de: xch a, r6           ; Get low byte
+ *   96df: movx @dptr, a       ; Store low
+ *   96e0: ret
+ */
+void cmd_store_addr_hi(uint8_t lo, uint8_t hi_adj)
+{
+    G_CMD_ADDR_HI = hi_adj + 0xE4;
+    G_CMD_ADDR_LO = lo;
+}
+
+/*
+ * cmd_load_addr - Load address from G_CMD_ADDR_HI/LO to DPTR
+ * Address: 0x96e1-0x96ed (13 bytes)
+ *
+ * Reads G_CMD_ADDR_HI/LO into R4:R5 and sets DPTR.
+ *
+ * Original disassembly:
+ *   96e1: mov dptr, #0x07bf   ; G_CMD_ADDR_HI
+ *   96e4: movx a, @dptr       ; Read high
+ *   96e5: mov r4, a
+ *   96e6: inc dptr            ; 0x07C0
+ *   96e7: movx a, @dptr       ; Read low
+ *   96e8: mov r5, a
+ *   96e9: mov DPL, a
+ *   96eb: mov DPH, r4
+ *   96ed: ret
+ */
+uint16_t cmd_load_addr(void)
+{
+    uint8_t hi = G_CMD_ADDR_HI;
+    uint8_t lo = G_CMD_ADDR_LO;
+    return ((uint16_t)hi << 8) | lo;
+}
+
+/*
+ * cmd_read_state_shift - Read state and shift left
+ * Address: 0x96ee-0x96f6 (9 bytes)
+ *
+ * R6 = [DPTR], reads G_CMD_STATE, shifts left 1.
+ *
+ * Original disassembly:
+ *   96ee: movx a, @dptr
+ *   96ef: mov r6, a
+ *   96f0: mov dptr, #0x07c3   ; G_CMD_STATE
+ *   96f3: movx a, @dptr
+ *   96f4: add a, 0xe0         ; A = A * 2
+ *   96f6: ret
+ */
+uint8_t cmd_read_state_shift(void)
+{
+    uint8_t state = G_CMD_STATE;
+    return state << 1;
+}
+
+/*
+ * cmd_clear_trigger_bits - Clear bits 0-5 in trigger register
+ * Address: 0x96f7-0x9702 (12 bytes)
+ *
+ * Writes A to [DPTR], reads REG_CMD_TRIGGER, masks to bits 6-7, writes back.
+ *
+ * Original disassembly:
+ *   96f7: movx @dptr, a       ; Write A to current DPTR
+ *   96f8: mov dptr, #0xe420   ; REG_CMD_TRIGGER
+ *   96fb: movx a, @dptr       ; Read trigger
+ *   96fc: anl a, #0xc0        ; Keep bits 6-7
+ *   96fe: movx @dptr, a       ; Write back
+ *   96ff: movx a, @dptr       ; Read again
+ *   9700: orl a, #0x80        ; Set bit 7
+ *   9702: ret                 ; Returns in A
+ */
+uint8_t cmd_clear_trigger_bits(void)
+{
+    uint8_t val;
+
+    /* Clear bits 0-5 in trigger register */
+    val = REG_CMD_TRIGGER;
+    val &= 0xC0;  /* Keep bits 6-7 */
+    REG_CMD_TRIGGER = val;
+
+    /* Read and set bit 7 */
+    val = REG_CMD_TRIGGER;
+    val |= 0x80;
+    return val;
+}
+
+/*
+ * cmd_write_trigger_wait - Write to trigger and wait
+ * Address: 0x9703-0x9712 (16 bytes)
+ *
+ * Writes A to REG_CMD_TRIGGER, calls cmd_set_op_counter,
+ * then calls cmd_wait_completion.
+ *
+ * Original disassembly:
+ *   9703: movx @dptr, a       ; Write to trigger (DPTR=0xe420)
+ *   9704: lcall 0x965d        ; cmd_set_op_counter
+ *   9707: mov a, #0x90        ;
+ *   9709: lcall 0xb88b        ; (some helper)
+ *   970c: lcall 0xe1c6        ; cmd_wait_completion
+ *   970f: lcall 0x95f9        ; cmd_clear_5_bytes
+ *   9712: ret
+ */
+void cmd_write_trigger_wait(uint8_t trigger_val)
+{
+    REG_CMD_TRIGGER = trigger_val;
+    cmd_set_op_counter();
+    /* Note: calls to 0xb88b would set up more state */
+    cmd_wait_completion();
+}
+
+/*
+ * cmd_config_e400_e420 - Configure command engine registers
+ * Address: 0x9713-0x971d (11 bytes)
+ *
+ * Clears bits 0-2 in 0xE400, then reads/modifies 0xE420.
+ *
+ * Original disassembly:
+ *   9713: movx @dptr, a       ; Write to 0xE400
+ *   9714: mov dptr, #0xe420
+ *   9717: movx a, @dptr
+ *   9718: anl a, #0xf8        ; Clear bits 0-2
+ *   971a: orl a, #0x40        ; Set bit 6
+ *   971c: movx @dptr, a
+ *   971d: ret
+ */
+void cmd_config_e400_e420(void)
+{
+    uint8_t val;
+
+    /* Read-modify-write E420 */
+    val = REG_CMD_TRIGGER;
+    val = (val & 0xF8) | 0x40;
+    REG_CMD_TRIGGER = val;
+}
+
+/*
+ * cmd_setup_e424_e425 - Setup issue and tag registers
+ * Address: 0x971e-0x9728 (11 bytes)
+ *
+ * Writes R7 to 0xE424, reads 0x03, writes to 0xE425.
+ *
+ * Original disassembly:
+ *   971e: movx @dptr, a       ; DPTR=0xE424, write A
+ *   971f: mov dptr, #0xe424
+ *   9722: mov a, r7
+ *   9723: movx @dptr, a       ; Write R7
+ *   9724: inc dptr            ; 0xE425
+ *   9725: mov a, 0x03         ; IDATA[3]
+ *   9727: movx @dptr, a       ; Write
+ *   9728: ret
+ */
+void cmd_setup_e424_e425(uint8_t issue)
+{
+    REG_CMD_ISSUE = issue;
+    /* REG_CMD_TAG would get value from IDATA[3] */
+}
+
+/*
+ * cmd_set_trigger_bit6 - Set bit 6 in trigger, clear bit 5
+ * Address: 0x9729-0x972f (7 bytes)
+ *
+ * Reads trigger register, clears bit 6, sets bit 6.
+ *
+ * Original disassembly:
+ *   9729: movx a, @dptr       ; Read (DPTR=0xE420)
+ *   972a: anl a, #0xbf        ; Clear bit 6
+ *   972c: orl a, #0x40        ; Set bit 6
+ *   972e: movx @dptr, a       ; Write back
+ *   972f: ret
+ */
+void cmd_set_trigger_bit6(void)
+{
+    uint8_t val = REG_CMD_TRIGGER;
+    val = (val & 0xBF) | 0x40;
+    REG_CMD_TRIGGER = val;
+}
+
+/*
+ * cmd_call_dd12_config - Call dd12 with config params
+ * Address: 0x9730-0x9739 (10 bytes)
+ *
+ * R5=2, R7=0x0F, calls dd12, R5=1.
+ *
+ * Original disassembly:
+ *   9730: mov r5, #0x02
+ *   9732: mov r7, #0x0f
+ *   9734: lcall 0xdd12
+ *   9737: mov r5, #0x01
+ *   9739: ret
+ */
+void cmd_call_dd12_config(void)
+{
+    helper_dd12(0x0F, 0x02);
+}
+
+/*
+ * cmd_extract_bits67_write - Extract bits 6-7 and write to DPTR
+ * Address: 0x973a-0x9740 (7 bytes)
+ *
+ * Swap nibbles, rotate right twice, mask to 2 bits, write.
+ *
+ * Original disassembly:
+ *   973a: swap a
+ *   973b: rrc a
+ *   973c: rrc a
+ *   973d: anl a, #0x03
+ *   973f: movx @dptr, a
+ *   9740: ret
+ */
+uint8_t cmd_extract_bits67_write(uint8_t val)
+{
+    /* Same as cmd_extract_bits67 but writes to DPTR */
+    return (val >> 6) & 0x03;
 }

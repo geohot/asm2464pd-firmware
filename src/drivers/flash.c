@@ -879,3 +879,241 @@ void flash_dispatch_stub_8d6e(void)
     flash_func_0bc8(0xFF);
 }
 
+/*
+ * flash_command_handler - Flash Command Handler
+ * Address: 0x0525-0x0529 (5 bytes) -> dispatches to bank 0 0xBAA0
+ *
+ * Function at 0xBAA0:
+ * Flash command processor. Reads commands from SPI flash buffer at 0x7000
+ * and dispatches to appropriate handlers.
+ *
+ * Command types (from 0x7000):
+ *   0x3A: Command type 1 - set flag 0x07BC=1, 0x07B8=1, call 0xE4B4, 0x538D
+ *   0x3B: Command type 2 - set flag 0x07BC=2, call 0x538D
+ *   0x3C: Command type 3 - set flag 0x07BC=3, call 0x538D
+ *   Other: Configure 0xCC98 with (val & 0xF8) | 0x06, call 0x95B6
+ *
+ * Original disassembly:
+ *   baa0: mov dptr, #0xe795
+ *   baa3: movx a, @dptr
+ *   baa4: jb 0xe0.5, 0xbaaa       ; if bit 5 set, continue
+ *   baa7: ljmp 0xbb36             ; else exit
+ *   baaa: lcall 0xae87            ; helper
+ *   baad: lcall 0xb8c3            ; helper
+ *   bab0: clr a
+ *   bab1: mov r7, a
+ *   bab2: lcall 0xdd42            ; helper
+ *   bab5: lcall 0xe6e7            ; helper
+ *   bab8: mov dptr, #0x7000       ; SPI flash buffer
+ *   babb: movx a, @dptr           ; read command byte
+ *   babc: cjne a, #0x3a, 0xbada   ; check for command 0x3A
+ *   ... (command dispatch logic)
+ */
+void flash_command_handler(void)
+{
+    uint8_t val;
+    uint8_t cmd;
+
+    /* Check bit 5 of REG_FLASH_READY_STATUS - if not set, exit early */
+    val = REG_FLASH_READY_STATUS;
+    if ((val & 0x20) == 0) {
+        return;
+    }
+
+    /* Read command from SPI flash buffer at 0x7000 */
+    cmd = XDATA8(FLASH_BUFFER_BASE);
+
+    if (cmd == 0x3A) {
+        /* Command 0x3A: Set flags and process */
+        G_FLASH_CMD_TYPE = 0x01;
+        G_FLASH_CMD_FLAG = 0x01;
+        /* Call helper 0xE4B4 for flash operation */
+        /* Call helper 0x538D with R3=0xFF, R2=0x21, R1=0xFB */
+    } else if (cmd == 0x3B) {
+        /* Command 0x3B: Set flag and process */
+        G_FLASH_CMD_TYPE = 0x02;
+        /* Call helper 0x538D with R3=0xFF, R2=0x22, R1=0x0B */
+    } else if (cmd == 0x3C) {
+        /* Command 0x3C: Set flag and process */
+        G_FLASH_CMD_TYPE = 0x03;
+        /* Call helper 0x538D with R3=0xFF, R2=0x22, R1=0x25 */
+    }
+
+    /* Configure CPU status register - set bits 0-2 to 6 */
+    val = REG_CPU_STATUS_CC98;
+    val = (val & 0xF8) | 0x06;
+    REG_CPU_STATUS_CC98 = val;
+
+    /* Write state 0x04 to event control */
+    G_EVENT_CTRL_09FA = 0x04;
+}
+
+/* External helper functions declared for use in system_init_from_flash */
+extern void uart_write_byte_daeb(void);
+extern void uart_write_daff(void);
+extern uint8_t uart_read_byte_dace(uint8_t offset);
+extern void sys_event_dispatch_05e8(void);
+extern void sys_init_helper_bbc7(void);
+extern void sys_timer_handler_e957(void);
+
+/*
+ * system_init_from_flash - Initialize system from flash configuration
+ * Bank 1 Address: 0x8d77-0x8fe0+ (~617 bytes) [actual addr: 0x10d77]
+ *
+ * Complex initialization function that reads configuration from flash buffer
+ * (0x70xx), validates checksum, and sets up system parameters.
+ *
+ * Key operations:
+ *   1. Initialize default mode flags (0x09F4-0x09F8)
+ *   2. Set retry counter (IDATA[0x22])
+ *   3. Loop up to 6 times checking flash header
+ *   4. Validate header marker at 0x707E (must be 0xA5)
+ *   5. Compute checksum over 0x7004-0x707E
+ *   6. If valid, parse configuration:
+ *      - Vendor strings from 0x7004
+ *      - Serial strings from 0x702C
+ *      - Configuration bytes from 0x7054
+ *      - Device IDs from 0x705C-0x707F
+ *   7. Set event flags based on mode configuration
+ *   8. Call system init helpers
+ */
+void system_init_from_flash(void)
+{
+    uint8_t retry_count;
+    uint8_t header_marker;
+    uint8_t checksum;
+    uint8_t computed_checksum;
+    uint8_t i;
+    uint8_t mode_val;
+    uint8_t tmp;
+
+    /* Initialize default mode flags */
+    XDATA8(0x09F4) = 3;  /* Mode configuration 1 */
+    XDATA8(0x09F5) = 1;  /* Mode configuration 2 */
+    XDATA8(0x09F6) = 1;  /* Mode configuration 3 */
+    XDATA8(0x09F7) = 3;  /* Mode configuration 4 */
+    XDATA8(0x09F8) = 1;  /* Mode configuration 5 */
+    XDATA8(0x0A56) = 0;  /* Flash config valid flag */
+    retry_count = 0;     /* IDATA[0x22] = 0 */
+
+    /* Flash read/validation retry loop */
+    while (retry_count <= 5) {
+        /* Set flash read trigger */
+        XDATA8(0x0213) = 1;
+
+        /* Call timer/watchdog handler */
+        sys_timer_handler_e957();
+
+        if (retry_count != 0) {
+            /* Check header marker at 0x707E */
+            header_marker = XDATA8(0x707E);
+            if (header_marker == 0xA5) {
+                /* Compute checksum from 0x7004 to 0x707E */
+                computed_checksum = 0;
+                for (i = 4; i < 0x7F; i++) {
+                    computed_checksum += uart_read_byte_dace(0);
+                }
+
+                /* Get stored checksum from 0x707F */
+                checksum = XDATA8(0x707F);
+
+                /* Validate checksum */
+                if (checksum == computed_checksum) {
+                    /* Checksum valid - mark flash config as valid */
+                    XDATA8(0x0A56) = 1;
+
+                    /* Parse vendor strings from 0x7004 if valid */
+                    if (XDATA8(0x7004) != 0xFF) {
+                        /* Copy vendor string data */
+                        for (i = 0; XDATA8(0x7004 + i) != 0xFF && i < 0x28; i++) {
+                            uart_write_byte_daeb();
+                        }
+                    }
+
+                    /* Parse serial strings from 0x702C if valid */
+                    if (XDATA8(0x702C) != 0xFF) {
+                        for (i = 0; XDATA8(0x702C + i) != 0xFF && i < 0x28; i++) {
+                            uart_write_daff();
+                        }
+                    }
+
+                    /* Parse configuration bytes */
+                    for (i = 0; i < 6; i++) {
+                        tmp = uart_read_byte_dace(0x54);
+                        if (tmp == 0xFF) break;
+                        XDATA8(0x0A3C + i) = uart_read_byte_dace(0x54);
+                        if (i == 5) {
+                            /* Mask lower nibble of 0x0A41 */
+                            XDATA8(0x0A41) = XDATA8(0x0A41) & 0x0F;
+                        }
+                    }
+
+                    /* Parse device IDs from 0x705C-0x705D */
+                    if (XDATA8(0x705C) != 0xFF || XDATA8(0x705D) != 0xFF) {
+                        XDATA8(0x0A42) = XDATA8(0x705C);
+                        XDATA8(0x0A43) = XDATA8(0x705D);
+                    }
+
+                    /* Parse additional device info from 0x705E-0x705F */
+                    if (XDATA8(0x705E) == 0xFF && XDATA8(0x705F) == 0xFF) {
+                        /* Use defaults from 0x0A57-0x0A58 */
+                        XDATA8(0x0A44) = XDATA8(0x0A57);
+                        XDATA8(0x0A45) = XDATA8(0x0A58);
+                    } else {
+                        XDATA8(0x0A44) = XDATA8(0x705E);
+                        XDATA8(0x0A45) = XDATA8(0x705F);
+                    }
+
+                    /* Parse mode configuration from 0x7059-0x705A */
+                    tmp = XDATA8(0x7059);
+                    XDATA8(0x09F4) = (tmp >> 4) & 0x03;  /* Bits 5:4 */
+                    XDATA8(0x09F5) = (tmp >> 6) & 0x01;  /* Bit 6 */
+                    XDATA8(0x09F6) = tmp >> 7;          /* Bit 7 */
+
+                    tmp = XDATA8(0x705A);
+                    XDATA8(0x09F7) = tmp & 0x03;        /* Bits 1:0 */
+                    XDATA8(0x09F8) = (tmp >> 2) & 0x01; /* Bit 2 */
+
+                    /* Set initialization flag */
+                    XDATA8(0x07F7) = XDATA8(0x07F7) | 0x04;
+
+                    goto set_event_flags;
+                }
+            }
+        }
+
+        retry_count++;
+    }
+
+set_event_flags:
+    /* Set event flags based on mode configuration */
+    mode_val = XDATA8(0x09F4);
+    if (mode_val == 3) {
+        G_EVENT_FLAGS = 0x87;
+        XDATA8(0x09FB) = 3;
+    } else if (mode_val == 2) {
+        G_EVENT_FLAGS = 0x06;
+        XDATA8(0x09FB) = 1;
+    } else {
+        if (mode_val == 1) {
+            G_EVENT_FLAGS = 0x85;
+        } else {
+            G_EVENT_FLAGS = 0xC1;
+        }
+        XDATA8(0x09FB) = 2;
+    }
+
+    /* Check flash ready status bit 5 */
+    if (((REG_FLASH_READY_STATUS >> 5) & 0x01) != 1) {
+        G_EVENT_FLAGS = 0x04;
+    }
+
+    /* Call system init helper */
+    sys_init_helper_bbc7();
+
+    /* If flash config is valid, call event dispatcher */
+    if (XDATA8(0x0A56) == 1) {
+        sys_event_dispatch_05e8();
+    }
+}
+
