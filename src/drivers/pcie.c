@@ -978,8 +978,8 @@ void pcie_event_handler(void)
             }
 
             /* Call 0xE74E - bank 1 event handler */
-            /* Write marker 0x69 to 0x07FF */
-            XDATA8(0x07FF) = 0x69;
+            /* Write marker 0x69 to debug byte */
+            G_CMD_DEBUG_FF = 0x69;
             return;
         }
     }
@@ -1065,14 +1065,14 @@ void pcie_tunnel_enable(void)
 
     /* Clear state flags */
     G_STATE_FLAG_06E6 = 0x00;
-    XDATA8(0x06E7) = 0x01;
-    XDATA8(0x06E8) = 0x01;
+    G_WORK_06E7 = 0x01;
+    G_WORK_06E8 = 0x01;
 
     /* Clear PCIe transaction parameters */
     G_PCIE_TXN_COUNT_HI = 0x00;
-    XDATA8(0x06EB) = 0x00;
-    XDATA8(0x05AC) = 0x00;
-    XDATA8(0x05AD) = 0x00;
+    G_WORK_06EB = 0x00;
+    G_DMA_WORK_05AC = 0x00;
+    G_DMA_WORK_05AD = 0x00;
 
     /* Call USB sync helper (0x545C) */
 
@@ -1286,11 +1286,11 @@ void pcie_setup_buffer_from_config(void)
     *(__idata uint8_t *)0x64 = result;
     *(__idata uint8_t *)0x63 = carry;
 
-    /* Store 0x00010040 to 0xB220 (PCIe data register) */
-    XDATA8(0xB220) = 0x40;
-    XDATA8(0xB221) = 0x01;
-    XDATA8(0xB222) = 0x00;
-    XDATA8(0xB223) = 0x00;
+    /* Store 0x00010040 to PCIe data register */
+    (&REG_PCIE_DATA)[0] = 0x40;
+    (&REG_PCIE_DATA)[1] = 0x01;
+    (&REG_PCIE_DATA)[2] = 0x00;
+    (&REG_PCIE_DATA)[3] = 0x00;
 }
 
 /*
@@ -1356,7 +1356,7 @@ __xdata uint8_t *pcie_lookup_from_idata26(void)
 uint8_t pcie_check_txn_count(void)
 {
     uint8_t count_hi = G_PCIE_TXN_COUNT_HI;
-    uint8_t count_ref = XDATA8(0x0A5B);
+    uint8_t count_ref = G_NIBBLE_SWAP_0A5B;
     return count_ref - count_hi;
 }
 
@@ -1527,7 +1527,7 @@ void pcie_store_r7_to_05b7(uint8_t idx, uint8_t val)
 void pcie_set_0a5b_flag(__xdata uint8_t *ptr, uint8_t val)
 {
     *ptr = val;
-    XDATA8(0x0A5B) = 0x01;
+    G_NIBBLE_SWAP_0A5B = 0x01;
 }
 
 /*
@@ -1545,8 +1545,8 @@ void pcie_set_0a5b_flag(__xdata uint8_t *ptr, uint8_t val)
  */
 void pcie_inc_0a5b(void)
 {
-    uint8_t val = XDATA8(0x0A5B);
-    XDATA8(0x0A5B) = val + 1;
+    uint8_t val = G_NIBBLE_SWAP_0A5B;
+    G_NIBBLE_SWAP_0A5B = val + 1;
 }
 
 /*
@@ -1839,8 +1839,8 @@ uint8_t pcie_tlp_handler_b104(void)
         flash_set_mode_enable();
 
         /* Store local counters to TLP config area */
-        XDATA8(0x0AA4) = I_WORK_51;
-        XDATA8(0x0AA5) = I_WORK_52;
+        G_STATE_COUNTER_LO = I_WORK_51;
+        G_STATE_COUNTER_0AA5 = I_WORK_52;
 
         /* Write flash command 0x02, get addr length result */
         flash_cmd_result = tlp_write_flash_cmd(0x02);
@@ -2662,8 +2662,8 @@ void pcie_interrupt_handler(void)
 uint8_t pcie_queue_handler_a62d(void)
 {
     /* Call bank 1 handler at 0xe7ae */
-    /* Read status from 0xe710, mask with 0xe0 */
-    return XDATA8(0xe710) & 0xe0;
+    /* Read status from link width register, mask with 0xe0 */
+    return REG_LINK_WIDTH_E710 & 0xe0;
 }
 
 /*
@@ -2684,8 +2684,8 @@ uint8_t pcie_queue_handler_a62d(void)
  */
 void pcie_set_interrupt_flag(void)
 {
-    G_PCIE_INT_CTRL_0AD7 = 0x01;
-    G_PCIE_STATE_0ADE = 0;
+    G_TLP_COUNT_0AD7 = 0x01;
+    G_TLP_LIMIT_HI = 0;
 }
 
 /*===========================================================================

@@ -988,25 +988,25 @@ void system_init_from_flash(void)
     uint8_t tmp;
 
     /* Initialize default mode flags */
-    XDATA8(0x09F4) = 3;  /* Mode configuration 1 */
-    XDATA8(0x09F5) = 1;  /* Mode configuration 2 */
-    XDATA8(0x09F6) = 1;  /* Mode configuration 3 */
-    XDATA8(0x09F7) = 3;  /* Mode configuration 4 */
-    XDATA8(0x09F8) = 1;  /* Mode configuration 5 */
-    XDATA8(0x0A56) = 0;  /* Flash config valid flag */
+    G_FLASH_MODE_1 = 3;  /* Mode configuration 1 */
+    G_FLASH_MODE_2 = 1;  /* Mode configuration 2 */
+    G_FLASH_MODE_3 = 1;  /* Mode configuration 3 */
+    G_FLASH_MODE_4 = 3;  /* Mode configuration 4 */
+    G_FLASH_MODE_5 = 1;  /* Mode configuration 5 */
+    G_FLASH_CONFIG_VALID = 0;  /* Flash config valid flag */
     retry_count = 0;     /* IDATA[0x22] = 0 */
 
     /* Flash read/validation retry loop */
     while (retry_count <= 5) {
         /* Set flash read trigger */
-        XDATA8(0x0213) = 1;
+        G_FLASH_READ_TRIGGER = 1;
 
         /* Call timer/watchdog handler */
         sys_timer_handler_e957();
 
         if (retry_count != 0) {
             /* Check header marker at 0x707E */
-            header_marker = XDATA8(0x707E);
+            header_marker = G_FLASH_BUF_707E;
             if (header_marker == 0xA5) {
                 /* Compute checksum from 0x7004 to 0x707E */
                 computed_checksum = 0;
@@ -1015,12 +1015,12 @@ void system_init_from_flash(void)
                 }
 
                 /* Get stored checksum from 0x707F */
-                checksum = XDATA8(0x707F);
+                checksum = G_FLASH_BUF_707F;
 
                 /* Validate checksum */
                 if (checksum == computed_checksum) {
                     /* Checksum valid - mark flash config as valid */
-                    XDATA8(0x0A56) = 1;
+                    G_FLASH_CONFIG_VALID = 1;
 
                     /* Parse vendor strings from 0x7004 if valid */
                     if (XDATA8(0x7004) != 0xFF) {
@@ -1066,13 +1066,13 @@ void system_init_from_flash(void)
 
                     /* Parse mode configuration from 0x7059-0x705A */
                     tmp = XDATA8(0x7059);
-                    XDATA8(0x09F4) = (tmp >> 4) & 0x03;  /* Bits 5:4 */
-                    XDATA8(0x09F5) = (tmp >> 6) & 0x01;  /* Bit 6 */
-                    XDATA8(0x09F6) = tmp >> 7;          /* Bit 7 */
+                    G_FLASH_MODE_1 = (tmp >> 4) & 0x03;  /* Bits 5:4 */
+                    G_FLASH_MODE_2 = (tmp >> 6) & 0x01;  /* Bit 6 */
+                    G_FLASH_MODE_3 = tmp >> 7;          /* Bit 7 */
 
                     tmp = XDATA8(0x705A);
-                    XDATA8(0x09F7) = tmp & 0x03;        /* Bits 1:0 */
-                    XDATA8(0x09F8) = (tmp >> 2) & 0x01; /* Bit 2 */
+                    G_FLASH_MODE_4 = tmp & 0x03;        /* Bits 1:0 */
+                    G_FLASH_MODE_5 = (tmp >> 2) & 0x01; /* Bit 2 */
 
                     /* Set initialization flag */
                     XDATA8(0x07F7) = XDATA8(0x07F7) | 0x04;
@@ -1087,7 +1087,7 @@ void system_init_from_flash(void)
 
 set_event_flags:
     /* Set event flags based on mode configuration */
-    mode_val = XDATA8(0x09F4);
+    mode_val = G_FLASH_MODE_1;
     if (mode_val == 3) {
         G_EVENT_FLAGS = 0x87;
         XDATA8(0x09FB) = 3;
@@ -1112,7 +1112,7 @@ set_event_flags:
     sys_init_helper_bbc7();
 
     /* If flash config is valid, call event dispatcher */
-    if (XDATA8(0x0A56) == 1) {
+    if (G_FLASH_CONFIG_VALID == 1) {
         sys_event_dispatch_05e8();
     }
 }

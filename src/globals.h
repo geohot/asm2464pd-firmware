@@ -86,6 +86,7 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_NVME_QUEUE_READY      XDATA_VAR8(0x0055)  /* NVMe queue ready flag */
 #define G_USB_ADDR_HI_0056      XDATA_VAR8(0x0056)  /* USB address high 0x0056 */
 #define G_USB_ADDR_LO_0057      XDATA_VAR8(0x0057)  /* USB address low 0x0057 */
+#define G_USB_WORK_009F         XDATA_VAR8(0x009F)  /* USB work array base */
 #define G_INIT_STATE_00C2       XDATA_VAR8(0x00C2)  /* Initialization state flag */
 #define G_INIT_STATE_00E5       XDATA_VAR8(0x00E5)  /* Initialization state flag 2 */
 #define G_USB_INDEX_COUNTER     XDATA_VAR8(0x014E)  /* USB index counter (5-bit) */
@@ -97,6 +98,7 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 // DMA Work Area (0x0200-0x02FF)
 //=============================================================================
 #define G_DMA_MODE_SELECT       XDATA_VAR8(0x0203)  /* DMA mode select */
+#define G_FLASH_READ_TRIGGER    XDATA_VAR8(0x0213)  /* Flash read trigger */
 #define G_DMA_STATE_0214        XDATA_VAR8(0x0214)  /* DMA state/status */
 #define G_DMA_PARAM1            XDATA_VAR8(0x020D)  /* DMA parameter 1 */
 #define G_DMA_PARAM2            XDATA_VAR8(0x020E)  /* DMA parameter 2 */
@@ -175,11 +177,15 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 //=============================================================================
 // Transfer Work Area (0x0600-0x07FF)
 //=============================================================================
+#define G_DMA_WORK_05AC         XDATA_VAR8(0x05AC)  /* DMA work byte */
+#define G_DMA_WORK_05AD         XDATA_VAR8(0x05AD)  /* DMA work byte */
 #define G_MAX_LOG_ENTRIES       XDATA_VAR8(0x06E5)  /* Max error log entries */
 #define G_STATE_FLAG_06E6       XDATA_VAR8(0x06E6)  /* Processing complete flag / error flag */
 #define G_SCSI_STATUS_06CB      XDATA_VAR8(0x06CB)  /* SCSI status byte */
+#define G_WORK_06E7             XDATA_VAR8(0x06E7)  /* Work variable 0x06E7 */
 #define G_WORK_06E8             XDATA_VAR8(0x06E8)  /* Work variable 0x06E8 */
 #define G_ERROR_CODE_06EA       XDATA_VAR8(0x06EA)  /* Error code */
+#define G_WORK_06EB             XDATA_VAR8(0x06EB)  /* Work variable 0x06EB */
 #define G_MISC_FLAG_06EC        XDATA_VAR8(0x06EC)  /* Miscellaneous flag */
 #define G_FLASH_CMD_FLAG        XDATA_VAR8(0x07B8)  /* Flash command flag */
 #define G_FLASH_CMD_TYPE        XDATA_VAR8(0x07BC)  /* Flash command type (1,2,3) */
@@ -208,6 +214,11 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_LOOP_CHECK_098E       XDATA_VAR8(0x098E)  /* Loop check byte */
 #define G_LOOP_STATE_0991       XDATA_VAR8(0x0991)  /* Loop state byte */
 #define G_EVENT_CHECK_09EF      XDATA_VAR8(0x09EF)  /* Event check byte */
+#define G_FLASH_MODE_1          XDATA_VAR8(0x09F4)  /* Flash mode config 1 */
+#define G_FLASH_MODE_2          XDATA_VAR8(0x09F5)  /* Flash mode config 2 */
+#define G_FLASH_MODE_3          XDATA_VAR8(0x09F6)  /* Flash mode config 3 */
+#define G_FLASH_MODE_4          XDATA_VAR8(0x09F7)  /* Flash mode config 4 */
+#define G_FLASH_MODE_5          XDATA_VAR8(0x09F8)  /* Flash mode config 5 */
 #define G_EVENT_FLAGS           XDATA_VAR8(0x09F9)  /* Event flags */
 #define   EVENT_FLAG_PENDING      0x01  // Bit 0: Event pending
 #define   EVENT_FLAG_PROCESS      0x02  // Bit 1: Process event
@@ -223,6 +234,7 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_PCIE_ADAPTER_CFG_HI   XDATA_VAR8(0x0A53)  /* Adapter config high (link config low) */
 #define G_PCIE_ADAPTER_MODE     XDATA_VAR8(0x0A54)  /* Adapter mode config */
 #define G_PCIE_ADAPTER_AUX      XDATA_VAR8(0x0A55)  /* Adapter auxiliary config */
+#define G_FLASH_CONFIG_VALID    XDATA_VAR8(0x0A56)  /* Flash config valid flag */
 
 //=============================================================================
 // Endpoint Dispatch Work Area (0x0A00-0x0BFF)
@@ -240,6 +252,7 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_EP_DISPATCH_VAL4      XDATA_VAR8(0x0A7E)  /* Endpoint dispatch value 4 */
 #define G_STATE_COUNTER_HI      XDATA_VAR8(0x0AA3)  /* State counter high */
 #define G_STATE_COUNTER_LO      XDATA_VAR8(0x0AA4)  /* State counter low */
+#define G_STATE_COUNTER_0AA5    XDATA_VAR8(0x0AA5)  /* State counter byte 2 */
 #define G_LOG_PROCESSED_INDEX   XDATA_VAR8(0x0AA1)  /* Current processed log index */
 #define G_STATE_PARAM_0AA2      XDATA_VAR8(0x0AA2)  /* State machine parameter */
 #define G_STATE_RESULT_0AA3     XDATA_VAR8(0x0AA3)  /* State machine result */
@@ -308,8 +321,17 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 //=============================================================================
 // Flash Buffer Area Control (0x7000-0x7FFF)
 //=============================================================================
+#define G_FLASH_BUF_BASE        XDATA_VAR8(0x7000)  /* Flash buffer base */
+#define G_FLASH_BUF_7004        XDATA_VAR8(0x7004)  /* Flash buffer config start */
+#define G_FLASH_BUF_702C        XDATA_VAR8(0x702C)  /* Flash buffer serial start */
+#define G_FLASH_BUF_705C        XDATA_VAR8(0x705C)  /* Flash buffer data 1 */
+#define G_FLASH_BUF_705D        XDATA_VAR8(0x705D)  /* Flash buffer data 2 */
+#define G_FLASH_BUF_705E        XDATA_VAR8(0x705E)  /* Flash buffer data 3 */
+#define G_FLASH_BUF_705F        XDATA_VAR8(0x705F)  /* Flash buffer data 4 */
 #define G_FLASH_BUF_707B        XDATA_VAR8(0x707B)  /* Flash buffer byte 0x707B */
 #define G_FLASH_BUF_707D        XDATA_VAR8(0x707D)  /* Flash buffer byte 0x707D */
+#define G_FLASH_BUF_707E        XDATA_VAR8(0x707E)  /* Flash header marker */
+#define G_FLASH_BUF_707F        XDATA_VAR8(0x707F)  /* Flash checksum */
 
 //=============================================================================
 // Work Variables 0x0A5x-0x0A9x
@@ -322,6 +344,8 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_TLP_STATE_0ACF        XDATA_VAR8(0x0ACF)  /* TLP state (low 5 bits) */
 #define G_TLP_CMD_STATE_0AD0    XDATA_VAR8(0x0AD0)  /* TLP command state */
 #define G_LINK_STATE_0AD1       XDATA_VAR8(0x0AD1)  /* Link state counter */
+#define G_USB_DESC_FLAG_0ACD    XDATA_VAR8(0x0ACD)  /* USB descriptor flag */
+#define G_USB_DESC_MODE_0ACE    XDATA_VAR8(0x0ACE)  /* USB descriptor mode */
 #define G_LINK_STATE_0AD2       XDATA_VAR8(0x0AD2)  /* Link state flag */
 #define G_TLP_MODE_0AD3         XDATA_VAR8(0x0AD3)  /* TLP mode flag */
 #define G_TLP_ADDR_OFFSET_HI    XDATA_VAR8(0x0AD5)  /* TLP address offset high */
@@ -361,8 +385,11 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_CMD_ADDR_HI           XDATA_VAR8(0x07BF)  /* Computed slot address high */
 #define G_CMD_ADDR_LO           XDATA_VAR8(0x07C0)  /* Computed slot address low */
 #define G_CMD_SLOT_C1           XDATA_VAR8(0x07C1)  /* Slot index for address calc */
+#define G_CMD_WORK_C2           XDATA_VAR8(0x07C2)  /* Command work byte */
 #define G_CMD_STATE             XDATA_VAR8(0x07C3)  /* Command state (3-bit) */
 #define G_CMD_STATUS            XDATA_VAR8(0x07C4)  /* Command status byte */
+#define G_CMD_WORK_C5           XDATA_VAR8(0x07C5)  /* Command work byte */
+#define G_CMD_WORK_C7           XDATA_VAR8(0x07C7)  /* Command work byte */
 #define G_CMD_MODE              XDATA_VAR8(0x07CA)  /* Command mode (1=mode1, 2=mode2, 3=mode3) */
 #define G_CMD_PARAM_0           XDATA_VAR8(0x07D3)  /* Command parameter 0 */
 #define G_CMD_PARAM_1           XDATA_VAR8(0x07D4)  /* Command parameter 1 */
@@ -373,18 +400,31 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_CMD_LBA_3             XDATA_VAR8(0x07DD)  /* Command LBA byte 3 (high) */
 #define G_CMD_FLAG_07DE         XDATA_VAR8(0x07DE)  /* Command flag 0x07DE */
 #define G_PCIE_COMPLETE_07DF    XDATA_VAR8(0x07DF)  /* PCIe link complete flag */
+#define G_CMD_WORK_E3           XDATA_VAR8(0x07E3)  /* Command work byte */
+#define G_CMD_DEBUG_FF          XDATA_VAR8(0x07FF)  /* Debug marker byte */
 
 //=============================================================================
 // PCIe Interrupt Handler Work Area
 //=============================================================================
 #define G_PCIE_LANE_STATE_0A9E  XDATA_VAR8(0x0A9E)  /* PCIe lane state */
-#define G_PCIE_INT_CTRL_0AD7    XDATA_VAR8(0x0AD7)  /* PCIe interrupt control */
-#define G_PCIE_STATE_0ADE       XDATA_VAR8(0x0ADE)  /* PCIe state 0x0ADE */
-#define G_PCIE_STATE_0ADF       XDATA_VAR8(0x0ADF)  /* PCIe state 0x0ADF */
 #define G_PCIE_STATUS_0B35      XDATA_VAR8(0x0B35)  /* PCIe status work byte */
 #define G_PCIE_STATUS_0B36      XDATA_VAR8(0x0B36)  /* PCIe status work byte */
 #define G_PCIE_STATUS_0B37      XDATA_VAR8(0x0B37)  /* PCIe status work byte */
+#define G_PCIE_STATUS_0B13      XDATA_VAR8(0x0B13)  /* PCIe status work */
+#define G_PCIE_STATUS_0B14      XDATA_VAR8(0x0B14)  /* PCIe status work */
+#define G_PCIE_STATUS_0B15      XDATA_VAR8(0x0B15)  /* PCIe status work */
+#define G_PCIE_STATUS_0B16      XDATA_VAR8(0x0B16)  /* PCIe status work */
+#define G_PCIE_STATUS_0B17      XDATA_VAR8(0x0B17)  /* PCIe status work */
+#define G_PCIE_STATUS_0B18      XDATA_VAR8(0x0B18)  /* PCIe status work */
 #define G_PCIE_STATUS_0B19      XDATA_VAR8(0x0B19)  /* PCIe status flag */
+#define G_PCIE_STATUS_0B1A      XDATA_VAR8(0x0B1A)  /* PCIe status work */
+#define G_DMA_WORK_0B1D         XDATA_VAR8(0x0B1D)  /* DMA work byte (r4) */
+#define G_DMA_WORK_0B1E         XDATA_VAR8(0x0B1E)  /* DMA work byte (r5) */
+#define G_DMA_WORK_0B1F         XDATA_VAR8(0x0B1F)  /* DMA work byte (r6) */
+#define G_DMA_WORK_0B20         XDATA_VAR8(0x0B20)  /* DMA work byte (r7) */
+#define G_DMA_WORK_0B21         XDATA_VAR8(0x0B21)  /* DMA work byte */
+#define G_DMA_WORK_0B24         XDATA_VAR8(0x0B24)  /* DMA work byte */
+#define G_DMA_WORK_0B25         XDATA_VAR8(0x0B25)  /* DMA work byte */
 
 //=============================================================================
 // Power State Machine Work Area (0x0A60-0x0A6F)

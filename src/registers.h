@@ -515,6 +515,7 @@
 #define REG_DMA_CMD_CC88        XDATA_REG8(0xCC88)
 #define REG_DMA_CMD_CC89        XDATA_REG8(0xCC89)
 #define REG_DMA_CMD_CC8A        XDATA_REG8(0xCC8A)
+#define REG_DMA_CMD_CC8B        XDATA_REG8(0xCC8B)
 #define REG_CPU_STATUS_CC91     XDATA_REG8(0xCC91)
 #define REG_DMA_CMD_CC99        XDATA_REG8(0xCC99)  /* DMA command config */
 #define REG_DMA_CMD_CC9A        XDATA_REG8(0xCC9A)  /* DMA command param lo */
@@ -685,6 +686,7 @@
 #define REG_PHY_LINK_CTRL       XDATA_REG8(0xE7E3)
 #define   PHY_LINK_CTRL_BIT6      0x40  // Bit 6: PHY link control flag
 #define   PHY_LINK_CTRL_BIT7      0x80  // Bit 7: PHY link ready
+#define REG_PHY_LINK_TRIGGER    XDATA_REG8(0xE7FA)  /* PHY link trigger/config */
 #define REG_LINK_MODE_CTRL      XDATA_REG8(0xE7FC)
 
 //=============================================================================

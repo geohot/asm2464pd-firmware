@@ -897,11 +897,11 @@ __xdata uint8_t *usb_clear_idata_indexed(void)
 {
     uint8_t offset = *(__idata uint8_t *)0x38;
 
-    /* Clear at 0x00C2 + offset */
-    XDATA8(0x00C2 + offset) = 0;
+    /* Clear at G_INIT_STATE_00C2 + offset */
+    (&G_INIT_STATE_00C2)[offset] = 0;
 
-    /* Return pointer to 0x00E5 + offset */
-    return (__xdata uint8_t *)(0x00E5 + offset);
+    /* Return pointer to G_INIT_STATE_00E5 + offset */
+    return &(&G_INIT_STATE_00E5)[offset];
 }
 
 /*===========================================================================
@@ -1476,7 +1476,7 @@ void usb_master_handler(void)
 uint8_t usb_calc_addr_009f(void)
 {
     uint8_t offset = *(__idata uint8_t *)0x3E;
-    return XDATA8(0x009F + offset);
+    return (&G_USB_WORK_009F)[offset];
 }
 
 /*
@@ -4194,25 +4194,25 @@ uint8_t usb_desc_setup_89bd(__xdata uint8_t *param)
     usb_xfer_setup_8a7e(0x42);
 
     /* Check if serial number data available */
-    if (XDATA8(0x0ACD) != 0) {
+    if (G_USB_DESC_FLAG_0ACD != 0) {
         /* Set up serial number strings */
-        usb_descriptor_helper_a651(0x59, 0x1A, XDATA8(0x0B13));
-        usb_descriptor_helper_a655(1, XDATA8(0x0B14));
-        usb_descriptor_helper_a655(2, XDATA8(0x0B15));
-        usb_descriptor_helper_a655(3, XDATA8(0x0B16));
-        usb_descriptor_helper_a655(4, XDATA8(0x0B17));
-        usb_descriptor_helper_a655(5, XDATA8(0x0B18));
-        usb_descriptor_helper_a655(6, XDATA8(0x0B19));
-        usb_descriptor_helper_a655(7, XDATA8(0x0B1A));
-        usb_descriptor_helper_a651(0x59, 0x70, XDATA8(0x0ACE));
+        usb_descriptor_helper_a651(0x59, 0x1A, G_PCIE_STATUS_0B13);
+        usb_descriptor_helper_a655(1, G_PCIE_STATUS_0B14);
+        usb_descriptor_helper_a655(2, G_PCIE_STATUS_0B15);
+        usb_descriptor_helper_a655(3, G_PCIE_STATUS_0B16);
+        usb_descriptor_helper_a655(4, G_PCIE_STATUS_0B17);
+        usb_descriptor_helper_a655(5, G_PCIE_STATUS_0B18);
+        usb_descriptor_helper_a655(6, G_PCIE_STATUS_0B19);
+        usb_descriptor_helper_a655(7, G_PCIE_STATUS_0B1A);
+        usb_descriptor_helper_a651(0x59, 0x70, G_USB_DESC_MODE_0ACE);
         return usb_xfer_finish_8a3d();
     }
 
     /* No serial data - check init state */
-    if (XDATA8(0x0AE5) == 0) {
-        XDATA8(0x07E9) = 1;
+    if (G_TLP_INIT_FLAG_0AE5 == 0) {
+        G_TLP_STATE_07E9 = 1;
     }
-    return XDATA8(0x0A83);
+    return G_ACTION_CODE_0A83;
 }
 
 /*
@@ -4234,25 +4234,25 @@ uint8_t usb_desc_setup_89c6(uint8_t param, __xdata uint8_t *ptr)
     usb_xfer_setup_8a7e(0x42);
 
     /* Check if serial number data available */
-    if (XDATA8(0x0ACD) != 0) {
+    if (G_USB_DESC_FLAG_0ACD != 0) {
         /* Set up serial number strings */
-        usb_descriptor_helper_a651(0x59, 0x1A, XDATA8(0x0B13));
-        usb_descriptor_helper_a655(1, XDATA8(0x0B14));
-        usb_descriptor_helper_a655(2, XDATA8(0x0B15));
-        usb_descriptor_helper_a655(3, XDATA8(0x0B16));
-        usb_descriptor_helper_a655(4, XDATA8(0x0B17));
-        usb_descriptor_helper_a655(5, XDATA8(0x0B18));
-        usb_descriptor_helper_a655(6, XDATA8(0x0B19));
-        usb_descriptor_helper_a655(7, XDATA8(0x0B1A));
-        usb_descriptor_helper_a651(0x59, 0x70, XDATA8(0x0ACE));
+        usb_descriptor_helper_a651(0x59, 0x1A, G_PCIE_STATUS_0B13);
+        usb_descriptor_helper_a655(1, G_PCIE_STATUS_0B14);
+        usb_descriptor_helper_a655(2, G_PCIE_STATUS_0B15);
+        usb_descriptor_helper_a655(3, G_PCIE_STATUS_0B16);
+        usb_descriptor_helper_a655(4, G_PCIE_STATUS_0B17);
+        usb_descriptor_helper_a655(5, G_PCIE_STATUS_0B18);
+        usb_descriptor_helper_a655(6, G_PCIE_STATUS_0B19);
+        usb_descriptor_helper_a655(7, G_PCIE_STATUS_0B1A);
+        usb_descriptor_helper_a651(0x59, 0x70, G_USB_DESC_MODE_0ACE);
         return usb_xfer_finish_8a3d();
     }
 
     /* No serial data - check init state */
-    if (XDATA8(0x0AE5) == 0) {
-        XDATA8(0x07E9) = 1;
+    if (G_TLP_INIT_FLAG_0AE5 == 0) {
+        G_TLP_STATE_07E9 = 1;
     }
-    return XDATA8(0x0A83);
+    return G_ACTION_CODE_0A83;
 }
 
 /*
@@ -4279,10 +4279,10 @@ void usb_xfer_nop_8a3a(void)
  */
 uint8_t usb_xfer_finish_8a3d(void)
 {
-    if (XDATA8(0x0AE5) == 0) {
-        XDATA8(0x07E9) = 1;
+    if (G_TLP_INIT_FLAG_0AE5 == 0) {
+        G_TLP_STATE_07E9 = 1;
     }
-    return XDATA8(0x0A83);
+    return G_ACTION_CODE_0A83;
 }
 
 /*
@@ -4302,12 +4302,12 @@ uint8_t usb_xfer_finish_8a3d(void)
  */
 void usb_xfer_setup_8a4e(uint8_t param1, uint8_t param2)
 {
-    XDATA8(0x0ADE) = param1;
-    XDATA8(0x0ADF) = param2;
-    XDATA8(0x0AE0) = 0x58;
-    XDATA8(0x0AE1) = 0xE9;
+    G_TLP_LIMIT_HI = param1;
+    G_TLP_LIMIT_LO = param2;
+    G_TLP_BASE_HI = 0x58;
+    G_TLP_BASE_LO = 0xE9;
     pcie_tlp_handler_b402();
-    XDATA8(0x0A83) = param2;
+    G_ACTION_CODE_0A83 = param2;
 }
 
 /*
@@ -4325,7 +4325,7 @@ void usb_xfer_setup_8a67(uint8_t param1, uint16_t addr, uint8_t param3)
 {
     XDATA8(addr + 1) = param1;
     pcie_tlp_handler_b402();
-    XDATA8(0x0A83) = param3;
+    G_ACTION_CODE_0A83 = param3;
 }
 
 /*
@@ -4343,7 +4343,7 @@ void usb_xfer_setup_8a72(__xdata uint8_t *ptr, uint8_t param2)
 {
     *ptr = 0x12;
     pcie_tlp_handler_b402();
-    XDATA8(0x0A83) = param2;
+    G_ACTION_CODE_0A83 = param2;
 }
 
 /*
@@ -4367,7 +4367,7 @@ void usb_xfer_setup_8a7e(uint8_t param1)
      * DPTR already pointing to the target address.
      * The param is written to DPTR+1, then b402 is called. */
     pcie_tlp_handler_b402();
-    XDATA8(0x0A83) = param1;
+    G_ACTION_CODE_0A83 = param1;
 }
 
 /*
@@ -4383,7 +4383,7 @@ void usb_xfer_setup_8a7e(uint8_t param1)
  */
 void usb_xfer_flash_dispatch_8a89(uint8_t param)
 {
-    XDATA8(0x0A9D) = param;
+    G_LANE_STATE_0A9D = param;
     /* Call flash dispatch - this is a bank switch + jump that doesn't return */
     /* flash_func_0bc8(0xEF, 0x4C, 0xFF); */
 }

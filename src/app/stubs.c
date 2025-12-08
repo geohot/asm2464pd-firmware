@@ -13,6 +13,10 @@
 #include "../registers.h"
 #include "../globals.h"
 
+/* External function declarations */
+extern void phy_link_training(void);  /* 0xD702 - in phy.c */
+extern void timer_wait(uint8_t timeout_lo, uint8_t timeout_hi, uint8_t mode);  /* 0xE80A - in timer.c */
+
 /*===========================================================================
  * USB Transfer Functions
  *===========================================================================*/
@@ -501,7 +505,7 @@ static void helper_955e(uint8_t val)
 {
     /* DPTR=CC89, writes val, inc to CC8A, writes val again */
     REG_DMA_CMD_CC89 = val;
-    XDATA8(0xCC8A) = val;
+    REG_DMA_CMD_CC8A = val;
 }
 
 /* Forward declaration */
@@ -542,17 +546,17 @@ void handler_d676(void)
     /* uart_puts(0xFF234B); */
 
     /* Set bit 0 of CC32 */
-    val = XDATA8(0xCC32);
+    val = REG_CPU_EXEC_STATUS;
     val = (val & 0xFE) | 0x01;
-    XDATA8(0xCC32) = val;
+    REG_CPU_EXEC_STATUS = val;
 
     /* Write 0x0F to E7FA */
-    XDATA8(0xE7FA) = 0x0F;
+    REG_PHY_LINK_TRIGGER = 0x0F;
 
     /* CC88: clear bits 0-2, set bit 2 */
-    val = XDATA8(0xCC88);
+    val = REG_DMA_CMD_CC88;
     val = (val & 0xF8) | 0x04;
-    XDATA8(0xCC88) = val;
+    REG_DMA_CMD_CC88 = val;
 
     /* Write 0x31 to CC89 */
     REG_DMA_CMD_CC89 = 0x31;
@@ -566,14 +570,14 @@ void handler_d676(void)
     cmd_write_cc89_02();
 
     /* Set bit 0 of CC31 */
-    val = XDATA8(0xCC31);
+    val = REG_CPU_EXEC_CTRL;
     val = (val & 0xFE) | 0x01;
-    XDATA8(0xCC31) = val;
+    REG_CPU_EXEC_CTRL = val;
 
     /* Inc to CC32, clear bit 0 */
-    val = XDATA8(0xCC32);
+    val = REG_CPU_EXEC_STATUS;
     val &= 0xFE;
-    XDATA8(0xCC32) = val;
+    REG_CPU_EXEC_STATUS = val;
 
     /* Print error message (string at 0xFF235C) */
     /* uart_puts(0xFF235C); */
@@ -678,31 +682,31 @@ void helper_dd42(uint8_t param)
 {
     uint8_t flag = G_STATE_FLAG_0AF1;
 
-    /* If bit 5 is clear, write 0 to 0xe7e3 */
+    /* If bit 5 is clear, write 0 to PHY_LINK_CTRL */
     if (!(flag & 0x20)) {
-        XDATA8(0xe7e3) = 0;
+        REG_PHY_LINK_CTRL = 0;
         return;
     }
 
     /* If param == 0 or param == 2, write 0 */
     if (param == 0 || param == 2) {
-        XDATA8(0xe7e3) = 0;
+        REG_PHY_LINK_CTRL = 0;
         return;
     }
 
     /* Handle specific param values */
     if (param == 4) {
-        XDATA8(0xe7e3) = 0x30;
+        REG_PHY_LINK_CTRL = 0x30;
         return;
     }
 
     if (param == 1) {
-        XDATA8(0xe7e3) = 0xcc;
+        REG_PHY_LINK_CTRL = 0xcc;
         return;
     }
 
     if (param == 0xff) {
-        XDATA8(0xe7e3) = 0xfc;
+        REG_PHY_LINK_CTRL = 0xfc;
         return;
     }
 
@@ -739,10 +743,10 @@ uint8_t helper_e6d2(void)
     /* Store 32-bit value 0x00010080 to 0x0b1d using helper_0dc5 */
     /* The DPTR is set to 0x0b1d before calling 0x0dc5 */
     /* r7:r6:r5:r4 = 0x00:0x80:0x01:0x00 = 0x00010080 (little endian read) */
-    XDATA8(0x0b1d) = 0x00;  /* r4 */
-    XDATA8(0x0b1e) = 0x01;  /* r5 */
-    XDATA8(0x0b1f) = 0x80;  /* r6 */
-    XDATA8(0x0b20) = 0x00;  /* r7 */
+    G_DMA_WORK_0B1D = 0x00;  /* r4 */
+    G_DMA_WORK_0B1E = 0x01;  /* r5 */
+    G_DMA_WORK_0B1F = 0x80;  /* r6 */
+    G_DMA_WORK_0B20 = 0x00;  /* r7 */
 
     helper_d17a();
 
@@ -788,8 +792,8 @@ void handler_e529(uint8_t param)
 
     /* If result non-zero, process further */
     if (result != 0) {
-        /* Read back saved param and write to 0x7000 */
-        XDATA8(0x7000) = G_STATE_RESULT_0AA3;
+        /* Read back saved param and write to flash buffer */
+        G_FLASH_BUF_BASE = G_STATE_RESULT_0AA3;
         /* Dispatch to Bank1 handler_e478 */
         handler_e478();  /* was: dispatch_0638 */
     }
@@ -867,9 +871,9 @@ void helper_e396(void)
 {
     /* Complex initialization - calls multiple sub-helpers */
     /* For now, just set up the values at the known addresses */
-    XDATA8(0x0b21) = 0x80;
-    XDATA8(0x0b24) = 0xd8;
-    XDATA8(0x0b25) = 0x20;
+    G_DMA_WORK_0B21 = 0x80;
+    G_DMA_WORK_0B24 = 0xd8;
+    G_DMA_WORK_0B25 = 0x20;
 }
 
 /*
@@ -949,8 +953,11 @@ void pcie_lane_config_helper(uint8_t param)
         lane_state = REG_PCIE_LINK_STATE;
         REG_PCIE_LINK_STATE = temp | (lane_state & 0xF0);
 
-        /* Call link training - would be FUN_CODE_d702() */
-        /* delay_function(0, 199, 2) - 200ms delay */
+        /* Call PHY link training (0xD702) */
+        phy_link_training();
+
+        /* Wait ~200ms for link to train (0xE80A with r4=0, r5=199, r7=2) */
+        timer_wait(0x00, 0xC7, 0x02);
 
         /* Shift counter for next iteration */
         G_STATE_COUNTER_0AAC = G_STATE_COUNTER_0AAC * 2;
@@ -1197,8 +1204,8 @@ uint8_t FUN_CODE_11a2(uint8_t param)
             }
 
             /* Check USB status for slot table update */
-            val = XDATA8(0x9000);
-            if (val & 0x01) {
+            val = REG_USB_STATUS;
+            if (val & USB_STATUS_ACTIVE) {
                 ptr = get_slot_addr_71();
                 val = *ptr;
                 if (val == 0xFF) {
@@ -1446,13 +1453,13 @@ static void helper_9536(void) {
     REG_CMD_CONFIG = val;
 
     /* CC88: clear bits 0-2, set bit 1 */
-    val = XDATA8(0xCC88);
+    val = REG_DMA_CMD_CC88;
     val = (val & 0xF8) | 0x02;
-    XDATA8(0xCC88) = val;
+    REG_DMA_CMD_CC88 = val;
 
     /* Clear CC8A, write 0xC7 to CC8B */
-    XDATA8(0xCC8A) = 0;
-    XDATA8(0xCC8B) = 0xC7;
+    REG_DMA_CMD_CC8A = 0;
+    REG_DMA_CMD_CC8B = 0xC7;
 
     /* Write 0x01 to CC89 */
     REG_DMA_CMD_CC89 = 0x01;
@@ -1468,18 +1475,18 @@ static void helper_9536(void) {
 static void helper_b8c3(void) {
     /* Clear command slot index and neighbor */
     G_CMD_SLOT_INDEX = 0;
-    XDATA8(0x07B8) = 0;
+    G_FLASH_CMD_FLAG = 0;
 
     /* Clear command state and status */
     G_CMD_STATE = 0;
     G_CMD_STATUS = 0;
 
     /* Clear other globals */
-    XDATA8(0x07C7) = 0;
-    XDATA8(0x07C5) = 0;
-    XDATA8(0x07C2) = 0;
-    XDATA8(0x07C1) = 0;
-    XDATA8(0x07E3) = 0;
+    G_CMD_WORK_C7 = 0;
+    G_CMD_WORK_C5 = 0;
+    G_CMD_WORK_C2 = 0;
+    G_CMD_SLOT_C1 = 0;
+    G_CMD_WORK_E3 = 0;
 
     /* Set operation counter to 1 */
     G_CMD_OP_COUNTER = 1;
@@ -1639,10 +1646,11 @@ void FUN_CODE_e1c6(void)
 void FUN_CODE_e73a(void)
 {
     uint8_t i;
+    volatile uint8_t __xdata *ptr = &REG_CMD_TRIGGER;
 
-    /* Clear 32 bytes at 0xE420-0xE43F */
+    /* Clear 32 bytes of command register block at 0xE420-0xE43F */
     for (i = 0; i < 0x20; i++) {
-        XDATA8(0xE420 + i) = 0;
+        ptr[i] = 0;
     }
 }
 

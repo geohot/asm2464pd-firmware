@@ -2,8 +2,9 @@
 
 ## Progress Summary
 - Total functions in ghidra.c: ~720
-- Functions implemented: ~380 (53%)
-- Functions remaining: ~340 (47%)
+- Functions implemented: ~400 (56%)
+- Functions remaining: ~320 (44%)
+- Firmware size: 35,364 bytes / 98,012 bytes (36.1%)
 
 ---
 
@@ -97,6 +98,23 @@ These sections are NVMe/SCSI specific and not needed for eGPU passthrough:
 ---
 
 ## Recent Completions
+
+### main_loop State Machine (0x2f80-0x3129)
+- [x] Full state machine implementation in main.c
+- [x] G_LOOP_STATE state machine (states 0, 1, 2)
+- [x] G_SYSTEM_STATE_0AE2 processing
+- [x] Return-value wrappers for dispatch_0516/dispatch_0430 (R7 access)
+- [x] USB endpoint loop stubs (usb_ep_loop_180d, usb_ep_loop_3419)
+- [x] Added missing globals: G_STATE_0AE8, G_STATE_0AE9, G_LOOP_STATE_0A5A, G_STATE_0B39, G_STATE_0AB6
+
+### Reverse Engineered Functions (This Session)
+- [x] `handler_e3d8` (0xe3d8) - State machine handler
+- [x] `handler_e90b` (0xe90b) - Error/event handler
+- [x] `FUN_CODE_e1c6` - Wired to cmd_wait_completion
+- [x] `FUN_CODE_be8b` (0xbe8b) - Register helper
+- [x] `handler_d676` (0xd676) - Power/PHY handler
+- [x] `FUN_CODE_e73a` (0xe73a) - NVMe event handler
+- [x] `FUN_CODE_11a2` (0x11a2) - Transfer helper
 
 ### Function Renames in main.c (ISR handlers)
 - [x] `handler_04d0` → `timer_link_status_handler` (0xCE79)
@@ -246,7 +264,7 @@ These are dispatch stubs that route to various handlers via bank switching.
 ## State Machine Helpers (0x1100-0x1800)
 
 ### Transfer/State Functions
-- [ ] `0x11a2` - Transfer helper (helper_11a2)
+- [x] `0x11a2` - Transfer helper (FUN_CODE_11a2)
 - [ ] `0x14e5` - State function with params
 - [ ] `0x1564` - State load triple
 - [ ] `0x157d` - State function
@@ -662,7 +680,7 @@ These are dispatch stubs that route to various handlers via bank switching.
 - [ ] `0xbd65` - Register helper
 - [ ] `0xbd6c` - Register helper
 - [ ] `0xbe02` - Register helper
-- [ ] `0xbe8b` - Register helper
+- [x] `0xbe8b` - Register helper (FUN_CODE_be8b - completed)
 - [ ] `0xbefb` - Register helper
 - [ ] `0xbf0f` - Register helper
 
@@ -833,7 +851,7 @@ These are dispatch stubs that route to various handlers via bank switching.
 - [ ] `0xe711` - NVMe event
 - [ ] `0xe726` - NVMe event
 - [ ] `0xe730` - NVMe event
-- [ ] `0xe73a` - NVMe event
+- [x] `0xe73a` - NVMe event (FUN_CODE_e73a - completed)
 - [ ] `0xe74e` - Bank 1 event handler
 - [x] `0xe762` - event_queue_process_e762 (in protocol.c)
 - [ ] `0xe775` - NVMe event
@@ -881,14 +899,18 @@ Functions using generic names that need better names:
 - [ ] `helper_15f1`, `helper_1646`, `helper_166f`, `helper_16e9`
 - [ ] `helper_16eb`, `helper_1b0b`, `helper_1b2e`, `helper_1b30`
 - [ ] `helper_1c13`, `helper_0cab`, `helper_328a`, `helper_3298`
-- [ ] `helper_3578`, `handler_d676`, `handler_e3d8`, `helper_dd42`
-- [ ] `helper_e6d2`, `handler_e529`, `handler_e90b`, `helper_e3b7`
+- [ ] `helper_3578`, ~~`handler_d676`~~, ~~`handler_e3d8`~~, `helper_dd42`
+- [ ] `helper_e6d2`, `handler_e529`, ~~`handler_e90b`~~, `helper_e3b7`
 - [ ] `helper_e396`, `helper_d17a`
 - [ ] `FUN_CODE_1b07`, `FUN_CODE_1c9f`, `FUN_CODE_050c`, `FUN_CODE_0511`
-- [ ] `FUN_CODE_11a2`, `FUN_CODE_5038`, `FUN_CODE_5043`, `FUN_CODE_5046`
-- [ ] `FUN_CODE_504f`, `FUN_CODE_505d`, `FUN_CODE_5359`, `FUN_CODE_be8b`
+- [x] `FUN_CODE_11a2` - completed
+- [ ] `FUN_CODE_5038`, `FUN_CODE_5043`, `FUN_CODE_5046`
+- [ ] `FUN_CODE_504f`, `FUN_CODE_505d`, `FUN_CODE_5359`
+- [x] `FUN_CODE_be8b` - completed
 - [ ] `FUN_CODE_dd0e`, `FUN_CODE_dd12`, `FUN_CODE_df79`, `FUN_CODE_e120`
-- [ ] `FUN_CODE_e1c6`, `FUN_CODE_e73a`, `FUN_CODE_e7ae`, `FUN_CODE_e883`
+- [x] `FUN_CODE_e1c6` - wired to cmd_wait_completion
+- [x] `FUN_CODE_e73a` - completed
+- [ ] `FUN_CODE_e7ae`, `FUN_CODE_e883`
 
 ### protocol.c (~103 occurrences)
 - [ ] `handler_3adb`, `helper_0d78`, `helper_0db9`, `helper_1bcb`

@@ -503,3 +503,208 @@ void pcie_lane_config(uint8_t lane_mask)
     val2 = (val2 & PCIE_LANE_CFG_LO_MASK) | val;
     REG_PCIE_LANE_CONFIG = val2;
 }
+
+/*
+ * phy_link_training - Configure PHY for PCIe link training
+ * Address: 0xD702-0xD743 (66 bytes)
+ *
+ * Configures PHY lane registers (0x78-0x7B in bank 2) based on
+ * lane enable bits. Called during PCIe link setup.
+ *
+ * Uses bank-switched register access via helpers at 0x0BC8/0x0BE6
+ * with r3=2 (bank 2), r2=addr high, r1=0xAF (addr low base).
+ *
+ * Original disassembly:
+ *   d702: lcall 0xcc92     ; bank read 0x0278AF
+ *   d705: lcall 0xcc9b     ; mask/prep
+ *   d708: jnb e0.0, d70d   ; check lane 0
+ *   d70b: mov r5, #0x01
+ *   d70d: mov r2, #0x78    ; lane 0
+ *   d70f: lcall 0xcc56     ; bank write
+ *   ... (similar for lanes 1-3 at 0x79, 0x7a, 0x7b)
+ *   d743: ljmp 0x0be6      ; final write
+ */
+void phy_link_training(void)
+{
+    /* This function uses complex bank-switched register access.
+     * Implemented via inline assembly to match original firmware. */
+    __asm
+        ; Read lane status from bank 2, addr 0x78, base 0xAF
+        mov     r3, #0x02       ; bank 2
+        mov     r2, #0x78       ; addr high
+        mov     r1, #0xaf       ; addr low
+        lcall   _bank_read      ; returns status in A
+
+        ; Mask and save lane status
+        anl     a, #0x7f        ; mask bit 7
+        mov     r6, a           ; save to r6
+        mov     r5, #0x00       ; r5 = 0 (default)
+
+        ; Check lane 0 (bit 0)
+        mov     a, r6
+        jnb     acc.0, 001$
+        mov     r5, #0x01
+001$:
+        ; Write lane 0 config
+        mov     r2, #0x78
+        mov     a, r5
+        swap    a
+        rlc     a
+        rlc     a
+        rlc     a
+        anl     a, #0x80
+        orl     a, r6
+        mov     r3, #0x02
+        mov     r1, #0xaf
+        lcall   _bank_write
+
+        ; Read status again for lane 1
+        mov     r3, #0x02
+        mov     r2, #0x78
+        mov     r1, #0xaf
+        lcall   _bank_read
+        anl     a, #0x7f
+        mov     r6, a
+        mov     r5, #0x00
+
+        ; Check lane 1 (bit 1)
+        mov     a, r6
+        jnb     acc.1, 002$
+        mov     r5, #0x01
+002$:
+        ; Write lane 1 config
+        mov     r2, #0x79
+        mov     a, r5
+        swap    a
+        rlc     a
+        rlc     a
+        rlc     a
+        anl     a, #0x80
+        orl     a, r6
+        mov     r3, #0x02
+        mov     r1, #0xaf
+        lcall   _bank_write
+
+        ; Read status again for lane 2
+        mov     r3, #0x02
+        mov     r2, #0x79
+        mov     r1, #0xaf
+        lcall   _bank_read
+        anl     a, #0x7f
+        mov     r6, a
+        mov     r5, #0x00
+
+        ; Check lane 2 (bit 2)
+        mov     a, r6
+        jnb     acc.2, 003$
+        mov     r5, #0x01
+003$:
+        ; a = r5, prepare for write
+        mov     a, r5
+        swap    a
+        rlc     a
+        rlc     a
+        rlc     a
+        anl     a, #0x80
+        orl     a, r6
+
+        ; Write lane 2 config at 0x7a
+        mov     r2, #0x7a
+        mov     r3, #0x02
+        mov     r1, #0xaf
+        lcall   _bank_write
+        inc     r2              ; r2 = 0x7b
+
+        ; Read for lane 3
+        lcall   _bank_read
+        anl     a, #0x7f
+        mov     r6, a
+        mov     r7, #0x00
+
+        ; Check lane 3 (bit 3)
+        jnb     acc.3, 004$
+        mov     r7, #0x01
+004$:
+        ; Final write at 0x7b
+        mov     a, r7
+        swap    a
+        rlc     a
+        rlc     a
+        rlc     a
+        anl     a, #0x80
+        orl     a, r6
+        mov     r2, #0x7b
+        mov     r3, #0x02
+        mov     r1, #0xaf
+        lcall   _bank_write
+    __endasm;
+}
+
+/* Bank read helper - reads from bank-switched address
+ * r3 = bank, r2 = addr high, r1 = addr low (0xAF base)
+ * Returns value in A */
+void bank_read(void) __naked
+{
+    __asm
+        cjne    r3, #0x01, _br_check2
+        mov     dpl, r1
+        mov     dph, r2
+        movx    a, @dptr
+        ret
+_br_check2:
+        jnc     _br_bank2
+        mov     a, @r1
+        ret
+_br_bank2:
+        cjne    r3, #0xfe, _br_xdata
+        movx    a, @r1
+        ret
+_br_xdata:
+        jc      _br_code
+        mov     dpl, r1
+        mov     dph, r2
+        clr     a
+        movc    a, @a+dptr
+        ret
+_br_code:
+        ; Bank 2+ uses SFR 0x93 for bank select
+        mov     0x93, r3
+        mov     dpl, r1
+        mov     dph, r2
+        movx    a, @dptr
+        mov     0x93, #0x00
+        ret
+    __endasm;
+}
+
+/* Bank write helper - writes to bank-switched address
+ * r3 = bank, r2 = addr high, r1 = addr low
+ * A = value to write */
+void bank_write(void) __naked
+{
+    __asm
+        cjne    r3, #0x01, _bw_check2
+        mov     dpl, r1
+        mov     dph, r2
+        movx    @dptr, a
+        ret
+_bw_check2:
+        jnc     _bw_bank2
+        mov     @r1, a
+        ret
+_bw_bank2:
+        cjne    r3, #0xfe, _bw_done
+        movx    @r1, a
+        ret
+_bw_done:
+        jnc     _bw_exit
+        ; Bank 2+ uses SFR 0x93
+        mov     0x93, r3
+        mov     dpl, r1
+        mov     dph, r2
+        movx    @dptr, a
+        mov     0x93, #0x00
+_bw_exit:
+        ret
+    __endasm;
+}

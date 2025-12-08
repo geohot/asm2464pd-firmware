@@ -621,3 +621,52 @@ void system_timer_handler(void)
     error_handler_system_timer();
 }
 
+/*
+ * timer_wait - Wait for timer to expire
+ * Address: 0xE80A-0xE81A (17 bytes)
+ *
+ * Sets up Timer0 with given threshold and mode, then polls until done.
+ *
+ * Parameters:
+ *   timeout_lo - Low byte of threshold (r4)
+ *   timeout_hi - High byte of threshold (r5)
+ *   mode       - Timer prescaler mode bits 0-2 (r7)
+ *
+ * Original disassembly:
+ *   e80a: lcall 0xe50d        ; timer_setup
+ *   e80d: mov dptr, #0xcc11   ; poll loop
+ *   e810: movx a, @dptr
+ *   e811: jnb 0xe0.1, 0xe80d  ; wait for bit 1
+ *   e814: mov dptr, #0xcc11
+ *   e817: mov a, #0x02
+ *   e819: movx @dptr, a       ; clear done flag
+ *   e81a: ret
+ */
+void timer_wait(uint8_t timeout_lo, uint8_t timeout_hi, uint8_t mode)
+{
+    uint8_t csr;
+
+    /* Reset timer - 0xE8EF */
+    REG_TIMER0_CSR = 0x04;  /* Reset */
+    REG_TIMER0_CSR = 0x02;  /* Clear done flag */
+
+    /* Configure timer - 0xE50D */
+    csr = REG_TIMER0_DIV;
+    csr = (csr & 0xF8) | (mode & 0x07);  /* Set prescaler bits */
+    REG_TIMER0_DIV = csr;
+
+    /* Set threshold */
+    REG_TIMER0_THRESHOLD = ((uint16_t)timeout_hi << 8) | timeout_lo;
+
+    /* Start timer */
+    REG_TIMER0_CSR = 0x01;
+
+    /* Poll until done (bit 1 set) */
+    while ((REG_TIMER0_CSR & TIMER_CSR_EXPIRED) == 0) {
+        /* Wait */
+    }
+
+    /* Clear done flag */
+    REG_TIMER0_CSR = 0x02;
+}
+
