@@ -4463,3 +4463,81 @@ void usb_buffer_dispatch(void)
     REG_TIMER1_CSR = TIMER_CSR_EXPIRED;
     REG_TIMER1_CSR = TIMER_CSR_ENABLE;
 }
+
+/*
+ * usb_check_phy_status - Check USB PHY and buffer status
+ * Address: 0xda9f-0xdacb (45 bytes)
+ *
+ * Checks multiple USB PHY and buffer configuration registers to determine
+ * if USB is in an active/busy state.
+ *
+ * Returns:
+ *   1 if any of the following conditions are true:
+ *     - REG_USB_PHY_CTRL_91D1 bit 3 is set
+ *     - REG_USB_PHY_CTRL_91D1 bit 0 is set
+ *     - REG_BUF_CFG_9301 bit 6 is set
+ *     - REG_BUF_CFG_9301 bit 7 is set
+ *     - REG_INT_FLAGS_EX0 bit 0 is set AND REG_USB_PHY_STATUS_9105 == 0xFF
+ *   0 otherwise
+ *
+ * Original disassembly:
+ *   da9f: mov dptr, #0x91d1
+ *   daa2: movx a, @dptr
+ *   daa3: jb 0xe0.3, 0xdab5      ; if bit 3 set, return 1
+ *   daa6: movx a, @dptr
+ *   daa7: jb 0xe0.0, 0xdab5      ; if bit 0 set, return 1
+ *   daaa: mov dptr, #0x9301
+ *   daad: movx a, @dptr
+ *   daae: jb 0xe0.6, 0xdab5      ; if bit 6 set, return 1
+ *   dab1: movx a, @dptr
+ *   dab2: jnb 0xe0.7, 0xdab8     ; if bit 7 not set, check further
+ *   dab5: mov r7, #0x01          ; return 1
+ *   dab7: ret
+ *   dab8: mov dptr, #0x9091
+ *   dabb: movx a, @dptr
+ *   dabc: jnb 0xe0.0, 0xdac9     ; if bit 0 not set, return 0
+ *   dabf: mov dptr, #0x9105
+ *   dac2: movx a, @dptr
+ *   dac3: cjne a, #0xff, 0xdac9  ; if not 0xFF, return 0
+ *   dac6: mov r7, #0x01          ; return 1
+ *   dac8: ret
+ *   dac9: mov r7, #0x00          ; return 0
+ *   dacb: ret
+ */
+uint8_t usb_check_phy_status(void)
+{
+    uint8_t val;
+
+    /* Check PHY control register 0x91D1 */
+    val = REG_USB_PHY_CTRL_91D1;
+    if (val & 0x08) {  /* bit 3 */
+        return 1;
+    }
+
+    val = REG_USB_PHY_CTRL_91D1;
+    if (val & 0x01) {  /* bit 0 */
+        return 1;
+    }
+
+    /* Check buffer config register 0x9301 */
+    val = REG_BUF_CFG_9301;
+    if (val & 0x40) {  /* bit 6 */
+        return 1;
+    }
+
+    val = REG_BUF_CFG_9301;
+    if (val & 0x80) {  /* bit 7 */
+        return 1;
+    }
+
+    /* Check extended interrupt flags and PHY status */
+    val = REG_INT_FLAGS_EX0;
+    if (val & 0x01) {  /* bit 0 */
+        val = REG_USB_PHY_STATUS_9105;
+        if (val == 0xFF) {
+            return 1;
+        }
+    }
+
+    return 0;
+}

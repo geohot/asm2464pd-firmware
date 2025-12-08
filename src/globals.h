@@ -27,12 +27,20 @@
 /* These are IDATA (internal 8051 RAM) locations used as fast work variables.
  * With __at() absolute addressing, these can be defined in the header. */
 __idata __at(0x0D) uint8_t I_QUEUE_IDX;       /* Queue index / endpoint offset */
+__idata __at(0x11) uint8_t I_SCSI_TAG;        /* SCSI command tag */
 __idata __at(0x12) uint8_t I_WORK_12;         /* Work variable 0x12 */
+__idata __at(0x13) uint8_t I_WORK_13;         /* Work variable 0x13 */
+__idata __at(0x14) uint8_t I_WORK_14;         /* Work variable 0x14 */
+__idata __at(0x15) uint8_t I_WORK_15;         /* Work variable 0x15 */
+
+/* IDATA pointers for SCSI command buffer (0x12-0x15) */
+#define IDATA_SCSI_CMD_BUF    ((__idata uint8_t *)0x12)   /* SCSI cmd buffer pointer */
 __idata __at(0x16) uint8_t I_CORE_STATE_L;    /* Core state low byte */
 __idata __at(0x17) uint8_t I_CORE_STATE_H;    /* Core state high byte */
 __idata __at(0x18) uint8_t I_WORK_18;         /* Work variable 0x18 */
 __idata __at(0x19) uint8_t I_WORK_19;         /* Work variable 0x19 */
 __idata __at(0x21) uint8_t I_LOG_INDEX;       /* Log index */
+__idata __at(0x22) uint8_t I_WORK_22;         /* Work variable 0x22 - slot value */
 __idata __at(0x23) uint8_t I_WORK_23;         /* Work variable 0x23 */
 __idata __at(0x38) uint8_t I_WORK_38;         /* Work variable 0x38 */
 __idata __at(0x39) uint8_t I_WORK_39;         /* Work variable 0x39 */
@@ -54,7 +62,9 @@ __idata __at(0x51) uint8_t I_WORK_51;         /* Work variable 0x51 */
 __idata __at(0x52) uint8_t I_WORK_52;         /* Work variable 0x52 */
 __idata __at(0x53) uint8_t I_WORK_53;         /* Work variable 0x53 */
 __idata __at(0x55) uint8_t I_WORK_55;         /* Work variable 0x55 */
-__idata __at(0x65) uint8_t I_WORK_65;         /* Work variable 0x65 */
+__idata __at(0x63) uint8_t I_WORK_63;         /* Work variable 0x63 - EP config high byte */
+__idata __at(0x64) uint8_t I_WORK_64;         /* Work variable 0x64 - EP config low byte */
+__idata __at(0x65) uint8_t I_WORK_65;         /* Work variable 0x65 - EP mode */
 __idata __at(0x6A) uint8_t I_STATE_6A;        /* State machine variable */
 __idata __at(0x6B) uint8_t I_TRANSFER_6B;     /* Transfer pending byte 0 */
 __idata __at(0x6C) uint8_t I_TRANSFER_6C;     /* Transfer pending byte 1 */
@@ -79,7 +89,9 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_EP_STATUS_CTRL        XDATA_VAR8(0x0003)  /* Endpoint status control (checked by usb_ep_process) */
 #define G_WORK_0006             XDATA_VAR8(0x0006)  /* Work variable 0x0006 */
 #define G_WORK_0007             XDATA_VAR8(0x0007)  /* Work variable 0x0007 */
-#define G_EP_CHECK_FLAG         XDATA_VAR8(0x000A)  /* Endpoint check flag */
+#define G_USB_CTRL_000A         XDATA_VAR8(0x000A)  /* USB control byte (increment counter) */
+#define G_EP_CHECK_FLAG         G_USB_CTRL_000A     /* Alias: Endpoint check flag */
+#define G_ENDPOINT_STATE_0051   XDATA_VAR8(0x0051)  /* Endpoint state storage */
 #define G_SYS_FLAGS_0052        XDATA_VAR8(0x0052)  /* System flags 0x0052 */
 #define G_USB_SETUP_RESULT      XDATA_VAR8(0x0053)  /* USB setup result storage */
 #define G_BUFFER_LENGTH_HIGH    XDATA_VAR8(0x0054)  /* Buffer length high byte (for mode 4) */
@@ -193,6 +205,7 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_SYS_FLAGS_BASE        XDATA_VAR8(0x07E4)  /* Flags base */
 #define G_TRANSFER_ACTIVE       XDATA_VAR8(0x07E5)  /* Transfer active flag */
 #define G_XFER_FLAG_07EA        XDATA_VAR8(0x07EA)  /* Transfer flag 0x07EA (set in SCSI DMA) */
+#define G_SYS_FLAGS_07EB        XDATA_VAR8(0x07EB)  /* System flags 0x07EB */
 #define G_SYS_FLAGS_07EC        XDATA_VAR8(0x07EC)  /* System flags 0x07EC */
 #define G_SYS_FLAGS_07ED        XDATA_VAR8(0x07ED)  /* System flags 0x07ED */
 #define G_SYS_FLAGS_07EE        XDATA_VAR8(0x07EE)  /* System flags 0x07EE */
@@ -206,6 +219,16 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_SYS_FLAGS_07F6        XDATA_VAR8(0x07F6)  /* System flags 0x07F6 */
 #define G_SYS_FLAGS_07E8        XDATA_VAR8(0x07E8)  /* System flags 0x07E8 */
 #define G_TLP_STATE_07E9        XDATA_VAR8(0x07E9)  /* TLP state / queue status */
+#define G_SYS_FLAGS_07F7        XDATA_VAR8(0x07F7)  /* System flags 0x07F7 */
+
+//=============================================================================
+// Flash Config Storage (0x0860-0x08FF)
+// Loaded from flash buffer at 0x7076+ during config initialization
+//=============================================================================
+#define G_FLASH_CFG_086E        XDATA_VAR8(0x086E)  /* Flash config from 0x7076 */
+#define G_FLASH_CFG_086F        XDATA_VAR8(0x086F)  /* Flash config from 0x7077 */
+#define G_FLASH_CFG_0870        XDATA_VAR8(0x0870)  /* Flash config from 0x7078 */
+#define G_FLASH_CFG_0871        XDATA_VAR8(0x0871)  /* Flash config from 0x7079 */
 
 //=============================================================================
 // Event/Loop State Work Area (0x0900-0x09FF)
@@ -235,6 +258,8 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_PCIE_ADAPTER_MODE     XDATA_VAR8(0x0A54)  /* Adapter mode config */
 #define G_PCIE_ADAPTER_AUX      XDATA_VAR8(0x0A55)  /* Adapter auxiliary config */
 #define G_FLASH_CONFIG_VALID    XDATA_VAR8(0x0A56)  /* Flash config valid flag */
+#define G_CMD_CTRL_PARAM        XDATA_VAR8(0x0A57)  /* Command control parameter for E430 */
+#define G_CMD_TIMEOUT_PARAM     XDATA_VAR8(0x0A58)  /* Command timeout parameter for E431 */
 
 //=============================================================================
 // Endpoint Dispatch Work Area (0x0A00-0x0BFF)
@@ -249,6 +274,7 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_EP_DISPATCH_VAL1      XDATA_VAR8(0x0A7B)  /* Endpoint dispatch value 1 */
 #define G_EP_DISPATCH_VAL2      XDATA_VAR8(0x0A7C)  /* Endpoint dispatch value 2 */
 #define G_EP_DISPATCH_VAL3      XDATA_VAR8(0x0A7D)  /* Endpoint dispatch value 3 */
+#define G_USB_EP_MODE           G_EP_DISPATCH_VAL3  /* Alias: USB endpoint mode flag */
 #define G_EP_DISPATCH_VAL4      XDATA_VAR8(0x0A7E)  /* Endpoint dispatch value 4 */
 #define G_STATE_COUNTER_HI      XDATA_VAR8(0x0AA3)  /* State counter high */
 #define G_STATE_COUNTER_LO      XDATA_VAR8(0x0AA4)  /* State counter low */
@@ -276,9 +302,19 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_STATE_0AB6            XDATA_VAR8(0x0AB6)  /* State control 0x0AB6 */
 #define G_SYSTEM_STATE_0AE2     XDATA_VAR8(0x0AE2)  /* System state */
 #define G_STATE_FLAG_0AE3       XDATA_VAR8(0x0AE3)  /* System state flag */
-#define G_STATE_CHECK_0AEE      XDATA_VAR8(0x0AEE)  /* State check byte */
+#define G_PHY_LANE_CFG_0AE4     XDATA_VAR8(0x0AE4)  /* PHY lane configuration */
+#define G_TLP_INIT_FLAG_0AE5    XDATA_VAR8(0x0AE5)  /* TLP init complete flag */
+#define G_LINK_SPEED_MODE_0AE6  XDATA_VAR8(0x0AE6)  /* Link speed mode */
+#define G_LINK_CFG_BIT_0AE7     XDATA_VAR8(0x0AE7)  /* Link config bit (from 0x707D bit 3) */
 #define G_STATE_0AE8            XDATA_VAR8(0x0AE8)  /* State control 0x0AE8 */
 #define G_STATE_0AE9            XDATA_VAR8(0x0AE9)  /* State control 0x0AE9 */
+#define G_FLASH_CFG_0AEA        XDATA_VAR8(0x0AEA)  /* Flash config 0x0AEA (from 0x707D bit 0) */
+#define G_LINK_CFG_0AEB         XDATA_VAR8(0x0AEB)  /* Link config 0x0AEB */
+#define G_PHY_CFG_0AEC          XDATA_VAR8(0x0AEC)  /* PHY config 0x0AEC */
+#define G_PHY_CFG_0AED          XDATA_VAR8(0x0AED)  /* PHY config 0x0AED */
+#define G_STATE_CHECK_0AEE      XDATA_VAR8(0x0AEE)  /* State check byte */
+#define G_LINK_CFG_0AEF         XDATA_VAR8(0x0AEF)  /* Link config 0x0AEF */
+#define G_FLASH_CFG_0AF0        XDATA_VAR8(0x0AF0)  /* Flash config 0x0AF0 */
 #define G_STATE_FLAG_0AF1       XDATA_VAR8(0x0AF1)  /* State flag */
 #define   STATE_FLAG_INIT         0x02  // Bit 1: Init state flag
 #define   STATE_FLAG_PHY_READY    0x20  // Bit 5: PHY link ready
@@ -287,6 +323,7 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_XFER_STATE_0AF6       XDATA_VAR8(0x0AF6)  /* Transfer state 0x0AF6 */
 #define G_XFER_CTRL_0AF7        XDATA_VAR8(0x0AF7)  /* Transfer control 0x0AF7 */
 #define G_POWER_INIT_FLAG       XDATA_VAR8(0x0AF8)  /* Power init flag (set to 0 in usb_power_init) */
+#define G_TRANSFER_FLAG_0AF8    G_POWER_INIT_FLAG   /* Alias: Transfer flag for USB loop */
 #define G_XFER_MODE_0AF9        XDATA_VAR8(0x0AF9)  /* Transfer mode/state: 1=mode1, 2=mode2 */
 #define G_TRANSFER_PARAMS_HI    XDATA_VAR8(0x0AFA)  /* Transfer params high byte */
 #define G_TRANSFER_PARAMS_LO    XDATA_VAR8(0x0AFB)  /* Transfer params low byte */
@@ -300,6 +337,7 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_INTERFACE_READY_0B2F  XDATA_VAR8(0x0B2F)  /* Interface ready flag */
 #define G_STATE_0B39            XDATA_VAR8(0x0B39)  /* State control 0x0B39 */
 #define G_TRANSFER_BUSY_0B3B    XDATA_VAR8(0x0B3B)  /* Transfer busy flag */
+#define G_STATE_CTRL_0B3C       XDATA_VAR8(0x0B3C)  /* State control 0x0B3C */
 #define G_USB_STATE_0B41        XDATA_VAR8(0x0B41)  /* USB state check */
 #define G_BUFFER_STATE_0AA6     XDATA_VAR8(0x0AA6)  /* Buffer state flags */
 #define G_BUFFER_STATE_0AA7     XDATA_VAR8(0x0AA7)  /* Buffer state control */
@@ -361,7 +399,6 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_TLP_LIMIT_LO          XDATA_VAR8(0x0ADF)  /* TLP limit/max low */
 #define G_TLP_BASE_HI           XDATA_VAR8(0x0AE0)  /* TLP buffer base high */
 #define G_TLP_BASE_LO           XDATA_VAR8(0x0AE1)  /* TLP buffer base low */
-#define G_TLP_INIT_FLAG_0AE5    XDATA_VAR8(0x0AE5)  /* TLP init complete flag */
 
 //=============================================================================
 // Timer/Init Control 0x0B40

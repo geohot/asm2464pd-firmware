@@ -130,8 +130,12 @@
  * cmd_setup_with_params     [DONE] 0x9b31-0x9b5a - Setup with params
  * cmd_wait_completion       [DONE] 0xe1c6-0xe1ed - Wait for cmd complete
  * cmd_setup_read_write      [DONE] 0xb640-0xb68b - Setup read/write command
+ * cfg_init_ep_mode          [DONE] 0x99f6-0x99ff - Init EP mode idata vars
+ * cfg_store_ep_config       [DONE] 0x99d8-0x99df - Store EP config to idata
+ * cfg_inc_reg_value         [DONE] 0x99d1-0x99d4 - Increment value at DPTR
+ * cfg_get_b296_bit2         [DONE] 0x99eb-0x99f5 - Get bit 2 from 0xB296
  *
- * Total: 44 functions implemented
+ * Total: 48 functions implemented
  *===========================================================================
  */
 
@@ -639,11 +643,11 @@ void cmd_config_e40b(void)
  *   95b4: movx @dptr, a
  *   95b5: ret
  */
-extern void helper_e120(uint8_t param);  /* External helper */
+extern void helper_e120(uint8_t r7, uint8_t r5);  /* External helper */
 void cmd_call_e120_setup(void)
 {
-    /* Call helper with param 2 - would set up R2 return value */
-    helper_e120(0x02);
+    /* Call helper with R5=2 - would set up R2 return value */
+    helper_e120(0x00, 0x02);  /* Only R5 is used in this context */
 
     /* Write issue and tag from helper result */
     /* R2 would contain issue value after helper call */
@@ -1346,4 +1350,84 @@ uint8_t cmd_extract_bits67_write(uint8_t val)
 {
     /* Same as cmd_extract_bits67 but writes to DPTR */
     return (val >> 6) & 0x03;
+}
+
+/*
+ * cfg_init_ep_mode - Initialize EP mode variables
+ * Address: 0x99f6-0x99ff (10 bytes)
+ *
+ * Sets up idata work variables for EP configuration.
+ * Sets I_WORK_65=0x0F, I_WORK_63=0, increments R0 to 0x64.
+ *
+ * Original disassembly:
+ *   99f6: mov r0, #0x65       ; R0 = 0x65
+ *   99f8: mov @r0, #0x0f      ; I_WORK_65 = 0x0F (mode flags)
+ *   99fa: mov r0, #0x63       ; R0 = 0x63
+ *   99fc: mov @r0, #0x00      ; I_WORK_63 = 0
+ *   99fe: inc r0              ; R0 = 0x64 (for caller to use)
+ *   99ff: ret
+ */
+void cfg_init_ep_mode(void)
+{
+    I_WORK_65 = 0x0F;
+    I_WORK_63 = 0;
+    /* R0 left at 0x64 for caller to store config low byte */
+}
+
+/*
+ * cfg_store_ep_config - Store EP config to idata
+ * Address: 0x99d8-0x99df (8 bytes)
+ *
+ * Reads from DPTR (expects to be called after index calc),
+ * stores to idata 0x63=0, 0x64=value.
+ *
+ * Original disassembly:
+ *   99d8: movx a, @dptr       ; Read config value
+ *   99d9: mov r0, #0x63       ; R0 = 0x63
+ *   99db: mov @r0, #0x00      ; I_WORK_63 = 0 (high byte)
+ *   99dd: inc r0              ; R0 = 0x64
+ *   99de: mov @r0, a          ; I_WORK_64 = config value (low byte)
+ *   99df: ret
+ */
+void cfg_store_ep_config(uint8_t val)
+{
+    I_WORK_63 = 0;
+    I_WORK_64 = val;
+}
+
+/*
+ * cfg_inc_dptr_value - Increment value at DPTR
+ * Address: 0x99d1-0x99d4 (4 bytes)
+ *
+ * Simple increment of memory-mapped value.
+ *
+ * Original disassembly:
+ *   99d1: movx a, @dptr       ; Read
+ *   99d2: inc a               ; Increment
+ *   99d3: movx @dptr, a       ; Write back
+ *   99d4: ret
+ */
+void cfg_inc_reg_value(__xdata uint8_t *reg)
+{
+    (*reg)++;
+}
+
+/*
+ * cfg_get_b296_bit2 - Get bit 2 from register 0xB296
+ * Address: 0x99eb-0x99f5 (11 bytes)
+ *
+ * Reads 0xB296, extracts bit 2, returns it in position 0.
+ *
+ * Original disassembly:
+ *   99eb: mov dptr, #0xb296
+ *   99ee: movx a, @dptr       ; Read 0xB296
+ *   99ef: anl a, #0x04        ; Mask bit 2
+ *   99f1: rrc a               ; Rotate right
+ *   99f2: rrc a               ; Rotate right again (bit 2 -> bit 0)
+ *   99f3: anl a, #0x3f        ; Mask (clear high bits from rotate)
+ *   99f5: ret                 ; Return 0 or 1
+ */
+uint8_t cfg_get_b296_bit2(void)
+{
+    return (REG_PCIE_STATUS >> 2) & 0x01;
 }

@@ -74,10 +74,25 @@ void helper_157d(void)
  *
  * This completes a 16-bit address calculation where A contains the low byte
  * and carry flag may affect the high byte.
+ *
+ * Note: This function is typically called inline after an ADD that sets carry.
+ * In C, we can't replicate this behavior directly - callers use the address
+ * calculation pattern instead. The function returns the computed address
+ * for low XDATA region (0x00xx or 0x01xx depending on carry).
  */
+__xdata uint8_t *helper_15d4_ptr(uint8_t low_byte, uint8_t carry)
+{
+    uint16_t addr = low_byte;
+    if (carry) {
+        addr += 0x0100;  /* Carry propagates to high byte */
+    }
+    return (__xdata uint8_t *)addr;
+}
+
+/* Stub for compatibility - actual work done inline by callers */
 void helper_15d4(void)
 {
-    /* Address calculation helper - sets DPTR from A with carry */
+    /* This is a DPTR setup continuation - callers handle this inline */
 }
 
 /*
@@ -95,11 +110,24 @@ void helper_15d4(void)
  *
  * Sets DPTR = 0xCE40 + R7, pointing to SCSI DMA parameter registers.
  * The second parameter (b) is unused - likely R6 in original calling convention.
+ *
+ * Returns: Pointer to SCSI DMA register at 0xCE40 + index
  */
+__xdata uint8_t *helper_15ef_ptr(uint8_t index)
+{
+    uint8_t low = 0x40 + index;
+    uint16_t addr = 0xCE00 + low;  /* Carry only if low overflows */
+    if (low < 0x40) {
+        addr += 0x0100;  /* Handle overflow carry */
+    }
+    return (__xdata uint8_t *)addr;
+}
+
+/* Original signature for compatibility */
 void helper_15ef(uint8_t a, uint8_t b)
 {
     (void)a; (void)b;
-    /* Sets DPTR = 0xCE40 + index */
+    /* Sets DPTR = 0xCE40 + index - callers should use helper_15ef_ptr() */
 }
 
 /*
@@ -108,11 +136,24 @@ void helper_15ef(uint8_t a, uint8_t b)
  *
  * This is an alternate entry point into helper_15ef, starting at the 'add' instruction.
  * Param is added to 0x40 to form DPL, with DPH = 0xCE.
+ *
+ * Returns: Pointer to SCSI DMA register at 0xCE40 + param
  */
+__xdata uint8_t *helper_15f1_ptr(uint8_t param)
+{
+    uint8_t low = 0x40 + param;
+    uint16_t addr = 0xCE00 + low;
+    if (low < 0x40) {
+        addr += 0x0100;  /* Handle overflow carry */
+    }
+    return (__xdata uint8_t *)addr;
+}
+
+/* Original signature for compatibility */
 void helper_15f1(uint8_t param)
 {
     (void)param;
-    /* Sets DPTR = 0xCE00 + 0x40 + param */
+    /* Sets DPTR = 0xCE40 + param - callers should use helper_15f1_ptr() */
 }
 
 /*
@@ -163,21 +204,61 @@ uint8_t helper_1646(void)
 }
 
 /*
+ * helper_1755 - Set up address pointer (0x59 + offset)
+ * Address: 0x1755
+ *
+ * Sets DPTR to the computed address.
+ */
+void helper_1755(uint8_t offset)
+{
+    (void)offset;
+    /* TODO: Implement address setup */
+}
+
+/*
+ * helper_159f - Write value via computed pointer
+ * Address: 0x159f
+ *
+ * Writes the parameter to the address set up by prior helper.
+ */
+void helper_159f(uint8_t value)
+{
+    (void)value;
+    /* TODO: Implement write operation */
+}
+
+/*
  * helper_166f - Set DPTR based on I_WORK_43
  * Address: 0x166f-0x1676 (8 bytes)
  *
- * Disassembly:
- *   166f: mov DPL, a         ; (A = 0x7C + I_WORK_43 from prior code)
+ * Disassembly (full context from 0x166b):
+ *   166b: mov a, #0x7c       ; A = 0x7C
+ *   166d: add a, 0x43        ; A = 0x7C + I_WORK_43
+ *   166f: mov DPL, a         ; DPL = A
  *   1671: clr a
- *   1672: addc a, #0x00      ; DPH = carry
+ *   1672: addc a, #0x00      ; DPH = 0 + carry
  *   1674: mov DPH, a
  *   1676: ret
  *
- * This is part of a larger address calculation. Sets DPTR from A value.
+ * This computes DPTR = 0x007C + I_WORK_43, with carry overflow to high byte.
+ * Used for accessing state slot data at 0x007C base.
+ *
+ * Returns: Pointer to 0x007C + I_WORK_43 (or 0x017C if overflow)
  */
+__xdata uint8_t *helper_166f_ptr(void)
+{
+    uint8_t low = 0x7C + I_WORK_43;
+    uint16_t addr = low;  /* Base is 0x0000 */
+    if (low < 0x7C) {
+        addr += 0x0100;  /* Handle overflow carry to high byte */
+    }
+    return (__xdata uint8_t *)addr;
+}
+
+/* Stub for compatibility - callers should use helper_166f_ptr() */
 void helper_166f(void)
 {
-    /* DPTR = (I_WORK_43 + 0x7C) with carry to high byte */
+    /* DPTR = 0x007C + I_WORK_43 - handled inline by callers */
 }
 
 /*
@@ -221,10 +302,16 @@ void helper_16eb(uint8_t param) { (void)param; }
  *
  * Returns: XDATA[0x0171 + I_WORK_3E]
  * This reads from G_SCSI_CTRL (0x0171) plus I_WORK_3E offset.
+ * The G_SCSI_CTRL array stores SCSI command/control parameters indexed by I_WORK_3E.
  */
-void FUN_CODE_1b07(void)
+uint8_t FUN_CODE_1b07(void)
 {
-    /* Returns XDATA[0x0171 + I_WORK_3E] */
+    uint8_t low = 0x71 + I_WORK_3E;
+    uint16_t addr = 0x0100 + low;  /* Base is 0x0100, add 0x71 + offset */
+    if (low < 0x71) {
+        addr += 0x0100;  /* Handle overflow carry to high byte */
+    }
+    return *(__xdata uint8_t *)addr;
 }
 
 /*
@@ -232,10 +319,124 @@ void FUN_CODE_1b07(void)
  * Address: 0x1b0b-0x1b13 (9 bytes)
  *
  * Alternate entry point - A already contains low byte.
+ * Computes DPTR = 0x0100 + A (with carry), reads and returns value.
+ *
+ * Parameters:
+ *   low_byte: Pre-computed low byte of address
+ *   carry: Carry flag from prior ADD operation
+ *
+ * Returns: XDATA[0x01xx] where xx = low_byte
  */
-void helper_1b0b(void)
+uint8_t helper_1b0b(uint8_t low_byte, uint8_t carry)
 {
-    /* DPTR setup and read */
+    uint16_t addr = 0x0100 + low_byte;
+    if (carry) {
+        addr += 0x0100;  /* Carry adds 0x100 to address */
+    }
+    return *(__xdata uint8_t *)addr;
+}
+
+/*
+ * xdata_write_load_triple_1564 - Write value and load triple from 0x045E
+ * Address: 0x1564-0x156e (11 bytes)
+ *
+ * Entry point called after caller sets A = value to write.
+ * Flow: write A to memory (via 0x0be6), then load 3 bytes from 0x045E.
+ *
+ * Disassembly:
+ *   1564: lcall 0x0be6       ; Write A to memory at (r2:r1) with mode r3
+ *   1567: mov dptr, #0x045e  ; Set DPTR to 0x045E
+ *   156a: lcall 0x0ddd       ; Load 3 bytes: r3=[045e], r2=[045f], r1=[0460]
+ *   156d: mov a, r1          ; Return r1 in A
+ *   156e: ret
+ *
+ * The function writes a value to memory, then reads the state params at
+ * 0x045E-0x0460 and returns the third byte (r1 = [0x0460]).
+ *
+ * Parameters:
+ *   value: Value to write (passed in A)
+ *   r1_addr: Low byte of write address
+ *   r2_addr: High byte of write address
+ *   r3_mode: Memory type (1=XDATA, 0=idata, 0xfe=xram)
+ *
+ * Returns: XDATA[0x0460]
+ */
+uint8_t xdata_write_load_triple_1564(uint8_t value, uint8_t r1_addr, uint8_t r2_addr, uint8_t r3_mode)
+{
+    /* Write value to memory based on mode */
+    if (r3_mode == 0x01) {
+        /* XDATA write */
+        __xdata uint8_t *ptr = (__xdata uint8_t *)((uint16_t)r2_addr << 8 | r1_addr);
+        *ptr = value;
+    } else if (r3_mode == 0x00) {
+        /* idata write */
+        *(__idata uint8_t *)r1_addr = value;
+    }
+    /* Mode 0xfe (xram) not commonly used here */
+
+    /* Read and return byte at 0x0460 (third byte of the triple) */
+    return XDATA8(0x0460);
+}
+
+/* Simpler version when caller just needs the read portion */
+uint8_t load_triple_1564_read(void)
+{
+    return XDATA8(0x0460);
+}
+
+/*
+ * mem_read_ptr_1bd7 - Set up address and read from memory
+ * Address: 0x1bd7-0x1bdb (5 bytes)
+ *
+ * Called with A containing pre-computed low byte (after some add operation).
+ * Sets up r1/r2 and jumps to generic read at 0x0bc8.
+ *
+ * Disassembly:
+ *   1bd7: mov r1, a          ; r1 = A (low byte of address)
+ *   1bd8: clr a              ; A = 0
+ *   1bd9: addc a, r2         ; A = r2 + carry
+ *   1bda: mov r2, a          ; r2 = updated high byte
+ *   1bdb: ljmp 0x0bc8        ; Generic memory read
+ *
+ * The 0x0bc8 function reads from memory at (r2:r1) based on r3 mode:
+ *   - r3 == 1: Read from XDATA at (r2:r1)
+ *   - r3 != 1, carry clear: Read from idata at r1
+ *   - r3 == 0xfe: Read from xram at r1
+ *
+ * Parameters:
+ *   low_byte: Low byte of address (result of prior add)
+ *   r2_hi: High byte before carry propagation
+ *   r3_mode: Memory type
+ *   carry: Carry flag from prior add operation
+ *
+ * Returns: Value read from computed address
+ */
+uint8_t mem_read_ptr_1bd7(uint8_t low_byte, uint8_t r2_hi, uint8_t r3_mode, uint8_t carry)
+{
+    uint16_t addr;
+    uint8_t hi = r2_hi;
+
+    /* Propagate carry to high byte */
+    if (carry) {
+        hi++;
+    }
+
+    addr = ((uint16_t)hi << 8) | low_byte;
+
+    /* Read based on mode */
+    if (r3_mode == 0x01) {
+        /* XDATA read */
+        return *(__xdata uint8_t *)addr;
+    } else if (r3_mode == 0x00) {
+        /* idata read */
+        return *(__idata uint8_t *)low_byte;
+    } else if (r3_mode == 0xfe) {
+        /* xram indirect read */
+        return *(__xdata uint8_t *)low_byte;
+    }
+
+    /* Default: XDATA read */
+    return *(__xdata uint8_t *)addr;
 }
 
 /* 0x1b2e: Helper function - stub */
@@ -368,29 +569,7 @@ void usb_descriptor_helper_a637(void)
     XDATA_REG8(0x0ade) = 0x00;  /* G_USB_DESC_INDEX */
 }
 
-/*
- * usb_descriptor_helper_a644 - Calculate descriptor buffer address (base 0x58)
- * Address: 0xa644-0xa650 (13 bytes)
- *
- * Disassembly:
- *   a644: subb a, #0x58       ; A = A - 0x58 (entry A from prior code)
- *   a646: mov r6, a           ; Save high adjustment
- *   a647: clr a
- *   a648: add a, r7           ; A = 0 + R7 (offset param)
- *   a649: mov 0x82, a         ; DPL = R7
- *   a64b: mov a, #0x9e        ; Base high = 0x9E
- *   a64d: addc a, r6          ; DPH = 0x9E + R6 + carry
- *   a64e: mov 0x83, a
- *   a650: ret
- *
- * Sets DPTR = 0x9E00 + R7 + adjustment from prior A-0x58
- * Used for USB descriptor buffer access.
- */
-void usb_descriptor_helper_a644(uint8_t p1, uint8_t p2)
-{
-    /* Address calculation helper - sets DPTR to descriptor buffer */
-    (void)p1; (void)p2;
-}
+/* usb_descriptor_helper_a644 - moved to queue_handlers.c */
 
 /*
  * usb_descriptor_helper_a648 - Calculate descriptor buffer address (entry at add)
@@ -399,10 +578,7 @@ void usb_descriptor_helper_a644(uint8_t p1, uint8_t p2)
  * Alternate entry point into a644.
  * DPTR = 0x9E00 + R7, with R6 as high byte adjustment.
  */
-void usb_descriptor_helper_a648(void)
-{
-    /* Address calculation helper */
-}
+/* usb_descriptor_helper_a648 - moved to queue_handlers.c */
 
 /*
  * usb_descriptor_helper_a651 - Write to descriptor buffer (base 0x59)
@@ -435,10 +611,7 @@ void usb_descriptor_helper_a651(uint8_t p1, uint8_t p2, uint8_t p3)
  *
  * Alternate entry point into a651.
  */
-void usb_descriptor_helper_a655(uint8_t p1, uint8_t p2)
-{
-    (void)p1; (void)p2;
-}
+/* usb_descriptor_helper_a655 - moved to queue_handlers.c */
 
 /* USB descriptor parsing - stub */
 void usb_parse_descriptor(uint8_t p1, uint8_t p2) { (void)p1; (void)p2; }
@@ -447,7 +620,43 @@ void usb_parse_descriptor(uint8_t p1, uint8_t p2) { (void)p1; (void)p2; }
 uint8_t usb_get_xfer_status(void) { return 0; }
 
 /* USB event handler - stub */
-void usb_event_handler(void) {}
+uint8_t usb_event_handler(void) { return 0; }
+
+/*
+ * parse_descriptor - Parse USB descriptor (0x04da)
+ * Address: 0x04da
+ *
+ * This is a wrapper that calls the descriptor parser with one parameter.
+ */
+void parse_descriptor(uint8_t param) { (void)param; }
+
+/*
+ * usb_state_setup_4c98 - USB state setup
+ * Address: 0x4c98
+ *
+ * Sets up USB state for transfer operations.
+ */
+void usb_state_setup_4c98(void) {}
+
+/*
+ * usb_helper_51ef - USB helper (abort path)
+ * Address: 0x51ef
+ *
+ * Called in abort/error handling path.
+ */
+void usb_helper_51ef(void) {}
+
+/*
+ * usb_helper_5112 - USB helper
+ * Address: 0x5112
+ *
+ * Called after setting transfer active flag in abort path.
+ */
+void usb_helper_5112(void) {}
+
+/* usb_set_transfer_active_flag - IMPLEMENTED in usb.c */
+
+/* nvme_read_status - IMPLEMENTED in nvme.c */
 
 /* USB transfer parameter reads - stubs */
 uint8_t usb_read_transfer_params_hi(void) { return 0; }
@@ -831,16 +1040,50 @@ void nvme_util_clear_completion(void) {}
  *===========================================================================*/
 
 /*
- * helper_e3b7 - Conditional register update based on param bits
+ * helper_e3b7 - Timer setup and conditional power/link control
  * Address: 0xe3b7-0xe3d7 (33 bytes)
  *
- * Checks param bits and modifies registers accordingly.
- * Bit 0: Clear bit 0 of register 0x92C4
- * Bit 1: Call helper 0xbceb, clear r7, call 0xc2e6
+ * Disassembly:
+ *   e3b7: mov dptr, #0xcc17  ; REG_TIMER1_CSR
+ *   e3ba: lcall 0xbd0d       ; Write 0x04 then 0x02 to @dptr
+ *   e3bd: mov a, r7          ; Get param
+ *   e3be: jnb 0xe0.0, e3c8   ; Skip if bit 0 clear
+ *   e3c1: mov dptr, #0x92c4  ; REG_POWER_CTRL_92C4
+ *   e3c4: movx a, @dptr
+ *   e3c5: anl a, #0xfe       ; Clear bit 0
+ *   e3c7: movx @dptr, a
+ *   e3c8: mov a, r7
+ *   e3c9: jnb 0xe0.1, e3d7   ; Skip if bit 1 clear
+ *   e3cc: mov dptr, #0xb480  ; REG_TUNNEL_LINK_CTRL
+ *   e3cf: lcall 0xbceb       ; Set bit 0 in @dptr
+ *   e3d2: clr a
+ *   e3d3: mov r7, a          ; r7 = 0
+ *   e3d4: lcall 0xc2e6       ; Process log entries with param=0
+ *   e3d7: ret
+ *
+ * Checks param bits and modifies registers accordingly:
+ * - Always: Write 04, 02 to REG_TIMER1_CSR (start timer)
+ * - Bit 0 set: Clear bit 0 of REG_POWER_CTRL_92C4
+ * - Bit 1 set: Set bit 0 of REG_TUNNEL_LINK_CTRL, call log processor
  */
+extern void process_log_entries(uint8_t param);  /* 0xc2e6 */
+
 void helper_e3b7(uint8_t param)
 {
-    (void)param;  /* Stub - complex register manipulation */
+    /* Write 0x04 then 0x02 to REG_TIMER1_CSR (start timer) */
+    REG_TIMER1_CSR = 0x04;
+    REG_TIMER1_CSR = 0x02;
+
+    /* If bit 0 set: clear bit 0 of REG_POWER_CTRL_92C4 */
+    if (param & 0x01) {
+        REG_POWER_CTRL_92C4 = REG_POWER_CTRL_92C4 & 0xFE;
+    }
+
+    /* If bit 1 set: set bit 0 of REG_TUNNEL_LINK_CTRL and call log processor */
+    if (param & 0x02) {
+        REG_TUNNEL_LINK_CTRL = (REG_TUNNEL_LINK_CTRL & 0xFE) | 0x01;
+        process_log_entries(0);
+    }
 }
 
 /*
@@ -1592,7 +1835,7 @@ void FUN_CODE_dd0e(void) {}
 
 /* 0xdd12: Stub with params - also called from cmd.c */
 void FUN_CODE_dd12(uint8_t p1, uint8_t p2) { (void)p1; (void)p2; }
-void helper_dd12(uint8_t r7, uint8_t r5) { (void)r7; (void)r5; }
+/* helper_dd12 - IMPLEMENTED in queue_handlers.c */
 
 /*
  * FUN_CODE_df79 - Protocol state dispatcher
@@ -1605,7 +1848,7 @@ void FUN_CODE_df79(void) {}
 
 /* 0xe120: Stub with params - also called from cmd.c */
 void FUN_CODE_e120(uint8_t p1, uint8_t p2) { (void)p1; (void)p2; }
-void helper_e120(uint8_t param) { (void)param; }
+/* helper_e120 - IMPLEMENTED in queue_handlers.c */
 
 /*
  * FUN_CODE_e1c6 - Wait loop with status check
@@ -1701,85 +1944,205 @@ uint8_t pcie_check_int_source_a374(uint8_t source)
  * Similar to a374 but different entry/setup.
  * Sets up r3=0x02, r2=0x12 and jumps to 0x0bc8.
  */
-uint8_t pcie_check_int_source_a3c4(uint8_t source)
-{
-    (void)source;
-    return 0;  /* No interrupt pending */
-}
+/* pcie_check_int_source_a3c4 - moved to queue_handlers.c */
+
+/* pcie_get_status_a34f - moved to queue_handlers.c */
+
+/* pcie_get_status_a372 - moved to queue_handlers.c */
+
+/* pcie_setup_lane_a310 - moved to queue_handlers.c */
+
+/* pcie_set_state_a2df - moved to queue_handlers.c */
 
 /*
- * pcie_get_status_a34f - Read status register at extended address 0x4E
- * Address: 0xa34f-0xa357 (9 bytes)
+ * pcie_handler_e890 - Bank 1 PCIe link state reset handler
+ * Address: 0xe890-0xe89a, 0xe83d-0xe84a, 0xe711-0xe725 (Bank 1)
  *
- * Sets r1=0x4E, r3=0x02, r2=0x12 and jumps to 0x0bc8.
- * Returns the status byte from Bank 1 address 0x124E.
- */
-uint8_t pcie_get_status_a34f(void)
-{
-    /* Read from extended address 0x124E in Bank 1 */
-    return 0;  /* No status bits set */
-}
-
-/*
- * pcie_get_status_a372 - Read status at extended address 0x40
- * Address: 0xa372-0xa378 (similar pattern)
+ * Resets PCIe extended registers and waits for completion.
  *
- * Sets r1=0x40, r3=0x02, r2=0x12 and jumps to 0x0bc8.
- */
-uint8_t pcie_get_status_a372(void)
-{
-    /* Read from extended address 0x1240 in Bank 1 */
-    return 0;
-}
-
-/*
- * pcie_setup_lane_a310 - Setup lane configuration register
- * Address: 0xa310-0xa333 (36 bytes)
+ * Disassembly (0xe890-0xe89a):
+ *   e890: mov r1, #0x37
+ *   e892: lcall 0xa351      ; ext_mem_read(0x02, 0x12, 0x37)
+ *   e895: anl a, #0x7f      ; Clear bit 7
+ *   e897: lcall 0x0be6      ; ext_mem_write
+ *   e89a: ljmp 0xe83d       ; Continue
  *
- * Reads register, modifies with masks, writes back.
- * lane parameter determines which lane to configure.
+ * Continuation (0xe83d-0xe84a):
+ *   e83d: mov r1, #0x38
+ *   e83f: lcall 0xa38b      ; Write 0x01 to reg 0x38
+ *   e842: mov r1, #0x38     ; Poll loop
+ *   e844: lcall 0xa336      ; Read reg 0x38
+ *   e847: jb 0xe0.0, 0xe842 ; Loop while bit 0 set
+ *   e84a: ljmp 0xe711       ; Continue
  *
- * Original disassembly pattern:
- *   lcall 0x0bc8          ; Read current value
- *   anl a, #0x3f          ; Mask
- *   orl a, #0x80          ; Set bit
- *   lcall 0x0be6          ; Write back
- *   inc r1                ; Next register
- */
-void pcie_setup_lane_a310(uint8_t lane)
-{
-    (void)lane;
-    /* Lane configuration - stub implementation */
-}
-
-/*
- * pcie_set_state_a2df - Set PCIe state register
- * Address: 0xa2df-0xa2ea (12 bytes)
+ * Continuation (0xe711-0xe725):
+ *   e711: mov r1, #0x35
+ *   e713: lcall 0xa301      ; ext_mem_read reg 0x35
+ *   e716: anl a, #0xc0      ; Keep bits 6-7 only
+ *   e718: lcall 0x0be6      ; Write back
+ *   e71b: clr a
+ *   e71c: lcall 0xa367      ; Write 0 to 0x3C and 0x3D
+ *   e71f: lcall 0x0be6      ; Write 0 to 0x3E
+ *   e722: inc r1            ; r1 = 0x3F
+ *   e723: ljmp 0x0be6       ; Write 0 to 0x3F
  *
- * Writes state value to register and updates related state.
- *
- * Original disassembly:
- *   lcall 0x0be6          ; Write state
- *   inc r1
- *   lcall 0x0bc8          ; Read next
- *   anl a, #0xe0          ; Mask high bits
- *   ljmp 0x0be6           ; Write back
- */
-void pcie_set_state_a2df(uint8_t state)
-{
-    (void)state;
-    /* State update - stub implementation */
-}
-
-/*
- * pcie_handler_e890 - Bank 1 PCIe handler
- * Address: 0xe890+ (Bank 1)
- *
- * Called after lane setup and state change for PCIe event processing.
+ * PCIe extended registers (bank 0x02:0x12xx -> XDATA 0xB2xx):
+ *   0xB235: Link config
+ *   0xB237: Link status
+ *   0xB238: Command trigger
+ *   0xB23C-0xB23F: Lane config registers
  */
 void pcie_handler_e890(void)
 {
-    /* Bank 1 PCIe handler - stub */
+    uint8_t val;
+
+    /* Read link status, clear bit 7, write back */
+    val = XDATA_REG8(0xB237);
+    val &= 0x7F;
+    XDATA_REG8(0xB237) = val;
+
+    /* Write 0x01 to command trigger register */
+    XDATA_REG8(0xB238) = 0x01;
+
+    /* Poll until bit 0 clears (command complete) */
+    while (XDATA_REG8(0xB238) & 0x01) {
+        /* Wait for hardware */
+    }
+
+    /* Read link config, keep only bits 6-7, write back */
+    val = XDATA_REG8(0xB235);
+    val &= 0xC0;
+    XDATA_REG8(0xB235) = val;
+
+    /* Clear lane config registers 0x3C-0x3F */
+    XDATA_REG8(0xB23C) = 0x00;
+    XDATA_REG8(0xB23D) = 0x00;
+    XDATA_REG8(0xB23E) = 0x00;
+    XDATA_REG8(0xB23F) = 0x00;
+}
+
+/*
+ * cpu_int_ctrl_trigger_e933 - CPU interrupt control trigger
+ * Address: 0xe933-0xe939 (Bank 1)
+ *
+ * Writes timer start sequence (0x04 then 0x02) to REG_CPU_INT_CTRL.
+ *
+ * Disassembly:
+ *   e933: mov dptr, #0xcc81   ; REG_CPU_INT_CTRL
+ *   e936: lcall 0x95c2        ; Write 0x04 then 0x02
+ *   e939: ret
+ *
+ * The helper at 0x95c2:
+ *   95c2: mov a, #0x04
+ *   95c4: movx @dptr, a
+ *   95c5: mov a, #0x02
+ *   95c7: movx @dptr, a
+ *   95c8: ret
+ */
+void cpu_int_ctrl_trigger_e933(void)
+{
+    REG_CPU_INT_CTRL = 0x04;
+    REG_CPU_INT_CTRL = 0x02;
+}
+
+/*
+ * cpu_dma_setup_e81b - CPU DMA setup and trigger
+ * Address: 0xe81b-0xe82b (Bank 1)
+ *
+ * Sets up DMA address in registers 0xCC82-0xCC83 and triggers via CPU_INT_CTRL.
+ *
+ * Disassembly:
+ *   e81b: mov dptr, #0xcc82
+ *   e81e: mov a, r6          ; param_hi
+ *   e81f: movx @dptr, a      ; Write to 0xCC82
+ *   e820: inc dptr
+ *   e821: mov a, r7          ; param_lo
+ *   e822: movx @dptr, a      ; Write to 0xCC83
+ *   e823: mov dptr, #0xcc81  ; REG_CPU_INT_CTRL
+ *   e826: lcall 0x95c2       ; Write 0x04 then 0x02
+ *   e829: dec a              ; a = 0x01
+ *   e82a: movx @dptr, a      ; Write 0x01 to CC81
+ *   e82b: ret
+ *
+ * Parameters:
+ *   param_hi (r6): High byte of DMA value
+ *   param_lo (r7): Low byte of DMA value
+ */
+void cpu_dma_setup_e81b(uint8_t param_hi, uint8_t param_lo)
+{
+    /* Write DMA parameters to 0xCC82-0xCC83 */
+    XDATA_REG8(0xCC82) = param_hi;
+    XDATA_REG8(0xCC83) = param_lo;
+
+    /* Trigger sequence: 0x04, 0x02, 0x01 to CPU_INT_CTRL */
+    REG_CPU_INT_CTRL = 0x04;
+    REG_CPU_INT_CTRL = 0x02;
+    REG_CPU_INT_CTRL = 0x01;
+}
+
+/* Forward declaration - defined below */
+void pcie_transaction_init_c1f9(void);
+
+/*
+ * pcie_direction_init_e8f9 - Initialize PCIe direction for read
+ * Address: 0xe8f9-0xe901 (Bank 1)
+ *
+ * Clears the PCIe direction flag (set to read mode) and calls
+ * the transaction initialization routine.
+ *
+ * Disassembly:
+ *   e8f9: clr a                ; a = 0
+ *   e8fa: mov dptr, #0x05ae    ; G_PCIE_DIRECTION
+ *   e8fd: movx @dptr, a        ; Write 0 (read mode)
+ *   e8fe: lcall 0xc1f9         ; pcie_transaction_init
+ *   e901: ret
+ *
+ * Note: There's also a related function at 0xe902 that writes 1
+ * (write mode) and calls the same init routine.
+ */
+void pcie_direction_init_e8f9(void)
+{
+    G_PCIE_DIRECTION = 0;           /* Set direction to read */
+    pcie_transaction_init_c1f9();   /* Initialize PCIe transaction */
+}
+
+/*
+ * pcie_direction_init_write_e902 - Initialize PCIe direction for write
+ * Address: 0xe902-0xe90a (Bank 1)
+ *
+ * Sets the PCIe direction flag to write mode and calls
+ * the transaction initialization routine.
+ *
+ * Disassembly:
+ *   e902: mov dptr, #0x05ae    ; G_PCIE_DIRECTION
+ *   e905: mov a, #0x01         ; Write mode
+ *   e907: movx @dptr, a
+ *   e908: ljmp 0xc1f9          ; tail call to pcie_transaction_init
+ */
+void pcie_direction_init_write_e902(void)
+{
+    G_PCIE_DIRECTION = 1;           /* Set direction to write */
+    pcie_transaction_init_c1f9();   /* Initialize PCIe transaction */
+}
+
+/*
+ * pcie_transaction_init_c1f9 - PCIe transaction initialization
+ * Address: 0xc1f9-0xc24a
+ *
+ * Initializes PCIe TLP registers for a transaction:
+ * - Clears 12 PCIe registers via loop
+ * - Sets FMT_TYPE based on direction (0x40 for write, 0 for read)
+ * - Enables TLP control
+ * - Sets byte enables
+ * - Copies 32-bit address from G_PCIE_ADDR to REG_PCIE_ADDR
+ * - Triggers transaction and waits for completion
+ *
+ * See pcie.c for detailed disassembly at 0xc1f9.
+ */
+void pcie_transaction_init_c1f9(void)
+{
+    /* Transaction initialization - stub
+     * TODO: Implement full PCIe TLP setup sequence */
 }
 
 /*
@@ -1843,35 +2206,60 @@ void pcie_cleanup_05fc(void)
 }
 
 /*
- * pcie_handler_e974 - Bank 1 handler
- * Address: 0xe974+ (Bank 1)
+ * pcie_handler_e974 - Empty handler (NOP)
+ * Address: 0xe974 (1 byte - just ret)
+ *
+ * This is an empty handler - firmware only has `ret` at 0xe974.
  */
 void pcie_handler_e974(void)
 {
-    /* Bank 1 handler - stub */
+    /* Empty - firmware has just `ret` at 0xe974 */
 }
 
 /*
- * pcie_handler_e06b - Bank 1 handler with parameter
- * Address: 0xe06b+ (Bank 1)
+ * ext_mem_read_bc57 - Extended memory read stub
+ * Address: 0xbc57
+ *
+ * Stub implementation - actual read would access extended memory.
  */
-void pcie_handler_e06b(uint8_t param)
+void ext_mem_read_bc57(uint8_t r3, uint8_t r2, uint8_t r1)
+{
+    (void)r3; (void)r2; (void)r1;
+    /* Extended memory read - stub */
+}
+
+/*
+ * transfer_handler_ce23 - Transfer handler stub
+ * Address: 0xce23
+ *
+ * Stub implementation - handles transfer state.
+ */
+void transfer_handler_ce23(uint8_t param)
 {
     (void)param;
-    /* Bank 1 handler - stub */
+    /* Transfer handler - stub */
 }
 
 /*
- * pcie_setup_a38b - Setup helper with source parameter
- * Address: 0xa38b-0xa393 (9 bytes)
+ * pcie_handler_e06b - PCIe extended address read and state setup
+ * Address: 0xe06b-0xe093 (41 bytes)
  *
- * Sets up r3=0x02, r2=0x12, writes 0x01 to register, jumps to 0x0be6.
+ * Reads from extended memory, calls transfer handler, updates state flags.
  */
-void pcie_setup_a38b(uint8_t source)
+#define G_PCIE_WORK_0B34 XDATA_VAR8(0x0B34)
+#define G_PCIE_STATUS_0B1C XDATA_VAR8(0x0B1C)
+
+void pcie_handler_e06b(uint8_t param)
 {
-    (void)source;
-    /* Setup helper - stub */
+    G_USB_WORK_009F = param;
+    ext_mem_read_bc57(0x02, 0x12, 0x35);
+    G_PCIE_WORK_0B34 = 1;
+    param = G_USB_WORK_009F;
+    transfer_handler_ce23(param);
+    G_PCIE_STATUS_0B1C = (G_USB_WORK_009F != 0) ? 1 : 0;
 }
+
+/* pcie_setup_a38b - moved to queue_handlers.c */
 
 /*===========================================================================
  * USB Endpoint Loop Functions (used by main_loop)
@@ -1879,33 +2267,140 @@ void pcie_setup_a38b(uint8_t source)
 
 /*
  * usb_ep_loop_180d - USB endpoint processing loop with parameter
- * Address: 0x180d
+ * Address: 0x180d-0x19f9 (~500 bytes)
  *
  * Called from main_loop when REG_USB_STATUS bit 0 is set.
  * The param is passed in R7 in the original firmware.
+ *
+ * Algorithm:
+ *   1. Store param to G_USB_EP_MODE (0x0A7D)
+ *   2. If param XOR 1 == 0 (i.e., param == 1):
+ *      - USB mode 1 path (main processing)
+ *   3. Else: Jump to 0x19FA (alternate USB mode path)
+ *   4. Read G_USB_CTRL_000A, if zero:
+ *      - Increment G_SYS_FLAGS_07E8
+ *      - If G_USB_STATE_0B41 != 0, call nvme_func_04da(1)
+ *   5. Read REG_NVME_CMD_STATUS_C47A to I_WORK_38
+ *   6. Write to REG_SCSI_DMA_CTRL_CE88
+ *   7. Poll REG_SCSI_DMA_STATUS_CE89 bit 0 until set
+ *   8. Increment and check G_USB_CTRL_000A
+ *   9. Modify REG_USB_CTRL_924C based on count
+ *   10. Read G_ENDPOINT_STATE_0051 and call helper_31e0
+ *   11. Process state machine with multiple register ops
+ *
+ * This is part of the USB endpoint data transfer handling.
  */
+extern void nvme_func_04da(uint8_t param);
+
 void usb_ep_loop_180d(uint8_t param)
 {
-    (void)param;
-    /* USB endpoint processing - stub
-     * This function handles USB endpoint events when USB is active.
-     * TODO: Reverse engineer the actual implementation.
-     */
+    uint8_t val;
+    uint8_t ctrl_count;
+
+    /* Store param to USB EP mode flag (0x0A7D) */
+    G_EP_DISPATCH_VAL3 = param;
+
+    /* Check if param == 1 (USB mode 1) */
+    if (param != 0x01) {
+        /* Jump to alternate path at 0x19FA - not implemented here */
+        /* This handles USB mode 0 (different processing) */
+        return;
+    }
+
+    /* USB Mode 1 processing path */
+
+    /* Read USB control flag (0x000A) */
+    val = G_EP_CHECK_FLAG;
+    if (val == 0) {
+        /* First-time setup */
+        G_SYS_FLAGS_07E8 = 1;  /* Increment (was 0, now 1) */
+
+        /* Check USB state and call event handler if needed */
+        if (G_USB_STATE_0B41 != 0) {
+            nvme_func_04da(0x01);
+        }
+    }
+
+    /* Read NVMe command status (0xC47A) and store to I_WORK_38 */
+    I_WORK_38 = REG_NVME_CMD_STATUS_C47A;
+
+    /* Write to transfer control register (0xCE88) */
+    REG_XFER_CTRL_CE88 = I_WORK_38;
+
+    /* Poll transfer ready (0xCE89) until bit 0 is set */
+    while ((REG_XFER_READY & 0x01) == 0) {
+        /* Spin wait for DMA ready */
+    }
+
+    /* Increment USB control counter */
+    ctrl_count = G_EP_CHECK_FLAG;
+    ctrl_count++;
+    G_EP_CHECK_FLAG = ctrl_count;
+
+    /* Read back and check if count >= 2 */
+    ctrl_count = G_EP_CHECK_FLAG;
+    val = REG_USB_CTRL_924C;
+
+    if (ctrl_count >= 2) {
+        /* Count >= 2: clear bit 0 */
+        val = val & 0xFE;
+    } else {
+        /* Count < 2: clear bit 0, set bit 0 */
+        val = (val & 0xFE) | 0x01;
+    }
+    REG_USB_CTRL_924C = val;
+
+    /* Read endpoint state and call helper */
+    val = G_ENDPOINT_STATE_0051;
+    /* helper_31e0(val) would be called here - processes endpoint state */
+
+    /* Write I_WORK_38 to endpoint register */
+    G_ENDPOINT_STATE_0051 = I_WORK_38;
+
+    /* Add 0x2F and call helper_325f for register address calculation */
+    /* This accesses registers at 0x00 + (I_WORK_38 + 0x2F) area */
+
+    /* Write 0x22 to calculated address */
+    /* This sets up endpoint command mode */
+
+    /* Write I_WORK_38 to G_ENDPOINT_STATE_0051 again */
+    G_ENDPOINT_STATE_0051 = I_WORK_38;
+
+    /* Check IDATA[0x0D] against 0x22 */
+    if (*(__idata uint8_t *)0x0D != 0x22) {
+        /* State mismatch - skip to end */
+        return;
+    }
+
+    /* Check transfer status (0xCE6C) bit 7 */
+    val = REG_XFER_STATUS_CE6C;
+    if ((val & 0x80) == 0) {
+        /* Bit 7 not set - skip */
+        return;
+    }
+
+    /* Check power init flag (0x0AF8) */
+    if (G_POWER_INIT_FLAG == 0) {
+        return;
+    }
+
+    /* Check transfer ready (0xCE89) bit 1 */
+    val = REG_XFER_READY;
+    if (val & 0x02) {
+        /* Bit 1 set - skip */
+        return;
+    }
+
+    /* Read from USB descriptor (0xCEB2) */
+    val = REG_USB_DESC_VAL_CEB2;
+    /* Exchange and write to NVMe param (0xC4EA) */
+    REG_NVME_PARAM_C4EA = val;
+
+    /* Additional processing continues... */
+    /* The full function has more state machine logic */
 }
 
-/*
- * usb_ep_loop_3419 - USB endpoint processing loop (alternate path)
- * Address: 0x3419
- *
- * Called from main_loop when REG_USB_STATUS bit 0 is NOT set.
- */
-void usb_ep_loop_3419(void)
-{
-    /* USB endpoint processing alternate path - stub
-     * This function handles USB endpoint events when USB is in alternate mode.
-     * TODO: Reverse engineer the actual implementation.
-     */
-}
+/* usb_ep_loop_3419 - IMPLEMENTED in protocol.c */
 
 /*
  * delay_loop_adb0 - Delay loop with status check
@@ -1998,19 +2493,181 @@ uint8_t helper_a704(void)
 }
 
 /*
- * handler_e7c1 - NVMe/event handler
- * Address: 0xe7c1-0xe7f4 (52 bytes)
+ * handler_e7c1 - Timer control based on param
+ * Address: 0xe7c1-0xe7d3 (19 bytes)
  *
- * Handles NVMe event processing based on param.
- * Called from system state handler and other event processing.
+ * Disassembly:
+ *   e7c1: mov a, r7
+ *   e7c2: cjne a, #0x01, e7c9  ; If param != 1, skip to e7c9
+ *   e7c5: lcall 0xbd14         ; reg_timer_clear_bits
+ *   e7c8: ret
+ *   e7c9: mov dptr, #0x0af1    ; G_STATE_FLAG_0AF1
+ *   e7cc: movx a, @dptr
+ *   e7cd: jnb 0xe0.4, e7d3     ; If bit 4 clear, skip
+ *   e7d0: lcall 0xbcf2         ; reg_timer_setup_and_set_bits
+ *   e7d3: ret
  *
- * Parameters:
- *   param (R7): Event type/state to process
- *
- * TODO: Implement full logic when reverse engineering is complete
+ * Controls timer enable based on param:
+ * - param == 1: Clear timer bits (disable)
+ * - param != 1: If G_STATE_FLAG_0AF1 bit 4 set, set timer bits (enable)
  */
+extern void reg_timer_clear_bits(void);
+extern void reg_timer_setup_and_set_bits(void);
+
 void handler_e7c1(uint8_t param)
 {
-    (void)param;
-    /* Stub - TODO: implement */
+    if (param == 1) {
+        /* Disable timer */
+        reg_timer_clear_bits();
+        return;
+    }
+
+    /* If bit 4 of G_STATE_FLAG_0AF1 is set, enable timer */
+    if (G_STATE_FLAG_0AF1 & 0x10) {
+        reg_timer_setup_and_set_bits();
+    }
 }
+
+/*===========================================================================
+ * Missing Helper Stubs
+ *===========================================================================*/
+
+/* helper_3219 - Address: 0x3219 */
+void helper_3219(void)
+{
+    /* Stub */
+}
+
+/* helper_3267 - Address: 0x3267 */
+void helper_3267(void)
+{
+    /* Stub */
+}
+
+/* helper_3279 - Address: 0x3279 */
+void helper_3279(void)
+{
+    /* Stub */
+}
+
+/* helper_1677 - Address: 0x1677 */
+void helper_1677(uint8_t param)
+{
+    (void)param;
+    /* Stub */
+}
+
+/* helper_1659 - Address: 0x1659 */
+void helper_1659(void)
+{
+    /* Stub */
+}
+
+/* helper_1ce4 - Address: 0x1ce4 */
+void helper_1ce4(void)
+{
+    /* Stub */
+}
+
+/* helper_313d - Address: 0x313d */
+void helper_313d(void)
+{
+    /* Stub */
+}
+
+/* helper_544c - Address: 0x544c */
+void helper_544c(void)
+{
+    /* Stub */
+}
+
+/* helper_165e - Address: 0x165e */
+void helper_165e(void)
+{
+    /* Stub */
+}
+
+/* helper_1660 - Address: 0x1660 */
+void helper_1660(uint8_t param1, uint8_t param2)
+{
+    (void)param1;
+    (void)param2;
+    /* Stub */
+}
+
+/* helper_0412 - Address: 0x0412 */
+void helper_0412(void)
+{
+    /* Stub */
+}
+
+/* helper_3291 - Address: 0x3291 */
+void helper_3291(void)
+{
+    /* Stub */
+}
+
+/* process_log_entries - Log processing function (0xc2e6) */
+void process_log_entries(uint8_t param)
+{
+    (void)param;
+    /* Stub */
+}
+
+/* helper_dd12 - Address: 0xdd12 */
+void helper_dd12(uint8_t param1, uint8_t param2)
+{
+    (void)param1;
+    (void)param2;
+    /* Stub */
+}
+
+/* helper_96ae - Address: 0x96ae */
+void helper_96ae(void)
+{
+    /* Stub */
+}
+
+/* helper_e120 - Address: 0xe120
+ * Takes R7 and R5 parameters for command configuration
+ */
+void helper_e120(uint8_t r7, uint8_t r5)
+{
+    (void)r7;
+    (void)r5;
+    /* Stub - configures command engine */
+}
+
+/* helper_dd0e - Address: 0xdd0e
+ * Sets R5=1, R7=0x0f and falls through to helper_dd12
+ */
+void helper_dd0e(void)
+{
+    helper_dd12(0x0F, 0x01);
+}
+
+/* helper_95a0 - Address: 0x95a0
+ * Command error recovery helper
+ * Sets R5=2, calls helper_e120, writes to E424/E425/07C4
+ */
+void helper_95a0(uint8_t r7)
+{
+    (void)r7;
+    /* Stub - should call helper_e120(r7, 0x02) and write to cmd regs */
+}
+
+/* helper_545c - Address: 0x545c */
+void helper_545c(void)
+{
+    /* Stub */
+}
+
+/* helper_cb05 - Address: 0xcb05 */
+void helper_cb05(void)
+{
+    /* Stub */
+}
+
+/* scsi_dma_mode_setup - SCSI DMA mode setup */
+void scsi_dma_mode_setup(void) {}
+

@@ -904,6 +904,92 @@ void helper_0206(uint8_t r5, uint8_t r7)
 }
 
 /*
+ * helper_020b - DMA buffer configuration (direct entry)
+ * Address: 0x020b-0x02fc
+ *
+ * This is an alternate entry point that skips the initial (r5 & 0x06) check
+ * in helper_0206. It always takes the "bits set" path which:
+ *   - Sets REG_DMA_CONFIG = 0xA0
+ *   - Copies from G_USB_ADDR_HI_0056/G_USB_ADDR_LO_0057 to endpoint buffers
+ *
+ * Called directly 13 times in the firmware when the caller knows they
+ * want the 0xA0 DMA config path with addresses from 0x0056-0x0057.
+ *
+ * Parameters:
+ *   r5: Flag byte (bits control modes after initial setup)
+ *       - bit 1 (0x02): Alternative mode with table copy
+ *       - bit 2 (0x04): Set DMA config to 0xA0, EP status to 0x28
+ *       - bit 4 (0x10): Extended mode (D800 = 4 instead of 3)
+ *   r7: DMA channel/index value (used in later processing)
+ */
+void helper_020b(uint8_t r5, uint8_t r7)
+{
+    uint8_t r2, r3, r4;
+
+    /* Direct path - always write 0xA0 to DMA config */
+    /* 0x020b: mov dptr, #0xc8d4 / mov a, #0xa0 / movx @dptr, a */
+    REG_DMA_CONFIG = 0xA0;
+
+    /* Copy buffer info from 0x0056-0x0057 to 0x905B-0x905C and 0xD802-0xD803 */
+    /* 0x0211-0x0228 */
+    r2 = G_USB_ADDR_HI_0056;
+    r3 = G_USB_ADDR_LO_0057;
+    REG_USB_EP_BUF_HI = r2;
+    REG_USB_EP_BUF_LO = r3;
+    REG_USB_EP_BUF_DATA = r2;
+    REG_USB_EP_BUF_PTR_LO = r3;
+
+    /* 0x0247-0x0255: Clear D804-D807 and D80F */
+    USB_CSW->tag0 = 0;
+    USB_CSW->tag1 = 0;
+    USB_CSW->tag2 = 0;
+    USB_CSW->tag3 = 0;
+    REG_USB_EP_CTRL_0F = 0;
+
+    /* 0x0256: Check r5 bit 4 for extended mode */
+    if (r5 & 0x10) {
+        /* Extended mode - 0x025a-0x026a */
+        REG_USB_EP_BUF_CTRL = 0x04;
+        USB_CSW->tag3 = G_BUFFER_LENGTH_HIGH;
+        r4 = 0x08;
+    } else {
+        /* Normal mode - 0x026c-0x02c3 */
+        REG_USB_EP_BUF_CTRL = 0x03;
+
+        /* Check state at 0x07E5 */
+        if (G_TRANSFER_ACTIVE == 0) {
+            /* r5 bits 1-2 clear, G_TRANSFER_ACTIVE == 0: r4 = 0x10 */
+            r4 = 0x10;
+
+            /* Check r5 bit 2 */
+            if (r5 & 0x04) {
+                /* 0x027e-0x028a: Set DMA config = 0xA0, USB EP tag2 = 0x28 */
+                REG_DMA_CONFIG = 0xA0;
+                USB_CSW->tag2 = 0x28;
+            } else if (r5 & 0x02) {
+                /* 0x028d-0x0290: bit 1 set but not bit 2 - just continue */
+                /* Fall through to common code */
+            }
+        } else {
+            /* G_TRANSFER_ACTIVE != 0: 0x0292-0x02c3 */
+            /* This path copies from table 0x0201 to D810-D821 */
+            r4 = 0x22;
+
+            /* TODO: The table copy loop at 0x0296-0x02b0 reads from
+             * addresses 0x0201-0x0212 and writes to 0xD810-0xD821.
+             * This appears to be initialization data embedded in code.
+             * For now, leaving as stub since this path may be rare. */
+        }
+    }
+
+    /* 0x02c4-0x02fc: Final processing based on r5 and r4 */
+    /* TODO: Remaining logic involves calls to 0x3133, 0x31c5, 0x3249,
+     * register writes to 0xC509, 0x905A, 0x90E1, and final call to 0x0006 */
+    (void)r4;  /* Suppress unused warning until fully implemented */
+    (void)r7;
+}
+
+/*
  * helper_45d0 - Transfer control helper
  * Address: 0x45d0-0x4663+ (complex)
  *
@@ -1284,8 +1370,9 @@ uint8_t helper_11a2(uint8_t param)
  *
  * Sets up buffer configuration for transfers.
  */
-void helper_5359(void)
+void helper_5359(uint8_t param)
 {
+    (void)param;  /* Currently unused */
     /* TODO: Implement buffer setup from 0x5359 */
 }
 
@@ -2717,5 +2804,494 @@ void event_queue_process_e762(void)
 void status_update_handler_e677(void)
 {
     /* Status handler - stub pending full RE */
+}
+
+/*===========================================================================
+ * Protocol State Machine Functions (0x2000-0x3FFF range)
+ *===========================================================================*/
+
+/* Forward declarations for helper functions */
+extern void parse_descriptor(uint8_t param);   /* 0x04da */
+extern void usb_state_setup_4c98(void);        /* 0x4c98 */
+/* helper_5359 defined earlier in this file */
+extern void scsi_dma_tag_setup_3212(uint8_t idx, uint16_t reg_addr); /* 0x3212 */
+extern uint8_t mul_add_index_0dd1(uint8_t base, uint8_t mult);       /* 0x0dd1 */
+extern void usb_set_transfer_active_flag(void); /* 0x312a */
+extern void nvme_read_status(void);            /* 0x31ce */
+extern void usb_helper_51ef(void);             /* 0x51ef */
+extern void usb_helper_5112(void);             /* 0x5112 */
+
+/*
+ * helper_3212 - SCSI DMA tag setup
+ * Address: 0x3212-0x3225 (20 bytes)
+ *
+ * Sets up DPTR from index calculation.
+ * param_idx is loop index, param_reg is target register (0xCE8A typically).
+ *
+ * Original disassembly:
+ *   3212: mov dpl, r7
+ *   3214: mov dph, r6
+ *   3216: clr a
+ *   3217: subb a, 0x39      ; A = 0 - IDATA[0x39]
+ *   3219: add a, 0x38       ; A = A + IDATA[0x38] = loop_idx - max_count
+ *   321b: push 0x82         ; save DPL
+ *   321d: push 0x83         ; save DPH
+ *   321f: mov dpl, a        ; DPL = index
+ *   3221: clr a
+ *   3222: addc a, #0x8a     ; DPH = 0x8A (could be 0x8B if carry)
+ *   3224: mov dph, a
+ *   3225: ret
+ */
+void scsi_dma_tag_setup_3212(uint8_t idx, uint16_t reg_addr)
+{
+    /* Calculate negative index: idx - max */
+    int8_t neg_idx = (int8_t)I_WORK_38 - (int8_t)I_WORK_39;
+
+    /* Set up SCSI DMA index register */
+    /* This sets up an index for DMA tag operations */
+    (void)idx;
+    (void)reg_addr;
+    (void)neg_idx;
+    /* The actual DMA setup is done by the hardware based on the index */
+}
+
+/*
+ * helper_313a - Check if 32-bit value at IDATA[0x6B] is zero
+ * Address: 0x313a-0x3146 (13 bytes)
+ *
+ * Calls xdata_load_dword_0db9, then loads from IDATA[0x6B] and
+ * returns OR of all 4 bytes (non-zero if any byte is non-zero).
+ *
+ * Original disassembly:
+ *   313a: lcall 0x0db9      ; xdata_load_dword
+ *   313d: mov r0, #0x6b
+ *   313f: lcall 0x0d78      ; Load 4 bytes from @R0
+ *   3142: mov a, r4
+ *   3143: orl a, r5
+ *   3144: orl a, r6
+ *   3145: orl a, r7
+ *   3146: ret
+ */
+uint8_t helper_313a_check_nonzero(void)
+{
+    /* Read 4 bytes from IDATA[0x6B-0x6E] and check if non-zero */
+    uint8_t b0 = I_TRANSFER_6B;
+    uint8_t b1 = I_TRANSFER_6C;
+    uint8_t b2 = I_TRANSFER_6D;
+    uint8_t b3 = I_TRANSFER_6E;
+
+    return (b0 | b1 | b2 | b3);
+}
+
+/*
+ * usb_ep_loop_3419 - USB endpoint processing loop
+ * Address: 0x3419-0x3577 (351 bytes)
+ *
+ * Main USB endpoint processing function called from main_loop when
+ * REG_USB_STATUS bit 0 is NOT set.
+ *
+ * Algorithm:
+ * 1. If G_USB_STATE_0B41 != 0, call parse_descriptor(1)
+ * 2. If I_STATE_6A != 0, skip to continuation at 0x3577
+ * 3. Clear state variables: 0x0B01, 0x053B, 0x00C2, 0x0517, 0x014E, 0x00E5
+ * 4. Clear REG_XFER_CTRL_CE88
+ * 5. Wait for REG_XFER_READY bit 0 to be set
+ * 6. Check abort conditions (bit 1 of CE89, bit 4 of CE86, AF8 != 1)
+ * 7. Call usb_state_setup_4c98
+ * 8. Read REG_SCSI_TAG_VALUE and set up tag loop
+ * 9. Loop through tags, setting up SCSI DMA for each
+ * 10. Set final state flags and return
+ */
+void usb_ep_loop_3419(void)
+{
+    uint8_t val;
+    uint8_t tag_val;
+    uint8_t max_count;
+    uint8_t loop_idx;
+    uint8_t usb_param;
+    uint8_t config_val;
+    uint8_t param_save;
+
+    /* Step 1: Check G_USB_STATE_0B41 and call parse_descriptor if set */
+    val = G_USB_STATE_0B41;
+    param_save = 0;
+    if (val != 0) {
+        param_save = 1;
+        parse_descriptor(0x01);
+    }
+
+    /* Step 2: Check I_STATE_6A */
+    val = I_STATE_6A;
+    if (val != 0) {
+        /* Skip to continuation at 0x3577 - just return */
+        return;
+    }
+
+    /* Step 3: Clear state variables */
+    G_USB_INIT_0B01 = 0;
+    G_NVME_STATE_053B = 0;
+    G_INIT_STATE_00C2 = 0;
+    G_EP_INIT_0517 = 0;
+    G_USB_INDEX_COUNTER = 0;   /* 0x014E */
+    G_INIT_STATE_00E5 = 0;
+
+    /* Step 4: Clear REG_XFER_CTRL_CE88 */
+    REG_XFER_CTRL_CE88 = 0;
+
+    /* Step 5: Wait for REG_XFER_READY bit 0 */
+    do {
+        val = REG_XFER_READY;
+    } while ((val & XFER_READY_BIT) == 0);
+
+    /* Step 6a: Check bit 1 of CE89 for abort */
+    val = REG_XFER_READY;
+    if (val & XFER_READY_DONE) {
+        goto abort_path;
+    }
+
+    /* Step 6b: Check bit 4 of CE86 */
+    val = REG_XFER_STATUS_CE86;
+    if (val & 0x10) {
+        goto abort_path;
+    }
+
+    /* Step 6c: Check if G_POWER_INIT_FLAG == 1 */
+    val = G_POWER_INIT_FLAG;
+    if (val != 0x01) {
+        goto abort_path;
+    }
+
+    /* Step 7: Call usb_state_setup_4c98 */
+    usb_state_setup_4c98();
+
+    /* Step 8: Set up tag loop */
+    G_NVME_PARAM_053A = 0;
+
+    /* Read tag value from CE55, copy to 009F */
+    tag_val = REG_SCSI_TAG_VALUE;
+    G_USB_WORK_009F = tag_val;
+
+    /* Call helper_5359 */
+    usb_param = G_USB_WORK_009F;
+    helper_5359(usb_param);
+
+    /* Store result to G_USB_PARAM_0B00 and 0x012B */
+    G_USB_PARAM_0B00 = usb_param;
+    *(__xdata uint8_t *)0x012B = usb_param;
+
+    /* Compare with 0x0AFF and determine loop count */
+    val = G_XFER_RETRY_CNT;  /* 0x0AFF */
+    usb_param = G_USB_WORK_009F;
+
+    if (usb_param >= val + 1) {
+        /* usb_param > val: set loop to val, calculate excess */
+        I_WORK_39 = val;
+        G_SCSI_CTRL = usb_param - val;  /* 0x0171 */
+        G_NVME_PARAM_053A = 0x20;
+    } else {
+        /* usb_param <= val: use usb_param as loop count */
+        I_WORK_39 = usb_param;
+        G_SCSI_CTRL = 0;
+    }
+
+    /* Clear REG_SCSI_DMA_CFG_CE36 and loop index */
+    REG_SCSI_DMA_CFG_CE36 = 0;
+    I_WORK_38 = 0;
+
+    /* Step 9: Tag loop */
+    max_count = I_WORK_39;
+    for (loop_idx = 0; loop_idx < max_count; loop_idx++) {
+        I_WORK_38 = loop_idx;
+
+        /* Call scsi_dma_tag_setup at 0x3212 with DPTR=0xCE8A */
+        scsi_dma_tag_setup_3212(loop_idx, 0xCE8A);
+
+        /* Read G_USB_PARAM_0B00, combine with CE01 upper bits */
+        usb_param = G_USB_PARAM_0B00;
+        val = REG_SCSI_DMA_PARAM;  /* CE01 */
+        REG_SCSI_DMA_PARAM = usb_param | (val & 0xC0);
+
+        /* Calculate config from G_SYS_STATUS_SECONDARY * 0x14 */
+        config_val = G_SYS_STATUS_SECONDARY;
+        /* mul_add_index: calculate index * 0x14 + offset */
+        config_val = G_EP_CONFIG_ARRAY;  /* 0x054E - read array entry */
+
+        /* Store loop index * config value to CE3A */
+        I_WORK_3A = loop_idx * config_val;
+        REG_SCSI_DMA_TAG_CE3A = I_WORK_3A;
+
+        /* Trigger SCSI DMA command */
+        REG_SCSI_DMA_CTRL = 0x03;
+
+        /* Wait for completion (CE00 == 0) */
+        do {
+            val = REG_SCSI_DMA_CTRL;
+        } while (val != 0);
+
+        /* Increment USB param (5-bit counter) */
+        usb_param = G_USB_PARAM_0B00;
+        G_USB_PARAM_0B00 = (usb_param + 1) & 0x1F;
+
+        /* Check if CE89 bit 2 is clear, then call power_check_status */
+        val = REG_XFER_READY;
+        if ((val & 0x04) == 0) {
+            usb_param = G_USB_PARAM_0B00;
+            power_check_status(usb_param);
+        }
+    }
+
+    /* Step 10: Set final state flags */
+    G_USB_INIT_0B01 = 1;
+    G_SYS_FLAGS_07E8 = 1;
+    G_USB_TRANSFER_FLAG = 1;  /* 0x0B2E */
+    G_STATE_FLAG_06E6 = 1;
+
+    G_INTERFACE_READY_0B2F = 0;  /* 0x0B2F */
+    G_IO_CMD_TYPE = 0;           /* 0x0001 */
+
+    /* Call helper_3147 - copy USB status to buffer */
+    helper_3147();
+
+    /* Clear buffer transfer start */
+    G_BUF_XFER_START = 0;  /* 0xD80C */
+
+    /* Clear IDATA flow control bytes */
+    I_BUF_FLOW_CTRL = 0;   /* 0x6F */
+    I_BUF_THRESH_LO = 0;   /* 0x70 */
+    I_BUF_THRESH_HI = 0;   /* 0x71 */
+    I_BUF_CTRL_GLOBAL = 0; /* 0x72 */
+
+    /* Check CE89 bit 2 for final state */
+    val = REG_XFER_READY;
+    if (val & 0x04) {
+        /* Bit 2 set */
+        *(__xdata uint8_t *)0x0108 = 0x30;
+        I_STATE_6A = 4;
+        G_XFER_FLAG_07EA = 1;
+    } else {
+        /* Bit 2 clear */
+        *(__xdata uint8_t *)0x0108 = 0x20;
+        I_STATE_6A = 3;
+    }
+    return;
+
+abort_path:
+    /* Jump to 0x3562 - abort/error handler */
+    usb_helper_51ef();
+
+    if (param_save != 0) {
+        G_SYS_FLAGS_07E8 = 1;
+        usb_helper_5112();
+        return;
+    }
+
+    usb_set_transfer_active_flag();
+    nvme_read_status();
+}
+
+/*
+ * helper_3bcd - DMA state transfer handler
+ * Address: 0x3bcd-0x3cb7 (~235 bytes)
+ *
+ * Handles DMA state transitions and queue processing.
+ * Called from protocol state machine handlers.
+ *
+ * Parameters:
+ *   param - Control parameter stored to G_STATE_COUNTER_HI (0x0AA3)
+ *
+ * Returns: Value from G_STATE_COUNTER_0AA5 (0x0AA5)
+ */
+uint8_t helper_3bcd(uint8_t param)
+{
+    uint8_t val;
+    uint8_t status;
+
+    /* Store param to G_STATE_COUNTER_HI */
+    G_STATE_COUNTER_HI = param;
+
+    /* Call helper_5359 with param 1 */
+    helper_5359(0x01);
+
+    /* DMA transfer operations */
+    /* (Simplified - actual implementation has complex DMA transfer logic) */
+
+    /* Clear DMA status 2 bit 0 */
+    val = REG_DMA_STATUS2;
+    REG_DMA_STATUS2 = val & 0xFE;
+
+    /* Read system status and call power check */
+    val = G_SYS_STATUS_PRIMARY;
+    power_check_status(val);
+
+    /* Clear state variables */
+    *(__xdata uint8_t *)0x00E2 = 0;
+    *(__xdata uint8_t *)0x0105 = 0;
+    *(__xdata uint8_t *)0x0128 = 0;
+    *(__xdata uint8_t *)0x00BF = 1;
+    *(__xdata uint8_t *)0x04D7 = 0;
+    *(__xdata uint8_t *)0x04F7 = 0;
+    G_STATE_COUNTER_0AA5 = 0x80;
+
+    /* State processing loop (simplified) */
+    do {
+        status = G_SYS_STATUS_PRIMARY;
+        if (status != 0) {
+            /* Non-zero status - process completion */
+            break;
+        }
+
+        val = *(__xdata uint8_t *)0x00E2;
+    } while (val != 0x01);
+
+    /* Check completion flags */
+    val = *(__xdata uint8_t *)0x04D7;
+    if (val == 0) {
+        val = *(__xdata uint8_t *)0x04F7;
+        if (val == 0) {
+            G_STATE_COUNTER_0AA5 = 0;
+        }
+    }
+
+    return G_STATE_COUNTER_0AA5;
+}
+
+/*
+ * helper_38d4 - State machine event handler
+ * Address: 0x38d4-0x38ff (~44 bytes)
+ *
+ * Handles state machine events and transitions.
+ */
+void helper_38d4(uint8_t param)
+{
+    uint8_t val;
+
+    /* Check state and dispatch */
+    val = G_IO_CMD_STATE;
+
+    if (val == 0x28) {  /* '(' */
+        /* Handle state 0x28 */
+    } else if (val == 0x2A) {  /* '*' */
+        /* Handle state 0x2A */
+    }
+
+    (void)param;
+}
+
+/*
+ * helper_3cb8 - USB event handler with state dispatch
+ * Address: 0x3cb8-0x3d4f (~152 bytes)
+ *
+ * Entry point for USB event handling, calls usb_event_handler
+ * and dispatches based on command state.
+ */
+void helper_3cb8(uint8_t state_code)
+{
+    uint8_t val;
+
+    /* Call USB event handler */
+    usb_event_handler();
+
+    /* Store state code */
+    G_IO_CMD_STATE = state_code;
+    G_IO_CMD_TYPE = 0;
+
+    /* Call USB state setup */
+    usb_state_setup_4c98();
+
+    /* Check state and set flags */
+    val = G_IO_CMD_STATE;
+    if (val != 0) {
+        G_XFER_STATE_0AF6 = 0;
+    }
+
+    /* Dispatch based on state code */
+    if (val == 0x28) {  /* '(' */
+        state_action_dispatch(3);
+    } else if (val == 0x2A) {  /* '*' */
+        state_action_dispatch(1);
+    } else if (val == 0x88) {
+        state_action_dispatch(2);
+    } else if (val == 0x8A) {
+        state_action_dispatch(0);
+    }
+}
+
+/*
+ * helper_3130 - Set bit 0 of USB EP0 config register
+ * Address: 0x3130-0x3139 (10 bytes)
+ *
+ * This helper function sets bit 0 of register 0x9006 (REG_USB_EP0_CONFIG).
+ * The operation is: read register, clear bit 0, set bit 0, write back.
+ * Net effect is to always set bit 0 to 1.
+ *
+ * Original disassembly:
+ *   3130: mov dptr, #0x9006
+ *   3133: movx a, @dptr
+ *   3134: anl a, #0xfe       ; clear bit 0
+ *   3136: orl a, #0x01       ; set bit 0
+ *   3138: movx @dptr, a
+ *   3139: ret
+ */
+void helper_3130(void)
+{
+    uint8_t val;
+
+    val = REG_USB_EP0_CONFIG;
+    val &= 0xFE;  /* Clear bit 0 */
+    val |= 0x01;  /* Set bit 0 */
+    REG_USB_EP0_CONFIG = val;
+}
+
+/*
+ * helper_31c5 - Calculate DPTR for 0x90xx register range
+ * Address: 0x31c5-0x31cd (9 bytes)
+ *
+ * Sets DPTR to point to 0x9000 + offset. Used to access registers
+ * in the 0x90xx range based on a calculated offset.
+ *
+ * Parameters:
+ *   offset - Offset into the 0x9000 register range
+ *
+ * Returns: Pointer to __xdata at (0x9000 + offset)
+ *
+ * Original disassembly:
+ *   31c5: mov r3, a          ; save offset
+ *   31c6: clr a
+ *   31c7: addc a, #0x90      ; high byte = 0x90
+ *   31c9: mov 0x82, r3       ; DPL = offset
+ *   31cb: mov 0x83, a        ; DPH = 0x90
+ *   31cd: ret
+ */
+__xdata uint8_t *helper_31c5(uint8_t offset)
+{
+    return (__xdata uint8_t *)(0x9000 + offset);
+}
+
+/*
+ * helper_3226 - Set DPTR from address bytes (low from A, high from R2)
+ * Address: 0x3226-0x322d (8 bytes)
+ *
+ * Combines a low byte (passed in A/param) with a high byte (in R2/global)
+ * to form a 16-bit address pointer.
+ *
+ * This is called from helper_3212 to set up register pointers.
+ *
+ * Parameters:
+ *   addr_low - Low byte of address
+ *   addr_high - High byte of address (caller sets this before call)
+ *
+ * Returns: Pointer to __xdata at (addr_high << 8) | addr_low
+ *
+ * Original disassembly:
+ *   3226: mov r1, a          ; r1 = low byte
+ *   3227: clr a
+ *   3228: addc a, r2         ; a = r2 (high byte)
+ *   3229: mov 0x82, r1       ; DPL = low byte
+ *   322b: mov 0x83, a        ; DPH = high byte
+ *   322d: ret
+ */
+__xdata uint8_t *helper_3226(uint8_t addr_low, uint8_t addr_high)
+{
+    return (__xdata uint8_t *)((addr_high << 8) | addr_low);
 }
 

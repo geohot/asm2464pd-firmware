@@ -2940,3 +2940,113 @@ void pcie_timer_bit4_handler(void)
 {
     jump_bank_0(0xC105);
 }
+
+/*
+ * pcie_tlp_init_and_transfer - Initialize PCIe TLP registers and perform transfer
+ * Address: 0xC1F9-0xC26F (119 bytes)
+ *
+ * This function:
+ *   1. Clears 12 PCIe TLP registers (offsets 0x00-0x0B -> addresses 0xB210-0xB21B)
+ *   2. Sets format/type based on G_PCIE_DIRECTION bit 0:
+ *      - bit 0 = 1: Memory write (fmt_type = 0x40)
+ *      - bit 0 = 0: Memory read  (fmt_type = 0x00)
+ *   3. Enables TLP control register
+ *   4. Sets byte enables to 0x0F
+ *   5. Copies 32-bit address from G_PCIE_ADDR (0x05AF) to REG_PCIE_ADDR (0xB218)
+ *   6. Triggers transaction and waits for completion
+ *   7. For reads: polls for completion data
+ *
+ * Returns: 0 on write success, link speed on read success, 0xFE/0xFF on error
+ *
+ * Original disassembly at 0xc1f9:
+ *   c1f9: clr a                   ; loop counter = 0
+ *   c1fa: mov 0x51, a             ; [0x51] = 0
+ *   c1fc: mov a, 0x51             ; loop start
+ *   c1fe: lcall 0x9a53            ; pcie_clear_reg_at_offset(a)
+ *   c201: inc 0x51                ; counter++
+ *   c203: mov a, 0x51
+ *   c205: cjne a, #0x0c, 0xc1fc   ; loop until counter == 12
+ *   c208: mov dptr, #0x05ae       ; read direction
+ *   c20b: movx a, @dptr
+ *   c20c: mov dptr, #0xb210       ; FMT_TYPE register
+ *   c20f: jnb acc.0, 0xc217       ; if read, jump
+ *   c212: mov a, #0x40            ; write fmt_type
+ *   c214: movx @dptr, a
+ *   c215: sjmp 0xc219
+ *   c217: clr a                   ; read fmt_type = 0
+ *   c218: movx @dptr, a
+ *   c219: mov dptr, #0xb213
+ *   c21c: mov a, #0x01
+ *   c21e: movx @dptr, a           ; enable TLP control
+ *   c21f: mov a, #0x0f
+ *   c221: lcall 0x9a30            ; pcie_set_byte_enables
+ *   c224: mov dptr, #0x05af       ; address source
+ *   c227: lcall 0x0d84            ; load 32-bit value
+ *   c22a: mov dptr, #0xb218       ; address target
+ *   c22d: lcall 0x0dc5            ; store 32-bit value
+ *   c230: lcall 0x999d            ; pcie_clear_and_trigger
+ *   c233: lcall 0x99eb            ; poll loop
+ *   c236: jz 0xc233
+ *   c238: lcall 0x9a95            ; pcie_write_status_complete
+ *   c23b: mov dptr, #0x05ae
+ *   c23e: movx a, @dptr
+ *   c23f: jnb acc.0, 0xc245       ; if read, go to poll
+ *   c242: mov r7, #0x00
+ *   c244: ret                     ; write complete
+ *   c245-c26f: poll and read completion handling
+ */
+uint8_t pcie_tlp_init_and_transfer(void)
+{
+    uint8_t i;
+    uint8_t direction;
+    uint8_t status;
+
+    /* Step 1: Clear 12 PCIe TLP registers (offsets 0-11) */
+    for (i = 0; i < 12; i++) {
+        pcie_clear_reg_at_offset(i);
+    }
+
+    /* Step 2: Read direction and set format/type */
+    direction = G_PCIE_DIRECTION;
+
+    if (direction & 0x01) {
+        /* Memory write */
+        REG_PCIE_FMT_TYPE = PCIE_FMT_MEM_WRITE;  /* 0x40 */
+    } else {
+        /* Memory read */
+        REG_PCIE_FMT_TYPE = PCIE_FMT_MEM_READ;   /* 0x00 */
+    }
+
+    /* Step 3: Enable TLP control */
+    REG_PCIE_TLP_CTRL = 0x01;
+
+    /* Step 4: Set byte enables to 0x0F */
+    pcie_set_byte_enables(0x0F);
+
+    /* Step 5: Copy 32-bit address from globals to PCIe registers */
+    REG_PCIE_ADDR_0 = G_PCIE_ADDR_0;
+    REG_PCIE_ADDR_1 = G_PCIE_ADDR_1;
+    REG_PCIE_ADDR_2 = G_PCIE_ADDR_2;
+    REG_PCIE_ADDR_3 = G_PCIE_ADDR_3;
+
+    /* Step 6: Trigger transaction */
+    pcie_clear_and_trigger();
+
+    /* Step 7: Poll for initial completion */
+    do {
+        status = pcie_get_completion_status();
+    } while (status == 0);
+
+    /* Write completion status */
+    pcie_write_status_complete();
+
+    /* Step 8: Check direction again */
+    direction = G_PCIE_DIRECTION;
+    if (direction & 0x01) {
+        /* Write operation - done */
+        return 0;
+    }
+
+    /* Step 9: Read operation - poll for completion data */
+    return pcie_poll_and_read_completion();
+}

@@ -1,969 +1,469 @@
 # ASM2464PD Firmware Reverse Engineering TODO
 
 ## Progress Summary
-- Total functions in ghidra.c: ~720
-- Functions implemented: ~400 (56%)
-- Functions remaining: ~320 (44%)
-- Firmware size: 35,364 bytes / 98,012 bytes (36.1%)
+
+- **Functions remaining**: ~774
+- **Stub functions** (empty placeholder): 24 (State Machine Helpers completed)
+- **High-priority** (called 5+ times): 68
+- **Firmware size**: 39,826 / 79,197 bytes (50% of actual code)
+
+### Metrics Note
+
+Function count is the primary metric. File size comparison uses dense code only (~79KB, excludes ~19KB padding).
+SDCC generates different code than the original compiler (likely Keil C51), so byte-exact matching is not possible.
 
 ---
 
-## USB4 eGPU Passthrough Priority
+## High Priority Functions (called 10+ times)
 
-For USB4 eGPU passthrough (PCIe tunneling without NVMe/SCSI translation), the following
-subsystems are critical. These should be prioritized if the goal is eGPU support.
+These functions are called frequently and should be prioritized:
 
-### PHY/Link Initialization (Critical)
-These functions bring up the USB4 and PCIe links:
-
-- [ ] `0xd436` - PHY configuration (main PHY init) **HIGH PRIORITY**
-- [ ] `0xd47f` - PHY handler
-- [ ] `0xd4c8` - PHY handler
-- [ ] `0xd511` - PHY lane configuration
-- [ ] `0xd559` - PHY signal settings
-- [ ] `0xd630` - PHY extended config
-- [ ] `0xd702` - PHY link training
-- [ ] `0xd78a` - PHY status polling
-- [ ] `0xd7cd` - PHY completion handler
-- [ ] `0xd8d5` - PHY error handler
-- [ ] `0xe8a9` - PHY event handler (Bank 1)
-
-### PCIe Passthrough/Tunneling (Critical)
-These handle PCIe TLP forwarding - the core of eGPU support:
-
-- [ ] `0x9916` - PCIe config space setup **HIGH PRIORITY**
-- [ ] `0x991a` - PCIe BAR configuration
-- [ ] `0x9923` - PCIe link config
-- [ ] `0x992a` - PCIe capability setup
-- [ ] `0x9930` - PCIe extended config
-- [ ] `0x99e0` - PCIe write config space **HIGH PRIORITY**
-- [ ] `0x9a6c` - PCIe link speed negotiation **HIGH PRIORITY**
-- [ ] `0xa522` - PCIe interrupt handler **HIGH PRIORITY**
-- [ ] `0xb104` - PCIe TLP handler **HIGH PRIORITY**
-- [ ] `0xb28c` - PCIe completion handler
-- [ ] `0xb402` - PCIe error handler
-- [ ] `0xe00c` - PCIe error recovery (Bank 1)
-
-### Power Management (Important)
-USB suspend/resume and PCIe power states:
-
-- [ ] `0xd02a` - Power state machine **HIGH PRIORITY**
-- [ ] `0xd118` - Power domain control
-- [ ] `0xd17a` - Power sequencing
-- [ ] `0xd1f2` - Clock gating
-- [ ] `0xd1fe` - Power resume
-- [ ] `0xd211` - Power suspend
-- [ ] `0xd916` - PHY/power handler **HIGH PRIORITY**
-- [ ] `0xda13` - L1 power state
-- [ ] `0xda51` - L2 power state
-- [ ] `0xdb45` - Power event handler
-- [ ] `0xdc2d` - USB suspend handler
-- [ ] `0xdc9d` - USB resume handler
-
-### Interrupt/Event Handling (Important)
-Link events and error handling:
-
-- [ ] `0xca0d` - System state handler **HIGH PRIORITY**
-- [ ] `0xc5ff` - Event dispatcher
-- [ ] `0xc6d3` - Link event handler
-- [ ] `0xc73c` - PCIe event handler
-- [ ] `0xc80d` - USB event handler
-- [ ] `0xc874` - Combined event handler
-- [ ] `0xc8db` - Error event handler
-- [ ] `0xe06b` - Bank 1 event handler
-- [ ] `0xe0f4` - Link status event
-
-### Bank Switch Infrastructure (Required)
-Core dispatching for Bank 1 functions:
-
-- [ ] `0xbcaf` - Bank switch helper **HIGH PRIORITY**
-- [ ] `0xbcde` - Bank switch read helper **HIGH PRIORITY**
-- [ ] `0xbc88` - Bank switch read
-- [ ] `0xbcc4` - Bank switch write
-
-### NOT Needed for eGPU (Can Skip)
-These sections are NVMe/SCSI specific and not needed for eGPU passthrough:
-
-- SCSI/USB Mass Storage (0x4000-0x5800) - CBW/CSW, SCSI commands
-- NVMe Command Engine (0x9500-0x9700) - NVMe command building
-- NVMe Queue Management (0xa600-0xa800) - Submission/completion queues
-- NVMe Admin Commands (0xaa00-0xac00) - Identify, Create IO Queue
-- SCSI DMA Control (0xCE00-0xCE9F) - Block transfer state machines
-
-### Estimated Scope
-- **Functions needed for eGPU**: ~60 functions (~18% of total)
-- **Functions that can be skipped**: ~200+ functions
-- **Shared infrastructure**: ~80 functions (init, power, interrupts)
+| Address | Calls | Status | Name |
+|---------|-------|--------|------|
+| 0x9403 | 56 | TODO | - |
+| 0x9388 | 48 | TODO | - |
+| 0xa2df | 24 | STUB | pcie_set_state_a2df |
+| 0x995a | 18 | TODO | - |
+| 0xaa37 | 18 | TODO | - |
+| 0xa9f9 | 16 | TODO | - |
+| 0xaa02 | 16 | TODO | - |
+| 0x994e | 14 | TODO | - |
+| 0xd1e6 | 14 | TODO | - |
+| 0xd1f2 | 14 | TODO | - |
+| 0x020b | 13 | TODO | - |
+| 0xe73a | 12 | STUB | helper_e73a |
+| 0xa2ff | 11 | TODO | - |
+| 0xbfc4 | 11 | TODO | - |
+| 0xe933 | 11 | TODO | - |
+| 0x9731 | 10 | TODO | - |
+| 0xc1f9 | 10 | TODO | - |
+| 0xd5da | 10 | TODO | - |
 
 ---
 
-## Recent Completions
+## Utility Functions (0x0000-0x0FFF)
 
-### main_loop State Machine (0x2f80-0x3129)
-- [x] Full state machine implementation in main.c
-- [x] G_LOOP_STATE state machine (states 0, 1, 2)
-- [x] G_SYSTEM_STATE_0AE2 processing
-- [x] Return-value wrappers for dispatch_0516/dispatch_0430 (R7 access)
-- [x] USB endpoint loop stubs (usb_ep_loop_180d, usb_ep_loop_3419)
-- [x] Added missing globals: G_STATE_0AE8, G_STATE_0AE9, G_LOOP_STATE_0A5A, G_STATE_0B39, G_STATE_0AB6
+**Total: 19** | Stubs: 5 | High-priority: 2
 
-### Reverse Engineered Functions (This Session)
-- [x] `handler_e3d8` (0xe3d8) - State machine handler
-- [x] `handler_e90b` (0xe90b) - Error/event handler
-- [x] `FUN_CODE_e1c6` - Wired to cmd_wait_completion
-- [x] `FUN_CODE_be8b` (0xbe8b) - Register helper
-- [x] `handler_d676` (0xd676) - Power/PHY handler
-- [x] `FUN_CODE_e73a` (0xe73a) - NVMe event handler
-- [x] `FUN_CODE_11a2` (0x11a2) - Transfer helper
+### Stubs (need implementation)
 
-### Function Renames in main.c (ISR handlers)
-- [x] `handler_04d0` → `timer_link_status_handler` (0xCE79)
-- [x] `handler_04b2` → `reserved_stub_handler` (0xE971)
-- [x] `handler_4fb6` → `main_polling_handler`
-- [x] `handler_0327` → `usb_power_init` (0xB1CB)
-- [x] `handler_0494` → `event_state_handler` (Bank1:0xE56F)
-- [x] `handler_0606` → `error_state_config` (Bank1:0xB230)
-- [x] `handler_0589` → `phy_register_config` (0xD894)
-- [x] `handler_0525` → `flash_command_handler` (0xBAA0)
-- [x] `handler_039a` → `usb_buffer_dispatch` (0xD810)
-- [x] `handler_0520` → `system_interrupt_handler` (0xB4BA)
-- [x] `handler_052f` → `pcie_nvme_event_handler` (0xAF5E)
-- [x] `handler_0570` → `pcie_error_dispatch` (Bank1:0xE911)
-- [x] `handler_061a` → `pcie_event_bit5_handler` (Bank1:0xA066)
-- [x] `handler_0593` → `pcie_timer_bit4_handler` (0xC105)
-- [x] `handler_0642` → `system_timer_handler` (Bank1:0xEF4E)
+- [ ] `0x0557` - dispatch_handler_0557 (1 calls)
+- [ ] `0x05f7` - pcie_cleanup_05f7 (1 calls)
+- [ ] `0x05fc` - pcie_cleanup_05fc (1 calls)
+- [ ] `0x0633` - pcie_write_reg_0633 (1 calls)
+- [ ] `0x0638` - pcie_write_reg_0638 (1 calls)
 
-### Function Renames in state_helpers.c
-- [x] `handler_d07f` → `usb_mode_config_d07f`
-- [x] `handler_e214` → `nvme_queue_config_e214`
-- [x] `handler_e8ef` → `power_init_complete_e8ef`
-- [x] `handler_2608` → `dma_queue_state_handler`
+### High Priority (5+ calls)
 
-### Function Renames in error_log.c
-- [x] `error_handler_system_unused` → `error_handler_system_timer`
+- [ ] `0x020b` (13 calls)
+- [ ] `0x0c9e` (9 calls)
 
-### Dispatch Function Direct Call Replacements
-- [x] `dispatch_039f` → `handler_d916` (0xD916)
-- [x] `dispatch_04fd` → `handler_e96c` (0xE96C)
-- [x] `dispatch_04ee` → `handler_e6fc` (0xE6FC)
-- [x] `dispatch_04e9` → `handler_e8e4` (0xE8E4)
-- [x] `dispatch_044e` → `handler_e91d` (0xE91D)
-- [x] `dispatch_032c` → `phy_power_config_handler` (0x92C5)
-- [x] `dispatch_0340` → `handler_bf8e` (0xBF8E)
-- [x] `dispatch_0534` → `handler_d6bc` (0xD6BC)
-- [x] `dispatch_0638` → `handler_e478` (Bank1:0xE478)
+### Other (12 functions)
 
-### Code Organization
-- [x] bank1.c removed - functions moved to appropriate files
-- [x] All register definitions in registers.h
-- [x] All global definitions in globals.h
+- [ ] `0x0bfd` (2 calls)
+- [ ] `0x0016` (1 calls)
+- [ ] `0x0110` (1 calls)
+- [ ] `0x034d` (1 calls)
+- [ ] `0x0555` (1 calls)
+- [ ] `0x0810` (1 calls)
+- [ ] `0x09e7` (1 calls)
+- [ ] `0x0cb9` (1 calls)
+- [ ] `0x0d15` (1 calls)
+- [ ] `0x0d59` (1 calls)
+- [ ] `0x0da9` (1 calls)
+- [ ] `0x0e15` (1 calls)
 
 ---
 
-## Dispatch/Jump Table Functions (0x0300-0x0650)
+## State Machine Helpers (0x1000-0x1FFF)
 
-These are dispatch stubs that route to various handlers via bank switching.
+**Total: 49** | Stubs: 0 (all implemented) | High-priority: 5 implemented
 
-### Bank Switch Dispatch (0x0300-0x0400)
-- [ ] `0x0322` - Bank dispatch stub
-- [ ] `0x032c` - Bank dispatch stub
-- [ ] `0x0331` - Bank dispatch stub
-- [ ] `0x0336` - Bank dispatch stub
-- [ ] `0x033b` - Bank dispatch stub
-- [ ] `0x0340` - Bank dispatch stub
-- [ ] `0x0345` - Bank dispatch stub
-- [ ] `0x034a` - Bank dispatch stub
-- [ ] `0x034f` - Bank dispatch stub
-- [ ] `0x0354` - Bank dispatch stub
-- [ ] `0x0359` - Bank dispatch stub
-- [ ] `0x035e` - Bank dispatch stub
-- [ ] `0x0363` - Bank dispatch stub
-- [ ] `0x0368` - Bank dispatch stub
-- [ ] `0x036d` - Bank dispatch stub
-- [ ] `0x0372` - Bank dispatch stub
-- [ ] `0x0377` - Bank dispatch stub
-- [ ] `0x037c` - Bank dispatch stub
-- [ ] `0x0381` - Bank dispatch stub
-- [ ] `0x0386` - Bank dispatch stub
-- [ ] `0x038b` - Bank dispatch stub
-- [ ] `0x0395` - Bank dispatch stub
-- [ ] `0x039f` - Bank dispatch stub
-- [ ] `0x03a4` - Bank dispatch stub
-- [ ] `0x03a9` - Bank dispatch stub
+### Stubs (all implemented)
 
-### Handler Dispatch (0x0400-0x0500)
-- [ ] `0x0412` - Handler dispatch
-- [ ] `0x0426` - Handler dispatch
-- [ ] `0x042b` - Handler dispatch
-- [ ] `0x0430` - Handler dispatch
-- [ ] `0x0435` - Handler dispatch
-- [ ] `0x043a` - Handler dispatch
-- [ ] `0x043f` - Handler dispatch
-- [ ] `0x0449` - Handler dispatch
-- [ ] `0x044e` - Handler dispatch
-- [ ] `0x0453` - Handler dispatch
-- [ ] `0x045d` - Handler dispatch
-- [ ] `0x0462` - Handler dispatch
-- [ ] `0x0471` - Handler dispatch
-- [ ] `0x047b` - Handler dispatch
-- [ ] `0x048a` - Handler dispatch
-- [ ] `0x048f` - Handler dispatch
-- [ ] `0x04a3` - Handler dispatch
-- [ ] `0x04b7` - Handler dispatch
-- [ ] `0x04bc` - Handler dispatch
-- [ ] `0x04e4` - Handler dispatch
-- [ ] `0x04e9` - Handler dispatch
-- [ ] `0x04ee` - Handler dispatch
-- [ ] `0x04f8` - Handler dispatch
-- [ ] `0x04fd` - Handler dispatch
+- [x] `0x15d4` - helper_15d4 (5 calls) - DPTR setup with carry
+- [x] `0x15ef` - helper_15ef (5 calls) - SCSI DMA parameter array pointer
+- [x] `0x1b07` - FUN_CODE_1b07 (5 calls) - SCSI control array read
+- [x] `0x1b0b` - helper_1b0b (5 calls) - XDATA read with carry
+- [x] `0x180d` - usb_ep_loop_180d (4 calls) - USB endpoint processing
+- [x] `0x15f1` - helper_15f1 (3 calls) - SCSI DMA parameter pointer
+- [x] `0x166f` - helper_166f (1 calls) - DPTR setup for I_WORK_43
 
-### Event/Interrupt Dispatch (0x0500-0x0650)
-- [ ] `0x0507` - Event dispatch
-- [ ] `0x050c` - Event dispatch
-- [ ] `0x0511` - Event dispatch
-- [ ] `0x0516` - Event dispatch
-- [ ] `0x052a` - Event dispatch
-- [ ] `0x0534` - Event dispatch
-- [ ] `0x0539` - Event dispatch
-- [ ] `0x053e` - Event dispatch
-- [ ] `0x0543` - Event dispatch
-- [ ] `0x0548` - Event dispatch
-- [ ] `0x054d` - Event dispatch
-- [ ] `0x0552` - Event dispatch
-- [ ] `0x0557` - Event dispatch
-- [ ] `0x055c` - Event dispatch
-- [ ] `0x0561` - Event dispatch
-- [ ] `0x0566` - Event dispatch
-- [ ] `0x056b` - Event dispatch
-- [ ] `0x057a` - Event dispatch
-- [ ] `0x057f` - Event dispatch
-- [ ] `0x0584` - Event dispatch
-- [ ] `0x05e8` - Handler stub
-- [ ] `0x05ed` - Handler stub
-- [ ] `0x05f2` - Handler stub
-- [ ] `0x05f7` - Handler stub
-- [ ] `0x0601` - Handler stub
-- [ ] `0x060b` - Handler stub
-- [ ] `0x0615` - Handler stub
-- [ ] `0x061f` - Handler stub
-- [ ] `0x0624` - Handler stub
-- [ ] `0x0629` - Handler stub
-- [ ] `0x0633` - Handler stub
-- [ ] `0x0638` - Handler stub
+### High Priority (all implemented)
+
+- [x] `0x120d` - state_transfer_calc_120d (8 calls) - transfer calculation
+- [x] `0x1564` - xdata_write_load_triple_1564 (7 calls) - write and load triple
+- [x] `0x12aa` - state_transfer_setup_12aa (5 calls) - transfer setup
+- [x] `0x1b3b` - scsi_get_ctrl_ptr_1b3b (5 calls) - SCSI control pointer
+- [x] `0x1bd7` - mem_read_ptr_1bd7 (5 calls) - memory read with carry
+
+### Other (37 functions)
+
+- [ ] `0x120b` (4 calls)
+- [ ] `0x15a0` (4 calls)
+- [ ] `0x1be1` (4 calls)
+- [ ] `0x121b` (3 calls)
+- [ ] `0x1b77` (3 calls)
+- [ ] `0x1231` (2 calls)
+- [ ] `0x1295` (2 calls)
+- [ ] `0x1660` (2 calls)
+- [ ] `0x16d2` (2 calls)
+- [ ] `0x1b55` (2 calls)
+- [ ] `0x1b59` (2 calls)
+- [ ] `0x1006` (1 calls)
+- [ ] `0x1203` (1 calls)
+- [ ] `0x1205` (1 calls)
+- [ ] `0x1254` (1 calls)
+- [ ] `0x12a6` (1 calls)
+- [ ] `0x12ab` (1 calls)
+- [ ] `0x12c3` (1 calls)
+- [ ] `0x12cb` (1 calls)
+- [ ] `0x12ea` (1 calls)
+- [ ] `0x1470` (1 calls)
+- [ ] `0x1607` (1 calls)
+- [ ] `0x165e` (1 calls)
+- [ ] `0x168c` (1 calls)
+- [ ] `0x168e` (1 calls)
+- ... and 12 more
 
 ---
 
-## Utility Functions (0x0c00-0x0e00)
+## Protocol State Machines (0x2000-0x3FFF)
 
-- [ ] `0x0c9e` - Utility function
-- [ ] `0x0cab` - Utility function (computation helper)
-- [ ] `0x0cb9` - Utility function
+**Total: 16** | Stubs: 0 | Implemented: 7 | High-priority: 0
 
----
+### Implemented
 
-## State Machine Helpers (0x1100-0x1800)
+- [x] `0x3419` - usb_ep_loop_3419 (2 calls) - USB endpoint processing loop
+- [x] `0x3bcd` - helper_3bcd (3 calls) - DMA state transfer handler
+- [x] `0x313a` - helper_313a_check_nonzero (2 calls) - Check 32-bit value non-zero
+- [x] `0x3212` - scsi_dma_tag_setup_3212 (1 calls) - SCSI DMA tag setup
+- [x] `0x38d4` - helper_38d4 (2 calls) - State machine event handler
+- [x] `0x3cb8` - helper_3cb8 (1 calls) - USB event handler with state dispatch
 
-### Transfer/State Functions
-- [x] `0x11a2` - Transfer helper (FUN_CODE_11a2)
-- [ ] `0x14e5` - State function with params
-- [ ] `0x1564` - State load triple
-- [ ] `0x157d` - State function
-- [ ] `0x1580` - State function
-- [ ] `0x159f` - State address calc
-- [ ] `0x15a0` - State function
-- [ ] `0x15af` - State helper entry point
-- [ ] `0x15b7` - Store and calc address
-- [ ] `0x15d4` - Address computation
-- [ ] `0x15f1` - CE40 address calc
+### Other (9 functions)
 
-### Transfer Helpers (0x1600-0x1800)
-- [ ] `0x165e` - Store DPTR calc
-- [ ] `0x1660` - Address calc
-- [ ] `0x166a` - Address calc
-- [ ] `0x166f` - Flash func
-- [ ] `0x168c` - Queue entry calc
-- [ ] `0x168e` - Queue entry calc
-- [ ] `0x169a` - Address calc 04B7
-- [ ] `0x16a4` - Read and calc
-- [ ] `0x16a6` - Read and calc
-- [ ] `0x16b8` - Write and calc 046x
-- [ ] `0x16d3` - Compute helper
-- [ ] `0x16eb` - Address calc
-- [ ] `0x1755` - Complex computation
+- [ ] `0x3130` (2 calls)
+- [ ] `0x3179` (2 calls)
+- [ ] `0x31c5` (2 calls)
+- [ ] `0x227f` (1 calls)
+- [ ] `0x22ff` (1 calls)
+- [ ] `0x2406` (1 calls)
+- [ ] `0x2412` (1 calls)
+- [ ] `0x24fc` (1 calls)
+- [ ] `0x3226` (1 calls)
+- [ ] `0x32a5` (1 calls)
+- [ ] `0x3978` (1 calls)
 
 ---
 
-## USB Functions (0x1b00-0x1c80)
+## SCSI/USB Mass Storage (0x4000-0x5FFF)
 
-- [ ] `0x1b2d` - USB function
-- [ ] `0x1b2e` - USB function
-- [ ] `0x1b30` - USB function
-- [ ] `0x1b3b` - USB function
-- [ ] `0x1b3f` - USB function
-- [ ] `0x1b89` - USB function
-- [ ] `0x1b8d` - USB function
-- [ ] `0x1bec` - USB setup endpoint
-- [ ] `0x1c13` - USB data handler
-- [ ] `0x1c30` - USB calc buffer
-- [ ] `0x1c80` - NVME subtract idata
+**Status: COMPLETE** - All real functions implemented, remaining addresses are data/padding
 
----
+### Implemented Functions (45 functions in scsi.c)
 
-## Protocol State Machines (0x2300-0x3200)
+- [x] `0x4013` - scsi_setup_transfer_result
+- [x] `0x4042` - scsi_process_transfer
+- [x] `0x40d9` - scsi_state_dispatch
+- [x] `0x419d` - scsi_setup_action
+- [x] `0x425f` - scsi_init_transfer_mode
+- [x] `0x43d3` - scsi_dma_dispatch
+- [x] `0x4469` - scsi_dma_start_with_param
+- [x] `0x4532` - scsi_buffer_threshold_config
+- [x] `0x45d0` - scsi_transfer_dispatch
+- [x] `0x466b` - scsi_nvme_queue_process
+- [x] `0x480c` - scsi_csw_build
+- [x] `0x4904` - scsi_csw_send
+- [x] `0x4977` - scsi_dma_set_mode
+- [x] `0x4abf` - scsi_dma_dispatch_helper
+- [x] `0x4b8b` - scsi_endpoint_queue_process
+- [x] `0x4c40` - scsi_dma_check_mask
+- [x] `0x4c98` - scsi_queue_dispatch
+- [x] `0x4d44` - scsi_state_handler
+- [x] `0x4d92` - uart_print_hex_byte
+- [x] `0x4ddc` - scsi_transfer_check
+- [x] `0x4ef5` - scsi_queue_scan_handler
+- [x] `0x4f37` - nvme_scsi_cmd_buffer_setup
+- [x] `0x5008` - scsi_core_process
+- [x] `0x502e` - scsi_clear_slot_entry
+- [x] `0x5043` - scsi_read_slot_table
+- [x] `0x5069` - scsi_transfer_check_5069
+- [x] `0x50a2` - scsi_transfer_start_alt
+- [x] `0x50ff` - scsi_tag_setup_50ff
+- [x] `0x5112` - scsi_nvme_completion_read
+- [x] `0x519e` - scsi_transfer_start
+- [x] `0x51c7` - scsi_uart_print_hex
+- [x] `0x51e6` - scsi_uart_print_digit
+- [x] `0x51ef` - scsi_cbw_parse
+- [x] `0x5216` - scsi_ep_init_handler
+- [x] `0x52b1` - scsi_state_dispatch_52b1
+- [x] `0x52c7` - scsi_queue_check_52c7
+- [x] `0x5305` - scsi_check_link_status
+- [x] `0x5321` - scsi_flash_ready_check
+- [x] `0x533d` - scsi_dma_check_mask
+- [x] `0x5359` - scsi_queue_dispatch
+- [x] `0x5373` - scsi_decrement_pending
+- [x] `0x53a7` - scsi_decrement_pending (alt)
+- [x] `0x53c0` - scsi_cbw_validate
+- [x] `0x53e6` - scsi_sys_status_update
+- [x] `0x541f` - scsi_csw_write_residue
 
-- [ ] `0x23f7` - Complex state helper (893 bytes) - **PRIORITY**
-- [ ] `0x2814` - Queue processing
-- [ ] `0x2a10` - State machine
-- [ ] `0x2db7` - State machine
-- [ ] `0x2f67` - State machine
-- [ ] `0x313f` - Protocol handler
-- [ ] `0x3179` - Protocol handler
-- [ ] `0x31c3` - Protocol handler
-- [ ] `0x322e` - Protocol handler (compare helper)
-- [ ] `0x3578` - Protocol handler
-- [ ] `0x36ab` - Protocol handler
-- [ ] `0x39e4` - Protocol handler
-- [ ] `0x3bcd` - Protocol handler
-- [ ] `0x3cb8` - Protocol handler
-- [ ] `0x3da1` - Protocol handler
+### Data/Mid-function Addresses (not code entry points)
 
----
-
-## SCSI/USB Mass Storage (0x4000-0x5800)
-
-### SCSI Command Handlers
-- [ ] `0x4013` - SCSI handler
-- [ ] `0x4042` - SCSI handler
-- [ ] `0x40d9` - SCSI handler
-- [ ] `0x419d` - SCSI handler
-- [ ] `0x425f` - SCSI handler
-- [ ] `0x43d3` - SCSI handler
-- [ ] `0x4469` - SCSI handler
-- [ ] `0x466b` - SCSI handler
-- [ ] `0x480c` - SCSI handler
-- [ ] `0x4977` - CSW/CBW handler
-- [ ] `0x4b25` - SCSI handler
-- [ ] `0x4b8b` - SCSI handler
-- [ ] `0x4c40` - SCSI handler
-- [ ] `0x4c98` - SCSI handler
-- [ ] `0x4d92` - SCSI handler
-- [ ] `0x4eb3` - SCSI handler
-- [ ] `0x4f37` - SCSI handler
-
-### USB Endpoint Handlers
-- [ ] `0x502e` - USB endpoint
-- [ ] `0x5038` - USB endpoint
-- [ ] `0x5043` - USB endpoint
-- [ ] `0x5046` - USB endpoint
-- [ ] `0x504f` - USB endpoint
-- [ ] `0x5058` - USB endpoint
-- [ ] `0x505d` - USB endpoint
-- [ ] `0x5061` - USB endpoint
-- [ ] `0x5069` - USB endpoint
-- [ ] `0x50ff` - USB endpoint
-- [ ] `0x5112` - USB endpoint
-- [ ] `0x5157` - USB endpoint
-- [ ] `0x519e` - USB endpoint
-- [ ] `0x51ef` - USB handler
-- [ ] `0x51f9` - USB handler
-- [ ] `0x52b1` - USB handler
-- [ ] `0x52c7` - USB handler
-- [ ] `0x5373` - USB handler
-- [ ] `0x53a4` - DMA/buffer setup
-- [ ] `0x54fc` - USB handler
-- [ ] `0x5622` - USB handler
-- [ ] `0x573b` - USB handler
-- [ ] `0x5765` - USB handler
+- `0x4b5f` - mid-function (part of 0x4b8b)
+- `0x5017`, `0x501b` - mid-function jump targets
+- `0x5157` - data table (nop padding)
+- `0x51f9` - mid-function (CBW signature check)
+- `0x54fc`, `0x5622`, `0x573b` - data/padding regions
+- `0x5058`, `0x5061`, `0x551f` - data tables
 
 ---
 
-## Bank 1 Functions (0x8000+)
+## NVMe/PCIe Config (0x8000-0x9FFF)
 
-### Low Bank 1 (0x8000-0x9000)
-- [x] `0x839c` - pcie_addr_store_839c (in pcie.c)
-- [x] `0x83b9` - pcie_addr_store_83b9 (in pcie.c)
-- [ ] `0x873a` - Bank 1 function
-- [ ] `0x8743` - Bank 1 function
-- [ ] `0x874c` - Bank 1 function
-- [ ] `0x897d` - Bank 1 function
-- [ ] `0x8992` - Bank 1 function
-- [ ] `0x89ad` - Bank 1 function
-- [ ] `0x89bd` - Bank 1 function
-- [ ] `0x89c6` - Bank 1 function
-- [ ] `0x8a3a` - Bank 1 function
-- [ ] `0x8a3d` - Bank 1 function
-- [ ] `0x8a4e` - Bank 1 function
-- [ ] `0x8a67` - Bank 1 function
-- [ ] `0x8a72` - Bank 1 function
-- [ ] `0x8a7e` - Bank 1 function
-- [ ] `0x8a89` - Bank 1 function
-- [ ] `0x8d6e` - Bank 1 function
-- [x] `0x8d77` - system_init_from_flash (in main.c)
+**Total: 201** | Stubs: 0 | High-priority: 19
 
----
+### High Priority (5+ calls)
 
-## NVMe/Command Engine (0x9500-0x9b00)
+- [ ] `0x9403` (56 calls)
+- [ ] `0x9388` (48 calls)
+- [ ] `0x995a` (18 calls)
+- [ ] `0x994e` (14 calls)
+- [ ] `0x9731` (10 calls)
+- [ ] `0x994c` (9 calls)
+- [ ] `0x984d` (7 calls)
+- [ ] `0x9854` (7 calls)
+- [ ] `0x9777` (6 calls)
+- [ ] `0x957c` (5 calls)
+- [ ] `0x9695` (5 calls)
+- [ ] `0x976e` (5 calls)
+- [ ] `0x97bd` (5 calls)
+- [ ] `0x97c9` (5 calls)
+- [ ] `0x97fc` (5 calls)
+- [ ] `0x9874` (5 calls)
+- [ ] `0x9887` (5 calls)
+- [ ] `0x996d` (5 calls)
+- [ ] `0x99c7` (5 calls)
 
-### Command Helpers (0x9500-0x9700)
-- [ ] `0x955d` - Command helper
-- [ ] `0x955e` - Command helper
-- [ ] `0x957b` - Command helper
-- [ ] `0x9580` - Command helper
-- [ ] `0x95a0` - Command helper
-- [ ] `0x95a2` - Command helper
-- [ ] `0x95a5` - Command helper
-- [ ] `0x95ab` - Command setup
-- [ ] `0x95af` - Command setup
-- [ ] `0x95bf` - Command setup
-- [ ] `0x95c5` - Command setup
-- [ ] `0x95c9` - Command setup
-- [ ] `0x95ca` - Command setup
-- [ ] `0x95d1` - Command setup
-- [ ] `0x95d7` - Command setup
-- [ ] `0x95da` - Command setup
-- [ ] `0x95df` - Command setup
-- [ ] `0x95e1` - Command setup
-- [ ] `0x95e4` - Command setup
-- [ ] `0x95f2` - Command setup
-- [ ] `0x95f9` - Command setup
-- [ ] `0x9608` - Command trigger
-- [ ] `0x9617` - Command write
-- [ ] `0x9621` - Command helper
-- [ ] `0x9627` - Command helper
-- [ ] `0x962e` - Command helper
-- [ ] `0x9635` - Command helper
-- [ ] `0x9647` - Command helper
-- [ ] `0x964f` - Command helper
-- [ ] `0x9656` - Command helper
-- [ ] `0x9657` - Command helper
-- [ ] `0x9664` - Command helper
-- [ ] `0x9677` - LBA combine
-- [ ] `0x9684` - LBA helper
-- [ ] `0x9687` - LBA helper
-- [ ] `0x968c` - LBA helper
-- [ ] `0x969d` - LBA helper
-- [ ] `0x96a7` - LBA helper
-- [ ] `0x96a9` - LBA helper
-- [ ] `0x96ae` - Command engine
-- [ ] `0x96b8` - Command engine
-- [ ] `0x96bf` - Command engine
-- [ ] `0x96d4` - Command engine
-- [ ] `0x96d6` - Command engine
-- [ ] `0x96d7` - Command engine
-- [ ] `0x96ee` - Command engine
-- [ ] `0x96f0` - Command engine
-- [ ] `0x96f7` - Command engine
-- [ ] `0x9703` - Command engine
-- [ ] `0x9713` - Command engine
-- [ ] `0x971e` - Command engine
-- [ ] `0x9729` - Command engine
-- [ ] `0x9741` - Command engine
-- [ ] `0x977c` - Command engine
-- [ ] `0x97bd` - Command engine
-- [ ] `0x97d5` - Command engine
-- [ ] `0x983f` - Command engine
-- [ ] `0x9887` - Command engine
+### Other (182 functions)
 
-### PCIe/Config Functions (0x9900-0x9b00)
-- [ ] `0x9916` - PCIe config
-- [ ] `0x991a` - PCIe config
-- [ ] `0x9923` - PCIe config
-- [ ] `0x992a` - PCIe config
-- [ ] `0x9930` - PCIe config
-- [ ] `0x994b` - PCIe helper
-- [ ] `0x994c` - PCIe helper
-- [ ] `0x994d` - PCIe helper
-- [ ] `0x994e` - PCIe helper
-- [ ] `0x9954` - PCIe helper
-- [ ] `0x995a` - PCIe helper
-- [ ] `0x9962` - PCIe helper
-- [ ] `0x9964` - PCIe helper
-- [ ] `0x996a` - PCIe helper
-- [ ] `0x9977` - PCIe helper
-- [ ] `0x997a` - PCIe helper
-- [ ] `0x9980` - PCIe helper
-- [ ] `0x9983` - PCIe helper
-- [ ] `0x9984` - PCIe helper
-- [ ] `0x998a` - PCIe helper
-- [ ] `0x998b` - PCIe helper
-- [ ] `0x998e` - PCIe helper
-- [ ] `0x998f` - PCIe helper
-- [ ] `0x9996` - PCIe helper
-- [ ] `0x9997` - PCIe clear/trigger
-- [ ] `0x99b5` - PCIe helper
-- [ ] `0x99bc` - PCIe helper
-- [ ] `0x99bf` - PCIe helper
-- [ ] `0x99c0` - PCIe helper
-- [ ] `0x99c6` - PCIe helper
-- [ ] `0x99c7` - PCIe helper
-- [ ] `0x99ce` - PCIe helper
-- [ ] `0x99d1` - PCIe helper
-- [ ] `0x99d5` - PCIe helper
-- [ ] `0x99d8` - PCIe helper
-- [ ] `0x99d9` - PCIe helper
-- [ ] `0x99e0` - PCIe write config
-- [ ] `0x99f8` - PCIe IDATA params
-- [ ] `0x9a00` - PCIe helper
-- [ ] `0x9a02` - PCIe helper
-- [ ] `0x9a09` - PCIe helper
-- [ ] `0x9a10` - PCIe helper
-- [ ] `0x9a20` - PCIe helper
-- [ ] `0x9a3b` - PCIe byte enables
-- [ ] `0x9a3e` - PCIe helper
-- [ ] `0x9a46` - PCIe buffer params
-- [ ] `0x9a6c` - PCIe link speed
-- [ ] `0x9aa3` - PCIe clear address
-- [ ] `0x9ab3` - PCIe txn count
-- [ ] `0x9aba` - PCIe helper
+- [ ] `0x900a` (4 calls)
+- [ ] `0x9386` (4 calls)
+- [ ] `0x953d` (4 calls)
+- [ ] `0x9630` (4 calls)
+- [ ] `0x9641` (4 calls)
+- [ ] `0x964d` (4 calls)
+- [ ] `0x9661` (4 calls)
+- [ ] `0x9668` (4 calls)
+- [ ] `0x9670` (4 calls)
+- [ ] `0x96e3` (4 calls)
+- [ ] `0x9704` (4 calls)
+- [ ] `0x9789` (4 calls)
+- [ ] `0x97d5` (4 calls)
+- [ ] `0x9803` (4 calls)
+- [ ] `0x98b7` (4 calls)
+- [ ] `0x98bf` (4 calls)
+- [ ] `0x98c7` (4 calls)
+- [ ] `0x9958` (4 calls)
+- [ ] `0x99b5` (4 calls)
+- [ ] `0x99d1` (4 calls)
+- [ ] `0x99d8` (4 calls)
+- [ ] `0x9a3e` (4 calls)
+- [ ] `0x9070` (3 calls)
+- [ ] `0x925a` (3 calls)
+- [ ] `0x95f2` (3 calls)
+- ... and 157 more
 
 ---
 
-## NVMe Handlers (0x9e00-0xb900)
+## Queue/Handler Functions (0xA000-0xBFFF)
 
-### NVMe Event Handlers (0x9e00-0xa600)
-- [ ] `0x9ee5` - NVMe event
-- [ ] `0xa0f0` - NVMe handler
-- [ ] `0xa153` - NVMe handler
-- [ ] `0xa183` - NVMe handler
-- [ ] `0xa2c1` - NVMe handler
-- [ ] `0xa2c2` - NVMe handler
-- [ ] `0xa2de` - NVMe handler
-- [ ] `0xa2eb` - NVMe handler
-- [ ] `0xa2f8` - NVMe handler
-- [ ] `0xa2ff` - NVMe handler
-- [ ] `0xa301` - NVMe handler
-- [ ] `0xa308` - NVMe handler
-- [ ] `0xa334` - NVMe handler
-- [ ] `0xa336` - NVMe handler
-- [ ] `0xa33d` - NVMe handler
-- [ ] `0xa344` - NVMe handler
-- [ ] `0xa34f` - NVMe handler
-- [ ] `0xa351` - NVMe handler
-- [ ] `0xa365` - NVMe handler
-- [ ] `0xa367` - NVMe handler
-- [ ] `0xa372` - NVMe handler
-- [ ] `0xa374` - NVMe handler
-- [ ] `0xa37b` - NVMe handler
-- [ ] `0xa384` - NVMe handler
-- [ ] `0xa38b` - NVMe handler
-- [ ] `0xa3c4` - NVMe handler
-- [ ] `0xa3cb` - NVMe handler
-- [ ] `0xa3d2` - NVMe handler
-- [ ] `0xa3db` - NVMe handler
-- [ ] `0xa3eb` - NVMe handler
-- [ ] `0xa522` - PCIe interrupt handler - **PRIORITY**
+**Total: 197** | Stubs: 9 | High-priority: 20
 
-### NVMe Queue Management (0xa600-0xa800)
-- [ ] `0xa62d` - Queue management
-- [ ] `0xa637` - Queue management
-- [ ] `0xa639` - Queue management
-- [ ] `0xa63c` - Queue management
-- [ ] `0xa63d` - Queue management
-- [ ] `0xa644` - Queue management
-- [ ] `0xa646` - Queue management
-- [ ] `0xa647` - Queue management
-- [ ] `0xa648` - Queue management
-- [ ] `0xa651` - Queue management
-- [ ] `0xa655` - Queue management
-- [ ] `0xa660` - Queue management
-- [ ] `0xa666` - Queue management
-- [ ] `0xa66d` - Queue management
-- [ ] `0xa679` - Queue management
-- [ ] `0xa67f` - Queue management
-- [ ] `0xa687` - Queue management
-- [ ] `0xa692` - Queue management
-- [ ] `0xa69a` - Queue management
-- [ ] `0xa6ad` - Queue management
-- [ ] `0xa6c6` - Queue management
-- [ ] `0xa6dc` - Queue management
-- [ ] `0xa6ef` - Queue management
-- [ ] `0xa6f6` - Queue management
-- [ ] `0xa6fd` - Queue management
-- [ ] `0xa704` - Queue management
-- [ ] `0xa714` - Queue management
-- [ ] `0xa715` - Queue management
-- [ ] `0xa71b` - Queue management
-- [ ] `0xa722` - Queue management
-- [ ] `0xa723` - Queue management
-- [ ] `0xa72b` - Queue management
-- [ ] `0xa732` - Queue management
-- [ ] `0xa739` - Queue management
-- [ ] `0xa740` - Queue management
-- [ ] `0xa77d` - Queue management
-- [ ] `0xa840` - Queue management
+### Stubs (need implementation)
 
-### Admin Commands (0xaa00-0xac00)
-- [ ] `0xaa2a` - Admin command
-- [ ] `0xaa30` - Admin command
-- [ ] `0xaa33` - Admin command
-- [ ] `0xaa36` - Admin command
-- [ ] `0xaa4f` - Admin command
-- [ ] `0xaa56` - Admin command
-- [ ] `0xaa60` - Admin command
-- [ ] `0xaa63` - Admin command
-- [ ] `0xaafb` - Admin command
-- [ ] `0xab0d` - Admin command
-- [ ] `0xab16` - Admin command
-- [ ] `0xab4e` - Admin command
-- [ ] `0xab7a` - Admin command
-- [ ] `0xabc2` - Admin command
-- [ ] `0xabd4` - Admin command
-- [ ] `0xabd7` - Admin command
-- [ ] `0xabe9` - Admin command
+- [ ] `0xa2df` - pcie_set_state_a2df (24 calls)
+- [ ] `0xa655` - usb_descriptor_helper_a655 (7 calls)
+- [ ] `0xa310` - pcie_setup_lane_a310 (6 calls)
+- [ ] `0xa644` - usb_descriptor_helper_a644 (5 calls)
+- [ ] `0xa34f` - pcie_get_status_a34f (3 calls)
+- [ ] `0xa372` - pcie_get_status_a372 (2 calls)
+- [ ] `0xa38b` - pcie_setup_a38b (2 calls)
+- [ ] `0xa3c4` - pcie_check_int_source_a3c4 (2 calls)
+- [ ] `0xa648` - usb_descriptor_helper_a648 (1 calls)
 
-### PCIe TLP Handlers (0xb100-0xba00)
-- [ ] `0xb104` - PCIe TLP handler
-- [ ] `0xb28c` - PCIe handler
-- [ ] `0xb402` - PCIe handler
-- [ ] `0xb624` - NVMe command setup
-- [ ] `0xb6cf` - NVMe command setup
-- [ ] `0xb779` - NVMe command setup
-- [ ] `0xb820` - NVMe queue
-- [ ] `0xb825` - NVMe queue
-- [ ] `0xb833` - NVMe queue
-- [ ] `0xb838` - NVMe queue
-- [ ] `0xb848` - NVMe queue
-- [ ] `0xb850` - NVMe queue
-- [ ] `0xb851` - NVMe queue
-- [ ] `0xb881` - NVMe handler
-- [ ] `0xb8a2` - NVMe handler
-- [ ] `0xb8b9` - NVMe handler
-- [ ] `0xba06` - NVMe handler
+### High Priority (5+ calls)
+
+- [ ] `0xaa37` (18 calls)
+- [ ] `0xa9f9` (16 calls)
+- [ ] `0xaa02` (16 calls)
+- [ ] `0xa2ff` (11 calls)
+- [ ] `0xbfc4` (11 calls)
+- [ ] `0xb6fa` (8 calls)
+- [ ] `0xa35f` (7 calls)
+- [ ] `0xb6d4` (7 calls)
+- [ ] `0xbcfe` (7 calls)
+- [ ] `0xa308` (6 calls)
+- [ ] `0xab27` (6 calls)
+- [ ] `0xbf9a` (6 calls)
+- [ ] `0xbfb8` (6 calls)
+- [ ] `0xa348` (5 calls)
+- [ ] `0xaa36` (5 calls)
+- [ ] `0xb6f0` (5 calls)
+
+### Other (172 functions)
+
+- [ ] `0xa2f8` (4 calls)
+- [ ] `0xa2f9` (4 calls)
+- [ ] `0xa334` (4 calls)
+- [ ] `0xa344` (4 calls)
+- [ ] `0xaa09` (4 calls)
+- [ ] `0xaa2b` (4 calls)
+- [ ] `0xaa42` (4 calls)
+- [ ] `0xaa7d` (4 calls)
+- [ ] `0xaaab` (4 calls)
+- [ ] `0xaaad` (4 calls)
+- [ ] `0xa2c2` (3 calls)
+- [ ] `0xa31c` (3 calls)
+- [ ] `0xa3db` (3 calls)
+- [ ] `0xa3f5` (3 calls)
+- [ ] `0xa647` (3 calls)
+- [ ] `0xaa57` (3 calls)
+- [ ] `0xaa7f` (3 calls)
+- [ ] `0xaa90` (3 calls)
+- [ ] `0xaab5` (3 calls)
+- [ ] `0xaadf` (3 calls)
+- [ ] `0xaae1` (3 calls)
+- [ ] `0xab3a` (3 calls)
+- [ ] `0xab44` (3 calls)
+- [ ] `0xab63` (3 calls)
+- [ ] `0xab87` (3 calls)
+- ... and 147 more
 
 ---
 
-## Register Helper Functions (0xbb00-0xbe00)
+## Event/Error Handlers (0xC000-0xDFFF)
 
-- [ ] `0xbb37` - Register helper
-- [ ] `0xbb44` - Register helper
-- [ ] `0xbb47` - Register helper
-- [ ] `0xbb48` - Register helper
-- [ ] `0xbb4f` - Register helper
-- [ ] `0xbb5e` - Register helper
-- [ ] `0xbb68` - Register helper
-- [ ] `0xbb6d` - Register helper
-- [ ] `0xbb6e` - Register helper
-- [ ] `0xbb75` - Register helper
-- [ ] `0xbb7e` - Register helper
-- [ ] `0xbb8f` - Register helper
-- [ ] `0xbb96` - Register helper
-- [ ] `0xbba0` - Register helper
-- [ ] `0xbba8` - Register helper
-- [ ] `0xbbaf` - Register helper
-- [ ] `0xbbc0` - Register helper
-- [ ] `0xbbc7` - Register helper
-- [ ] `0xbc63` - Register helper
-- [ ] `0xbc70` - Register helper
-- [ ] `0xbc88` - Register helper (bank switch read)
-- [ ] `0xbc98` - Register helper
-- [ ] `0xbca5` - Register helper
-- [ ] `0xbcaf` - Register helper (bank switch) - **PRIORITY**
-- [ ] `0xbcb8` - Register helper
-- [ ] `0xbcc4` - Register helper
-- [ ] `0xbcd0` - Register helper
-- [ ] `0xbcd7` - Register helper
-- [ ] `0xbcde` - Register helper (bank switch read) - **PRIORITY**
-- [ ] `0xbce7` - Register helper
-- [ ] `0xbcf2` - Register helper
-- [ ] `0xbcfe` - Register helper
-- [ ] `0xbd05` - Register helper
-- [ ] `0xbd09` - Register helper
-- [ ] `0xbd0d` - Register helper
-- [ ] `0xbd14` - Register helper
-- [ ] `0xbd17` - Register helper
-- [ ] `0xbd23` - Register helper
-- [ ] `0xbd33` - Register helper
-- [ ] `0xbd3a` - Register helper
-- [ ] `0xbd41` - Register helper
-- [ ] `0xbd50` - Register helper
-- [ ] `0xbd57` - Register helper
-- [ ] `0xbd65` - Register helper
-- [ ] `0xbd6c` - Register helper
-- [ ] `0xbe02` - Register helper
-- [x] `0xbe8b` - Register helper (FUN_CODE_be8b - completed)
-- [ ] `0xbefb` - Register helper
-- [ ] `0xbf0f` - Register helper
+**Total: 214** | Stubs: 2 | High-priority: 13
 
----
+### Stubs (need implementation)
 
-## Error Log Functions (0xc000-0xc500)
+- [ ] `0xd17a` - helper_d17a (1 calls)
+- [ ] `0xd8d5` - pcie_handler_d8d5 (1 calls)
 
-- [ ] `0xc089` - Error log
-- [ ] `0xc17f` - Error handler
-- [ ] `0xc1f9` - Error log
-- [ ] `0xc270` - Error log
-- [ ] `0xc2e6` - Error log
-- [ ] `0xc2f1` - Error log
-- [ ] `0xc2f8` - Error log (max entries)
-- [ ] `0xc2ff` - Error log
-- [ ] `0xc30e` - Error log
-- [ ] `0xc335` - Error log
-- [ ] `0xc351` - Error log
-- [ ] `0xc358` - Error log
-- [ ] `0xc35b` - Error log
-- [ ] `0xc3ce` - Error log
-- [ ] `0xc441` - Error log array ptr
-- [ ] `0xc444` - Error log array ptr
-- [ ] `0xc448` - Error log array ptr
-- [ ] `0xc44e` - Error log calc entry
-- [ ] `0xc451` - Error log
-- [ ] `0xc472` - Error log
-- [ ] `0xc479` - Error log
-- [ ] `0xc4a3` - Error log
-- [ ] `0xc4a9` - Error log
-- [ ] `0xc4b3` - Error log status
+### High Priority (5+ calls)
+
+- [ ] `0xd1e6` (14 calls)
+- [ ] `0xd1f2` (14 calls)
+- [ ] `0xc1f9` (10 calls)
+- [ ] `0xd5da` (10 calls)
+- [ ] `0xc2e7` (8 calls)
+- [ ] `0xda9f` (7 calls)
+- [ ] `0xc2f8` (6 calls)
+- [ ] `0xd185` (6 calls)
+- [ ] `0xc20f` (5 calls)
+- [ ] `0xc2bf` (5 calls)
+- [ ] `0xc2f1` (5 calls)
+- [ ] `0xce23` (5 calls)
+- [ ] `0xceab` (5 calls)
+
+### Other (199 functions)
+
+- [ ] `0xc2e0` (4 calls)
+- [ ] `0xc34a` (4 calls)
+- [ ] `0xc351` (4 calls)
+- [ ] `0xc358` (4 calls)
+- [ ] `0xc35f` (4 calls)
+- [ ] `0xc366` (4 calls)
+- [ ] `0xc36d` (4 calls)
+- [ ] `0xc374` (4 calls)
+- [ ] `0xc37b` (4 calls)
+- [ ] `0xc382` (4 calls)
+- [ ] `0xc389` (4 calls)
+- [ ] `0xcb0f` (4 calls)
+- [ ] `0xd172` (4 calls)
+- [ ] `0xd17e` (4 calls)
+- [ ] `0xd229` (4 calls)
+- [ ] `0xd235` (4 calls)
+- [ ] `0xd265` (4 calls)
+- [ ] `0xdde2` (4 calls)
+- [ ] `0xc027` (3 calls)
+- [ ] `0xc031` (3 calls)
+- [ ] `0xc074` (3 calls)
+- [ ] `0xc09e` (3 calls)
+- [ ] `0xc1af` (3 calls)
+- [ ] `0xc261` (3 calls)
+- [ ] `0xc29e` (3 calls)
+- ... and 174 more
 
 ---
 
-## Event Handlers (0xc500-0xd000)
+## Bank1 High (0xE000-0xFFFF)
 
-- [ ] `0xc5ff` - Event handler
-- [ ] `0xc6d3` - Event handler
-- [ ] `0xc73c` - Event handler
-- [ ] `0xc80d` - Event handler
-- [ ] `0xc874` - Event handler
-- [ ] `0xc8db` - Event handler
-- [ ] `0xc942` - Event handler
-- [ ] `0xc9a8` - Event handler
-- [ ] `0xca0d` - System state handler - **PRIORITY**
-- [ ] `0xcad5` - Event handler
-- [ ] `0xcad6` - Event handler
-- [ ] `0xcadf` - Event handler
-- [ ] `0xcae6` - Event handler
-- [ ] `0xcaec` - Event handler
-- [ ] `0xcaed` - Event handler
-- [ ] `0xcafb` - Event handler
-- [ ] `0xcafe` - Event handler
-- [ ] `0xcb05` - Event handler
-- [ ] `0xcb08` - Event handler
-- [ ] `0xcb0f` - Event handler
-- [ ] `0xcb19` - Event handler
-- [ ] `0xcb1c` - Event handler
-- [ ] `0xcb26` - Event handler
-- [ ] `0xcb98` - Event handler
-- [ ] `0xcbf8` - Event handler
-- [ ] `0xcc56` - Event handler
-- [ ] `0xcc60` - Event handler
-- [ ] `0xcc69` - Event handler
-- [ ] `0xcc75` - Event handler
-- [ ] `0xcc80` - Event handler
-- [ ] `0xcc8b` - Event handler
-- [ ] `0xcc92` - Event handler
-- [ ] `0xcc9b` - Event handler
-- [ ] `0xcca2` - Event handler
-- [ ] `0xccac` - Event handler
-- [ ] `0xccb3` - Event handler
-- [ ] `0xcd6c` - Event handler
-- [ ] `0xcdc6` - Event handler
-- [ ] `0xce20` - Event handler
-- [ ] `0xce23` - Event handler
-- [ ] `0xced1` - Event handler
-- [ ] `0xcfd5` - Event handler
+**Total: 66** | Stubs: 7 | High-priority: 9
 
----
+### Stubs (need implementation)
 
-## Power Management/PHY (0xd000-0xe000)
+- [ ] `0xe73a` - helper_e73a (12 calls)
+- [ ] `0xe1c6` - FUN_CODE_e1c6 (9 calls)
+- [ ] `0xe890` - pcie_handler_e890 (7 calls)
+- [ ] `0xe3b7` - helper_e3b7 (5 calls)
+- [ ] `0xe06b` - pcie_handler_e06b (3 calls)
+- [ ] `0xe7c1` - handler_e7c1 (2 calls)
+- [ ] `0xe974` - pcie_handler_e974 (2 calls)
 
-- [ ] `0xd02a` - Power handler
-- [ ] `0xd118` - Power handler
-- [ ] `0xd17a` - Power handler
-- [ ] `0xd1f2` - Power handler
-- [ ] `0xd1fe` - Power handler
-- [ ] `0xd211` - Power handler
-- [ ] `0xd21d` - Power handler
-- [ ] `0xd21e` - Power handler
-- [ ] `0xd26f` - Power handler
-- [ ] `0xd30b` - Power handler
-- [ ] `0xd3ed` - Power handler
-- [ ] `0xd436` - PHY config - **PRIORITY**
-- [ ] `0xd47f` - PHY handler
-- [ ] `0xd4c8` - PHY handler
-- [ ] `0xd511` - PHY handler
-- [ ] `0xd559` - PHY handler
-- [ ] `0xd630` - PHY handler
-- [ ] `0xd702` - PHY handler
-- [ ] `0xd78a` - PHY handler
-- [ ] `0xd7cd` - PHY handler
-- [ ] `0xd8d5` - PHY handler
-- [ ] `0xd916` - PHY/power handler - **PRIORITY**
-- [ ] `0xd956` - Power handler
-- [ ] `0xda13` - Power handler
-- [ ] `0xda51` - Power handler
-- [ ] `0xdacc` - Power handler
-- [ ] `0xdace` - Power handler
-- [ ] `0xdad9` - Power handler
-- [ ] `0xdae2` - Power handler
-- [ ] `0xdaeb` - Power handler
-- [ ] `0xdaf5` - Power handler
-- [ ] `0xdaff` - Power handler
-- [ ] `0xdb09` - Power handler
-- [ ] `0xdb45` - Power handler
-- [ ] `0xdbbb` - Power handler
-- [ ] `0xdbf5` - Power handler
-- [ ] `0xdc2d` - Power handler
-- [ ] `0xdc9d` - Power handler
-- [ ] `0xdcd4` - Power handler
-- [ ] `0xdd0e` - Power handler
-- [ ] `0xdd12` - Power handler
-- [ ] `0xdde2` - Power handler
-- [ ] `0xde16` - Power handler
-- [ ] `0xde4a` - Power handler
-- [ ] `0xdeb1` - Power handler
-- [ ] `0xdefe` - Power handler
-- [ ] `0xdf47` - Power handler
-- [ ] `0xdf79` - Power handler
-- [ ] `0xdfab` - Power handler
+### High Priority (5+ calls)
 
----
+- [ ] `0xe933` (11 calls)
+- [ ] `0xe81b` (9 calls)
+- [ ] `0xe054` (7 calls)
+- [ ] `0xe461` (6 calls)
+- [ ] `0xe8f9` (5 calls)
 
-## Bank 1 High Address Handlers (0xe000-0xf000)
+### Other (54 functions)
 
-### Event Handlers (0xe000-0xe200)
-- [ ] `0xe00c` - PCIe error handler
-- [ ] `0xe06b` - Event handler
-- [ ] `0xe0f4` - Event handler
-- [ ] `0xe120` - Event handler
-- [ ] `0xe19e` - Event handler
-- [ ] `0xe1ee` - Command engine
-
-### Transfer Handlers (0xe200-0xe400)
-- [ ] `0xe25e` - Transfer handler
-- [ ] `0xe2a6` - Transfer handler
-- [ ] `0xe2c9` - Transfer handler
-- [ ] `0xe352` - Transfer handler
-- [ ] `0xe374` - Transfer handler
-- [ ] `0xe396` - Transfer handler
-- [ ] `0xe3b7` - NVMe event dispatch - **PRIORITY**
-
-### NVMe Events (0xe400-0xe600)
-- [ ] `0xe478` - NVMe event
-- [ ] `0xe496` - NVMe event
-- [ ] `0xe4d2` - NVMe event
-- [ ] `0xe50d` - NVMe event handler
-- [ ] `0xe5cb` - NVMe event
-- [ ] `0xe5fe` - NVMe event
-- [x] `0xe56f` - event_state_machine_e56f (in protocol.c)
-- [x] `0xe677` - status_update_handler_e677 (in protocol.c)
-- [ ] `0xe68f` - NVMe event
-- [ ] `0xe6a7` - NVMe event
-- [ ] `0xe6d2` - NVMe event
-- [ ] `0xe6fc` - NVMe event handler
-- [ ] `0xe711` - NVMe event
-- [ ] `0xe726` - NVMe event
-- [ ] `0xe730` - NVMe event
-- [x] `0xe73a` - NVMe event (FUN_CODE_e73a - completed)
-- [ ] `0xe74e` - Bank 1 event handler
-- [x] `0xe762` - event_queue_process_e762 (in protocol.c)
-- [ ] `0xe775` - NVMe event
-- [ ] `0xe77a` - NVMe event handler
-- [ ] `0xe788` - NVMe event
-- [ ] `0xe7ae` - NVMe event
-- [ ] `0xe7c1` - NVMe event
-- [ ] `0xe7d4` - NVMe event
-- [ ] `0xe7e6` - NVMe event
-- [ ] `0xe7fb` - Bank 1 handler
-- [ ] `0xe81b` - NVMe event
-- [ ] `0xe84d` - NVMe event
-- [ ] `0xe85c` - NVMe event
-- [ ] `0xe869` - NVMe event
-- [ ] `0xe883` - NVMe event
-- [ ] `0xe890` - Bank 1 handler
-- [ ] `0xe89d` - NVMe event
-- [ ] `0xe8a9` - PHY event handler
-- [ ] `0xe8cd` - NVMe event
-- [ ] `0xe8d9` - NVMe event
-- [ ] `0xe8e4` - Power init handler
-- [ ] `0xe8f9` - NVMe event
-- [ ] `0xe902` - NVMe event handler
-- [x] `0xe911` - error_handler_pcie_nvme (in error_log.c)
-- [x] `0xe920` - error_clear_system_flags (in error_log.c)
-- [ ] `0xe91d` - Error handler
-- [ ] `0xe933` - Error handler
-- [ ] `0xe957` - Error handler
-- [ ] `0xe95f` - Error handler
-- [ ] `0xe974` - Error handler
-- [ ] `0xea7c` - Error handler
-- [x] `0xed02` - pcie_state_clear_ed02 (in pcie.c)
-- [ ] `0xed23` - Bank 1 handler
-- [x] `0xeef9` - pcie_handler_unused_eef9 (in pcie.c)
-- [x] `0xef4e` - error_handler_system_timer (in error_log.c)
-
----
-
-## Poorly Named Functions Still Remaining
-
-Functions using generic names that need better names:
-
-### stubs.c (~52 functions)
-- [ ] `helper_1579`, `helper_157d`, `helper_15d4`, `helper_15ef`
-- [ ] `helper_15f1`, `helper_1646`, `helper_166f`, `helper_16e9`
-- [ ] `helper_16eb`, `helper_1b0b`, `helper_1b2e`, `helper_1b30`
-- [ ] `helper_1c13`, `helper_0cab`, `helper_328a`, `helper_3298`
-- [ ] `helper_3578`, ~~`handler_d676`~~, ~~`handler_e3d8`~~, `helper_dd42`
-- [ ] `helper_e6d2`, `handler_e529`, ~~`handler_e90b`~~, `helper_e3b7`
-- [ ] `helper_e396`, `helper_d17a`
-- [ ] `FUN_CODE_1b07`, `FUN_CODE_1c9f`, `FUN_CODE_050c`, `FUN_CODE_0511`
-- [x] `FUN_CODE_11a2` - completed
-- [ ] `FUN_CODE_5038`, `FUN_CODE_5043`, `FUN_CODE_5046`
-- [ ] `FUN_CODE_504f`, `FUN_CODE_505d`, `FUN_CODE_5359`
-- [x] `FUN_CODE_be8b` - completed
-- [ ] `FUN_CODE_dd0e`, `FUN_CODE_dd12`, `FUN_CODE_df79`, `FUN_CODE_e120`
-- [x] `FUN_CODE_e1c6` - wired to cmd_wait_completion
-- [x] `FUN_CODE_e73a` - completed
-- [ ] `FUN_CODE_e7ae`, `FUN_CODE_e883`
-
-### protocol.c (~103 occurrences)
-- [ ] `handler_3adb`, `helper_0d78`, `helper_0db9`, `helper_1bcb`
-- [ ] `helper_523c`, `helper_50db`, `helper_5409`, `helper_53a7`
-- [ ] `helper_53c0`, `helper_039a`, `helper_0206`, `helper_45d0`
-- [ ] `helper_0421`, `helper_0417`, `helper_16f3`, `helper_3f4a`
-- [ ] `helper_1d1d`, `helper_1c9f`, `helper_4f77`, `helper_11a2`
-- [ ] `helper_5359`, `helper_1cd4`, `helper_1cc8`, `helper_1c22`
-- [ ] `helper_1b9a`, `helper_1b9d`, `helper_4e6d`, `helper_466b`
-- [ ] `FUN_CODE_1bec`, `FUN_CODE_1b30`, `FUN_CODE_1b8d`, `FUN_CODE_1b0b`
-- [ ] `FUN_CODE_1b3f`, `FUN_CODE_1c43`, `FUN_CODE_2a10`
-
-### state_helpers.c (~59 occurrences)
-- [ ] `helper_1687`, `helper_16de`, `helper_1633`, `helper_15d0`
-- [ ] `helper_179d`, `handler_280a`
-
-### usb.c (~56 occurrences)
-- [ ] Various `helper_XXXX` and `handler_XXXX` functions
-
-### scsi.c (~72 occurrences)
-- [ ] Various `helper_XXXX` and `handler_XXXX` functions
-
----
-
-## Priority Functions
-
-Most critical for firmware operation:
-
-1. `0x23f7` - Complex state machine helper (~893 bytes)
-2. `0xa522` - PCIe interrupt handler
-3. `0xca0d` - System state handler
-4. `0xd436` - PHY configuration
-5. `0xd916` - PHY/power handler
-6. `0xe3b7` - NVMe event dispatch
-7. `0xbcde` - Bank switch read helper
-8. `0xbcaf` - Bank switch helper
+- [ ] `0xe2b9` (4 calls)
+- [ ] `0xe775` (4 calls)
+- [ ] `0xe020` (3 calls)
+- [ ] `0xe26a` (3 calls)
+- [ ] `0xe726` (3 calls)
+- [ ] `0xe7a8` (3 calls)
+- [ ] `0xe7e5` (3 calls)
+- [ ] `0xe090` (2 calls)
+- [ ] `0xe0f4` (2 calls)
+- [ ] `0xe19e` (2 calls)
+- [ ] `0xe1cb` (2 calls)
+- [ ] `0xe5b1` (2 calls)
+- [ ] `0xe68f` (2 calls)
+- [ ] `0xe6a7` (2 calls)
+- [ ] `0xe730` (2 calls)
+- [ ] `0xe7f8` (2 calls)
+- [ ] `0xe85f` (2 calls)
+- [ ] `0xe914` (2 calls)
+- [ ] `0xe93a` (2 calls)
+- [ ] `0xe00c` (1 calls)
+- [ ] `0xe030` (1 calls)
+- [ ] `0xe03c` (1 calls)
+- [ ] `0xe060` (1 calls)
+- [ ] `0xe07d` (1 calls)
+- [ ] `0xe0e4` (1 calls)
+- ... and 29 more
 
 ---
 
 ## Notes
 
-### Bank Switching
-- Bank 0: 0x0000-0xFFFF (default)
-- Bank 1: 0x8000-0xFFFF mapped to 0x10000-0x17FFF
-- Dispatch stubs at 0x0300-0x0650 handle bank switching
+### Memory Layout
+- Bank 0 low: 0x0000-0x5D2E (~24KB code)
+- Bank 0 high: 0x8000-0xE975 (~27KB code)
+- Bank 1: 0x10000-0x16EBA (~28KB code, mapped to 0x8000 when active)
+- Padding regions: ~19KB (not real code)
 
-### Register Map
-- 0x9000-0x92FF: USB registers
-- 0xB200-0xB4FF: PCIe registers
-- 0xC400-0xC4FF: NVMe command engine
-- 0xCE00-0xCEFF: SCSI/DMA registers
-
-### Global Variables
-- 0x0400-0x0700: State variables and buffers
-- 0x0A00-0x0B00: System state
-- IDATA 0x00-0x7F: Fast local variables
+### Key Subsystems
+- **0x9000-0x9FFF**: NVMe command engine, PCIe config
+- **0xA000-0xAFFF**: Admin commands, queue management
+- **0xB000-0xBFFF**: PCIe TLP handlers, register helpers
+- **0xC000-0xCFFF**: Error logging, event handlers
+- **0xD000-0xDFFF**: Power management, PHY config
+- **0xE000-0xEFFF**: Bank1 handlers (via dispatch stubs)

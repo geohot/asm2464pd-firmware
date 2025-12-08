@@ -56,6 +56,11 @@
 #include "../registers.h"
 #include "../globals.h"
 
+/* External helper functions from stubs.c */
+extern uint8_t helper_1646(void);
+extern void helper_1755(uint8_t offset);
+extern void helper_159f(uint8_t value);
+
 /*
  * state_get_table_entry - Get state table entry pointer
  * Address: 0x15dc-0x15ee (19 bytes)
@@ -398,10 +403,13 @@ extern void helper_1d1d(void);     /* 0x1d1d - Setup helper */
 extern uint8_t helper_1c9f(void);  /* 0x1c9f - Check status, returns NZ on success */
 extern void helper_4f77(uint8_t param);  /* 0x4f77 - Processing helper */
 extern uint8_t helper_11a2(uint8_t param);  /* 0x11a2 - Transfer helper, returns status */
-extern void helper_5359(void);     /* 0x5359 - Buffer setup */
+extern void helper_5359(uint8_t param);     /* 0x5359 - Buffer setup */
 extern uint8_t helper_1cd4(void);  /* 0x1cd4 - Returns status with bit 1 flag */
 extern void helper_1cc8(void);     /* 0x1cc8 - Register setup */
 extern void helper_1c22(void);     /* 0x1c22 - Carry flag helper */
+extern uint8_t helper_1646(void);  /* 0x1646 - Get endpoint config value */
+extern void helper_1755(uint8_t offset);  /* 0x1755 - Set up address pointer */
+extern void helper_159f(uint8_t value);   /* 0x159f - Write value via pointer */
 
 /*
  * state_action_dispatch - Dispatch state action
@@ -1088,6 +1096,13 @@ extern void helper_53c0(void);
 extern void helper_0206(uint8_t r5, uint8_t r7);
 
 /*
+ * helper_020b - DMA buffer configuration (direct entry)
+ * Address: 0x020b
+ * Alternate entry point to helper_0206 that skips initial check
+ */
+extern void helper_020b(uint8_t r5, uint8_t r7);
+
+/*
  * helper_45d0 - Transfer control helper
  * Address: 0x45d0
  */
@@ -1649,4 +1664,174 @@ void system_state_handler_ca0d(void)
 
     /* Set system state to 0x10 (idle/ready) */
     G_SYSTEM_STATE_0AE2 = 0x10;
+}
+
+/*
+ * state_transfer_calc_120d - Transfer calculation state handler
+ * Address: 0x120d-0x1271 (100 bytes)
+ *
+ * Algorithm:
+ *   1. Read G_SCSI_CMD_PARAM_0470, check bit 3
+ *   2. If bit 3 set:
+ *      - Call helper_1646 to get divider (EP config value)
+ *      - Compute G_XFER_DIV_0476 = ceil(I_WORK_3F / divider)
+ *   3. Check REG_BUF_CFG_9000 bit 0
+ *   4. If bit 0 set:
+ *      - Call helper_15b7 (increments DPTR)
+ *      - Read slot value, if 0xFF -> compute and write to slot
+ *      - Clear G_NVME_PARAM_053A
+ *   5. Update slot value based on REG_NVME_LINK_CTRL_C414 comparison
+ */
+void state_transfer_calc_120d(void)
+{
+    uint8_t divider;
+    uint8_t quotient;
+    uint8_t remainder;
+    uint8_t slot_val;
+    uint8_t ctrl_val;
+    __xdata uint8_t *slot_ptr;
+
+    /* Check bit 3 of G_SCSI_CMD_PARAM_0470 */
+    if ((G_SCSI_CMD_PARAM_0470 & 0x08) == 0) {
+        return;  /* Bit 3 not set, nothing to do */
+    }
+
+    /* Get divider from EP config array */
+    divider = helper_1646();
+
+    /* Compute quotient = I_WORK_3F / divider */
+    if (divider != 0) {
+        quotient = I_WORK_3F / divider;
+        remainder = I_WORK_3F % divider;
+
+        /* If there's a remainder, round up */
+        if (remainder != 0) {
+            quotient++;
+        }
+    } else {
+        quotient = 0;
+    }
+
+    /* Store result to G_XFER_DIV_0476 */
+    G_XFER_DIV_0476 = quotient;
+
+    /* Check REG_USB_STATUS (0x9000) bit 0 */
+    if ((REG_USB_STATUS & 0x01) == 0) {
+        return;  /* Bit 0 not set, nothing to do */
+    }
+
+    /* Calculate slot pointer: 0x009F + I_WORK_43 */
+    /* Using helper_15b7 pattern internally */
+    slot_ptr = (__xdata uint8_t *)(0x009F + I_WORK_43);
+
+    /* Read slot value */
+    slot_val = *slot_ptr;
+
+    if (slot_val == 0xFF) {
+        /* Slot is uninitialized - compute new value */
+        /* Calculate address 0x009F + I_WORK_43 and store quotient */
+        *slot_ptr = quotient;
+
+        /* Clear G_NVME_PARAM_053A */
+        G_NVME_PARAM_053A = 0;
+    }
+
+    /* Read current slot value again for comparison */
+    slot_val = *slot_ptr;
+
+    /* Read from helper_15b7 computed address and compare with ctrl */
+    ctrl_val = REG_NVME_DATA_CTRL;
+
+    if (slot_val != ctrl_val) {
+        /* Values differ - modify control register */
+        /* Clear bit 7, set bit 7 (toggle pattern) */
+        ctrl_val = ctrl_val & 0x7F;  /* Clear bit 7 */
+        ctrl_val = ctrl_val | 0x80;  /* Set bit 7 */
+        REG_NVME_DATA_CTRL = ctrl_val;
+    }
+}
+
+/*
+ * state_transfer_setup_12aa - Transfer setup with boundary check
+ * Address: 0x12aa-0x12da (49 bytes)
+ *
+ * Algorithm:
+ *   1. Check if param >= 0x40, if so return 0 (out of bounds)
+ *   2. Write I_WORK_40 to REG_SCSI_DMA_STATUS_L and G_STATE_HELPER_41
+ *   3. Write I_WORK_40 + I_WORK_3F to G_STATE_HELPER_42
+ *   4. Call helper_1755 with 0x59 + I_WORK_43
+ *   5. Call helper_159f with I_WORK_40
+ *   6. Call helper_166a with I_WORK_40 (writes to computed slot)
+ *   7. Write 1 to slot and return 1
+ *
+ * Parameters:
+ *   param: Transfer index (must be < 0x40)
+ *
+ * Returns: 1 if setup successful, 0 if param out of bounds
+ */
+uint8_t state_transfer_setup_12aa(uint8_t param)
+{
+    uint8_t sum;
+    __xdata uint8_t *slot_ptr;
+
+    /* Check if param >= 0x40 */
+    if (param >= 0x40) {
+        return 0;  /* Out of bounds */
+    }
+
+    /* Write I_WORK_40 to SCSI DMA status register */
+    REG_SCSI_DMA_STATUS_L = I_WORK_40;
+
+    /* Store I_WORK_40 to state helper variables */
+    G_STATE_HELPER_41 = I_WORK_40;
+
+    /* Compute and store I_WORK_40 + I_WORK_3F */
+    sum = I_WORK_40 + I_WORK_3F;
+    G_STATE_HELPER_42 = sum;
+
+    /* Call helper_1755 with 0x59 + I_WORK_43 */
+    /* This sets up address at 0x0059 + I_WORK_43 */
+    helper_1755(0x59 + I_WORK_43);
+
+    /* Call helper_159f with I_WORK_40 */
+    /* This increments pointer and writes I_WORK_40 */
+    helper_159f(I_WORK_40);
+
+    /* Call helper_166a: writes I_WORK_40 to DPTR, then computes new DPTR = 0x7C + I_WORK_43 */
+    /* This stores I_WORK_40 to the current address, then computes slot pointer */
+    slot_ptr = (__xdata uint8_t *)(0x007C + I_WORK_43);
+
+    /* helper_15b6: write A to DPTR and increment DPTR */
+    /* Write 1 to slot */
+    *slot_ptr = 1;
+
+    return 1;  /* Success */
+}
+
+/*
+ * scsi_get_ctrl_ptr_1b3b - Get pointer to SCSI control array element
+ * Address: 0x1b3b-0x1b46 (12 bytes)
+ *
+ * Disassembly:
+ *   1b3b: mov a, #0x4e        ; A = 0x4E
+ *   1b3d: add a, 0x3e         ; A = 0x4E + I_WORK_3E
+ *   1b3f: mov 0x82, a         ; DPL = A
+ *   1b41: clr a
+ *   1b42: addc a, #0x01       ; DPH = 0x01 + carry
+ *   1b44: mov 0x83, a
+ *   1b46: ret
+ *
+ * Computes DPTR = 0x014E + I_WORK_3E
+ * This accesses the G_USB_INDEX_COUNTER array at 0x014E indexed by I_WORK_3E.
+ *
+ * Returns: Pointer to SCSI control array element
+ */
+__xdata uint8_t *scsi_get_ctrl_ptr_1b3b(void)
+{
+    uint8_t low = 0x4E + I_WORK_3E;
+    uint16_t addr = 0x0100 + low;  /* Base is 0x0100 */
+    if (low < 0x4E) {
+        addr += 0x0100;  /* Handle overflow carry */
+    }
+    return (__xdata uint8_t *)addr;
 }

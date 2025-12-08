@@ -33,7 +33,7 @@ BUILD_DIR = build
 OBJ_DIR = $(BUILD_DIR)/obj
 
 # Source files
-MAIN_SRCS = $(SRC_DIR)/main.c $(SRC_DIR)/utils.c $(SRC_DIR)/interrupt.c
+MAIN_SRCS = $(SRC_DIR)/main.c $(SRC_DIR)/utils.c $(SRC_DIR)/interrupt.c $(SRC_DIR)/math.c
 DRIVER_SRCS = $(wildcard $(DRIVERS_DIR)/*.c)
 APP_SRCS = $(wildcard $(APP_DIR)/*.c)
 SRCS = $(MAIN_SRCS) $(DRIVER_SRCS) $(APP_SRCS)

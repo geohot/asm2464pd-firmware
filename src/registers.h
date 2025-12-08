@@ -118,6 +118,7 @@
 #define REG_USB_LINK_STATUS     XDATA_REG8(0x9100)
 #define   USB_LINK_STATUS_MASK    0x03  // Bits 0-1: Link status
 #define REG_USB_PERIPH_STATUS   XDATA_REG8(0x9101)
+#define REG_USB_PHY_STATUS_9105 XDATA_REG8(0x9105)  /* USB PHY status check (0xFF = active) */
 #define REG_USB_STATUS_0D       XDATA_REG8(0x910D)
 #define REG_USB_STATUS_0E       XDATA_REG8(0x910E)
 #define REG_USB_EP_STATUS       XDATA_REG8(0x9118)
@@ -155,6 +156,7 @@
 #define REG_USB_CTRL_9201       XDATA_REG8(0x9201)
 #define REG_USB_CTRL_920C       XDATA_REG8(0x920C)
 #define REG_USB_PHY_CONFIG_9241 XDATA_REG8(0x9241)
+#define REG_USB_CTRL_924C       XDATA_REG8(0x924C)  // USB control (bit 0: endpoint ready)
 
 // Power Management registers (0x92C0-0x92E0)
 #define REG_POWER_ENABLE        XDATA_REG8(0x92C0)
@@ -320,6 +322,19 @@
 #define   NVME_DATA_CTRL_MASK     0xC0  // Bits 6-7: Data control mode
 #define REG_NVME_DEV_STATUS     XDATA_REG8(0xC415)
 #define   NVME_DEV_STATUS_MASK    0xC0  // Bits 6-7: Device status
+// NVMe SCSI Command Buffer (0xC4C0-0xC4CA) - used for SCSI to NVMe translation
+#define REG_NVME_SCSI_CMD_BUF_0 XDATA_REG8(0xC4C0)  // SCSI cmd buffer byte 0
+#define REG_NVME_SCSI_CMD_BUF_1 XDATA_REG8(0xC4C1)  // SCSI cmd buffer byte 1
+#define REG_NVME_SCSI_CMD_BUF_2 XDATA_REG8(0xC4C2)  // SCSI cmd buffer byte 2
+#define REG_NVME_SCSI_CMD_BUF_3 XDATA_REG8(0xC4C3)  // SCSI cmd buffer byte 3
+#define REG_NVME_SCSI_CMD_LEN_0 XDATA_REG8(0xC4C4)  // SCSI cmd length byte 0
+#define REG_NVME_SCSI_CMD_LEN_1 XDATA_REG8(0xC4C5)  // SCSI cmd length byte 1
+#define REG_NVME_SCSI_CMD_LEN_2 XDATA_REG8(0xC4C6)  // SCSI cmd length byte 2
+#define REG_NVME_SCSI_CMD_LEN_3 XDATA_REG8(0xC4C7)  // SCSI cmd length byte 3
+#define REG_NVME_SCSI_TAG       XDATA_REG8(0xC4C8)  // SCSI command tag
+#define REG_NVME_SCSI_CTRL      XDATA_REG8(0xC4C9)  // SCSI control byte
+#define REG_NVME_SCSI_DATA      XDATA_REG8(0xC4CA)  // SCSI data byte
+
 #define REG_NVME_CMD            XDATA_REG8(0xC420)
 #define REG_NVME_CMD_OPCODE     XDATA_REG8(0xC421)
 #define REG_NVME_LBA_LOW        XDATA_REG8(0xC422)
@@ -360,6 +375,9 @@
 #define REG_NVME_QUEUE_BUSY     XDATA_REG8(0xC471)  /* Queue busy status */
 #define   NVME_QUEUE_BUSY_BIT     0x01              /* Bit 0: Queue busy */
 #define REG_NVME_LINK_CTRL      XDATA_REG8(0xC472)  // NVMe link control
+#define REG_NVME_CMD_STATUS_C47A XDATA_REG8(0xC47A) // NVMe command status (used by usb_ep_loop)
+#define REG_NVME_PARAM_C4EA     XDATA_REG8(0xC4EA)  // NVMe parameter storage
+#define REG_NVME_PARAM_C4EB     XDATA_REG8(0xC4EB)  // NVMe parameter storage high
 #define REG_NVME_BUF_CFG        XDATA_REG8(0xC508)  // NVMe buffer configuration
 #define REG_NVME_QUEUE_INDEX    XDATA_REG8(0xC512)
 #define REG_NVME_QUEUE_PENDING  XDATA_REG8(0xC516)  /* Pending queue status */
@@ -591,12 +609,15 @@
 #define REG_SCSI_DMA_QUEUE_STAT XDATA_REG8(0xCE67)
 #define   SCSI_DMA_QUEUE_MASK     0x0F  // Bits 0-3: Queue status (0-15)
 #define REG_XFER_STATUS_CE6C    XDATA_REG8(0xCE6C)  // Transfer status CE6C (bit 7: ready)
+#define REG_SCSI_DMA_CTRL_CE6C  REG_XFER_STATUS_CE6C  // Alias for usb_ep_loop
 #define REG_SCSI_DMA_STATUS     XDATA_REG16(0xCE6E)
 #define REG_SCSI_DMA_STATUS_L   XDATA_REG8(0xCE6E)   /* SCSI DMA status low byte */
 #define REG_SCSI_DMA_STATUS_H   XDATA_REG8(0xCE6F)   /* SCSI DMA status high byte */
 #define REG_XFER_STATUS_CE86    XDATA_REG8(0xCE86)
 #define REG_XFER_CTRL_CE88      XDATA_REG8(0xCE88)
+#define REG_SCSI_DMA_CTRL_CE88  REG_XFER_CTRL_CE88   // Alias for usb_ep_loop
 #define REG_XFER_READY          XDATA_REG8(0xCE89)
+#define REG_SCSI_DMA_STATUS_CE89 REG_XFER_READY       // Alias for usb_ep_loop
 #define   XFER_READY_BIT          0x01  // Bit 0: Transfer ready
 #define   XFER_READY_DONE         0x02  // Bit 1: Transfer done
 #define REG_XFER_MODE_CE95      XDATA_REG8(0xCE95)
@@ -607,7 +628,9 @@
 // USB Descriptor Validation (0xCEB0-0xCEB3)
 //=============================================================================
 #define REG_USB_DESC_VAL_CEB2   XDATA_REG8(0xCEB2)
+#define REG_SCSI_PARAM_CEB2     REG_USB_DESC_VAL_CEB2  // Alias for usb_ep_loop
 #define REG_USB_DESC_VAL_CEB3   XDATA_REG8(0xCEB3)
+#define REG_SCSI_PARAM_CEB3     REG_USB_DESC_VAL_CEB3  // Alias for usb_ep_loop
 
 //=============================================================================
 // CPU Link Control (0xCEF0-0xCEFF)
@@ -678,6 +701,8 @@
 #define REG_CMD_TIMEOUT         XDATA_REG8(0xE431)
 #define REG_CMD_PARAM_L         XDATA_REG8(0xE432)
 #define REG_CMD_PARAM_H         XDATA_REG8(0xE433)
+#define REG_CMD_EXT_PARAM_0     XDATA_REG8(0xE434)
+#define REG_CMD_EXT_PARAM_1     XDATA_REG8(0xE435)
 
 //=============================================================================
 // Debug/Interrupt (0xE600-0xE6FF)
