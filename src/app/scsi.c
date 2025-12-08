@@ -56,14 +56,14 @@ extern void helper_15f1(uint8_t param);
 extern void usb_calc_addr_with_offset(void);
 extern void helper_3f4a(void);
 extern void interface_ready_check(uint8_t p1, uint8_t p2, uint8_t p3);
-extern void dispatch_039f(uint8_t param);
-extern void dispatch_04fd(void);
-extern void dispatch_04ee(void);
-extern void dispatch_04e9(void);
-extern void dispatch_045d(void);
-extern void dispatch_044e(void);
-extern void dispatch_032c(void);
-extern void dispatch_0340(void);
+extern void handler_d916(void);               /* was: dispatch_039f */
+extern void handler_e96c(void);               /* was: dispatch_04fd */
+extern void handler_e6fc(void);               /* was: dispatch_04ee */
+extern void handler_e8e4(void);               /* was: dispatch_04e9 */
+extern void pcie_error_handler(void);         /* was: dispatch_045d */
+extern void handler_e91d(void);               /* was: dispatch_044e */
+extern void phy_power_config_handler(void);   /* was: dispatch_032c */
+extern void handler_bf8e(void);               /* was: dispatch_0340 */
 extern void handler_0327_usb_power_init(void);
 extern void helper_3578(uint8_t param);
 extern void helper_157d(void);
@@ -85,18 +85,19 @@ extern void nvme_load_transfer_data(void);
 extern void dma_setup_transfer(uint8_t p1, uint8_t p2, uint8_t p3);
 extern void usb_copy_status_to_buffer(void);
 extern void xdata_store_dword(__xdata uint8_t *ptr, uint32_t val);
-extern void dispatch_0534(void);
-extern void dispatch_0426(uint8_t param);
+extern void handler_d6bc(void);               /* was: dispatch_0534 */
+extern void dispatch_0426(void);              /* Bank 0 target 0xE762 */
 
 /* Forward declarations */
 static void scsi_setup_buffer_length(uint8_t hi, uint8_t lo);
 static void scsi_set_usb_mode(uint8_t mode);
 static void scsi_init_interface(void);
 static void scsi_pcie_send_status(uint8_t param);
-static void scsi_dispatch_0426(void);
-static void scsi_cmd_process_4d92(void);
-static void scsi_cmd_state_4c98(void);
-static void scsi_cmd_clear_4c40(void);
+static void scsi_dispatch_reset(void);
+static void scsi_cmd_process(void);
+static void scsi_cmd_state_machine(void);
+static void scsi_cmd_clear(void);
+static void pcie_setup_transaction(uint8_t param);
 static void helper_1580(uint8_t param);
 
 /*
@@ -203,12 +204,12 @@ void scsi_process_transfer(uint8_t param_lo, uint8_t param_hi)
 }
 
 /*
- * scsi_state_handler_40d9 - State machine handler
+ * scsi_state_dispatch - State machine dispatcher
  * Address: 0x40d9-0x419c (196 bytes)
  *
  * Handles various command states (0x09, 0x0A, 0x01, 0x02, 0x03, 0x05, 0x08).
  */
-void scsi_state_handler_40d9(void)
+void scsi_state_dispatch(void)
 {
     uint8_t state = I_STATE_6A;
     uint8_t offset;
@@ -288,12 +289,12 @@ void scsi_state_handler_40d9(void)
 }
 
 /*
- * scsi_action_handler_419d - Action handler
+ * scsi_setup_action - Setup action and configure USB events
  * Address: 0x419d-0x425e (194 bytes)
  *
  * Handles USB event setup and interface reset.
  */
-void scsi_action_handler_419d(uint8_t param)
+void scsi_setup_action(uint8_t param)
 {
     uint8_t event_result;
     uint8_t setup_result;
@@ -320,12 +321,12 @@ void scsi_action_handler_419d(uint8_t param)
 }
 
 /*
- * scsi_mode_setup_425f - Mode setup
+ * scsi_init_transfer_mode - Initialize transfer mode
  * Address: 0x425f-0x43d2 (372 bytes)
  *
  * Configures transfer mode and parameters.
  */
-void scsi_mode_setup_425f(uint8_t param)
+void scsi_init_transfer_mode(uint8_t param)
 {
     uint8_t mode;
 
@@ -356,12 +357,12 @@ void scsi_mode_setup_425f(uint8_t param)
 }
 
 /*
- * scsi_dma_handler_43d3 - DMA control handler
+ * scsi_dma_dispatch - DMA control dispatcher
  * Address: 0x43d3-0x4468 (150 bytes)
  *
  * Handles DMA transfer initiation based on mode flags.
  */
-void scsi_dma_handler_43d3(uint8_t param)
+void scsi_dma_dispatch(uint8_t param)
 {
     uint8_t status;
     uint8_t event_result;
@@ -448,12 +449,12 @@ void scsi_dma_handler_43d3(uint8_t param)
 }
 
 /*
- * scsi_dma_start_4469 - Start DMA transfer
+ * scsi_dma_start_with_param - Start DMA transfer with parameter
  * Address: 0x4469-0x4531 (201 bytes)
  *
  * Initiates DMA transfer with parameters.
  */
-void scsi_dma_start_4469(uint8_t param)
+void scsi_dma_start_with_param(uint8_t param)
 {
     IDATA_TRANSFER[0] = param;
     IDATA_TRANSFER[1] = param;
@@ -480,9 +481,9 @@ static void scsi_init_interface(void)
     /* Bit 7: Main interface */
     if ((flags & 0x80) != 0) {
         interface_ready_check(0, 0x13, 5);
-        dispatch_039f(0);
+        handler_d916();  /* was: dispatch_039f */
         G_INTERFACE_READY_0B2F = 1;
-        dispatch_04fd();
+        handler_e96c();  /* was: dispatch_04fd */
     }
 
     /* Bit 4: Secondary interface */
@@ -497,7 +498,7 @@ static void scsi_init_interface(void)
 
     /* Bit 1: Endpoint init */
     if ((flags >> 1) & 0x01) {
-        dispatch_04ee();
+        handler_e6fc();  /* was: dispatch_04ee */
     }
 
     /* Update CPU mode */
@@ -522,19 +523,19 @@ static void scsi_init_interface(void)
         G_USB_WORK_01B6 = 0;
         nvme_check_completion(0xCC30);
         G_STATE_FLAG_06E6 = 1;
-        dispatch_032c();
-        dispatch_0340();
+        phy_power_config_handler();  /* was: dispatch_032c */
+        handler_bf8e();  /* was: dispatch_0340 */
         handler_0327_usb_power_init();
     }
 }
 
 /*
- * scsi_buffer_handler_45d0 - Buffer management handler
+ * scsi_buffer_threshold_config - Configure buffer thresholds
  * Address: 0x45d0-0x466a (155 bytes)
  *
  * Manages SCSI buffer operations and threshold configuration.
  */
-void scsi_buffer_handler_45d0(void)
+void scsi_buffer_threshold_config(void)
 {
     uint8_t val;
     uint8_t mode;
@@ -598,12 +599,12 @@ void scsi_buffer_handler_45d0(void)
 }
 
 /*
- * scsi_transfer_check_466b - Check transfer state
+ * scsi_transfer_dispatch - Dispatch transfer operations
  * Address: 0x466b-0x480b (417 bytes)
  *
  * Checks system flags and initiates appropriate transfer operations.
  */
-void scsi_transfer_check_466b(void)
+void scsi_transfer_dispatch(void)
 {
     uint8_t status;
     uint8_t val;
@@ -618,7 +619,7 @@ void scsi_transfer_check_466b(void)
 
     status = REG_PHY_EXT_56;
     if (((status >> 5) & 0x01) != 1) {
-        dispatch_04e9();
+        handler_e8e4();  /* was: dispatch_04e9 */
         return;
     }
 
@@ -644,7 +645,7 @@ void scsi_transfer_check_466b(void)
             return;
         }
 
-        scsi_dispatch_0426();
+        scsi_dispatch_reset();
         helper_1579();
         G_PCIE_TXN_COUNT_LO = 5;
         return;
@@ -652,17 +653,17 @@ void scsi_transfer_check_466b(void)
 
     if (val == 0x81 || val == 0x0F) {
         usb_set_done_flag();
-        dispatch_045d();
+        pcie_error_handler();  /* was: dispatch_045d */
     }
 }
 
 /*
- * scsi_queue_handler_480c - Queue management handler
+ * scsi_nvme_queue_process - Process NVMe queue and completions
  * Address: 0x480c-0x4903 (248 bytes)
  *
  * Handles NVMe queue operations and completion processing.
  */
-void scsi_queue_handler_480c(void)
+void scsi_nvme_queue_process(void)
 {
     uint8_t status;
 
@@ -706,12 +707,12 @@ void scsi_queue_handler_480c(void)
 }
 
 /*
- * scsi_csw_handler_4904 - CSW generation
+ * scsi_csw_build - Build Command Status Wrapper
  * Address: 0x4904-0x4976 (115 bytes)
  *
  * Generates Command Status Wrapper response.
  */
-void scsi_csw_handler_4904(void)
+void scsi_csw_build(void)
 {
     /* Build and send CSW */
     /* CSW signature 'USBS' */
@@ -744,12 +745,12 @@ void scsi_csw_handler_4904(void)
 }
 
 /*
- * scsi_send_csw_4977 - Send CSW with status
+ * scsi_csw_send - Send CSW with status
  * Address: 0x4977-0x4b24 (430 bytes)
  *
  * Sends Command Status Wrapper with specified status.
  */
-void scsi_send_csw_4977(uint8_t param_hi, uint8_t param_lo)
+void scsi_csw_send(uint8_t param_hi, uint8_t param_lo)
 {
     uint8_t status;
 
@@ -760,7 +761,7 @@ void scsi_send_csw_4977(uint8_t param_hi, uint8_t param_lo)
     }
 
     /* Generate and send CSW */
-    scsi_csw_handler_4904();
+    scsi_csw_build();
 }
 
 /*
@@ -821,12 +822,12 @@ static void scsi_set_usb_mode(uint8_t mode)
 }
 
 /*
- * scsi_dma_status_533d - DMA status handler
+ * scsi_dma_set_mode - Set DMA transfer mode
  * Address: 0x533d-0x5358 (28 bytes)
  *
  * Handles SCSI DMA status updates.
  */
-void scsi_dma_status_533d(uint8_t param)
+void scsi_dma_set_mode(uint8_t param)
 {
     REG_XFER_MODE_CE95 = param >> 1;
 
@@ -839,12 +840,12 @@ void scsi_dma_status_533d(uint8_t param)
 }
 
 /*
- * scsi_status_update_5359 - Update system status
+ * scsi_sys_status_update - Update system status
  * Address: 0x5359-0x5372 (26 bytes)
  *
  * Updates primary system status with parameter.
  */
-void scsi_status_update_5359(uint8_t param)
+void scsi_sys_status_update(uint8_t param)
 {
     uint8_t status;
 
@@ -858,12 +859,12 @@ void scsi_status_update_5359(uint8_t param)
 }
 
 /*
- * scsi_write_residue_53c0 - Write residue to CSW buffer
+ * scsi_csw_write_residue - Write residue to CSW buffer
  * Address: 0x53c0-0x53d3 (20 bytes)
  *
- * Writes residue value from IDATA to CSW buffer.
+ * Writes residue value from IDATA to CSW buffer registers.
  */
-void scsi_write_residue_53c0(void)
+void scsi_csw_write_residue(void)
 {
     REG_SCSI_BUF_CTRL = I_BUF_CTRL_GLOBAL;
     REG_SCSI_BUF_THRESH_HI = I_BUF_THRESH_HI;
@@ -880,20 +881,20 @@ void scsi_write_residue_53c0(void)
 static void scsi_pcie_send_status(uint8_t param)
 {
     I_WORK_65 = 3;
-    helper_1580(G_PCIE_TXN_COUNT_LO);
+    pcie_setup_transaction(G_PCIE_TXN_COUNT_LO);
 
     /* Store status */
     xdata_store_dword(&REG_PCIE_DATA, (uint32_t)(param | 0x08) << 24);
-    dispatch_044e();
+    handler_e91d();  /* was: dispatch_044e */
 }
 
 /*
- * scsi_cbw_validate_51ef - Validate CBW signature
+ * scsi_cbw_validate - Validate CBW signature
  * Address: 0x51ef-0x51f8 (10 bytes)
  *
  * Validates 'USBC' signature in Command Block Wrapper.
  */
-uint8_t scsi_cbw_validate_51ef(void)
+uint8_t scsi_cbw_validate(void)
 {
     uint8_t len_hi = REG_USB_CBW_LEN_HI;
     uint8_t len_lo = REG_USB_CBW_LEN_LO;
@@ -913,12 +914,12 @@ uint8_t scsi_cbw_validate_51ef(void)
 }
 
 /*
- * scsi_uart_hex_51c7 - Output hex byte to UART
+ * uart_print_hex_byte - Output hex byte to UART
  * Address: 0x51c7-0x51e5 (31 bytes)
  *
  * Outputs a byte as two hex digits to UART.
  */
-void scsi_uart_hex_51c7(uint8_t val)
+void uart_print_hex_byte(uint8_t val)
 {
     uint8_t hi = val >> 4;
     uint8_t lo = val & 0x0F;
@@ -934,21 +935,22 @@ void scsi_uart_hex_51c7(uint8_t val)
 }
 
 /*
- * scsi_dispatch_0426 - Dispatch to handler 0x0426
+ * scsi_dispatch_reset - Dispatch reset handler
  * Address: inline helper
  */
-static void scsi_dispatch_0426(void)
+static void scsi_dispatch_reset(void)
 {
-    dispatch_0426(0x14);
+    /* Parameter 0x14 passed via R7 in original code */
+    dispatch_0426();  /* Bank 0 target 0xE762 */
 }
 
 /*
- * scsi_transfer_handler_5069 - Transfer control handler
+ * scsi_transfer_start - Start SCSI transfer
  * Address: 0x5069-0x50fe (150 bytes)
  *
  * Manages transfer state and DMA operations.
  */
-void scsi_transfer_handler_5069(uint8_t param)
+void scsi_transfer_start(uint8_t param)
 {
     G_XFER_CTRL_0AF7 = 0;
     helper_3f4a();
@@ -969,12 +971,12 @@ void scsi_transfer_handler_5069(uint8_t param)
 }
 
 /*
- * scsi_copy_cbw_data_5112 - Copy CBW data to work area
+ * scsi_cbw_parse - Parse CBW fields
  * Address: 0x5112-0x5156 (69 bytes)
  *
  * Copies CBW fields to internal work variables.
  */
-void scsi_copy_cbw_data_5112(void)
+void scsi_cbw_parse(void)
 {
     usb_copy_status_to_buffer();
 
@@ -989,28 +991,28 @@ void scsi_copy_cbw_data_5112(void)
     G_XFER_LUN_0AF4 = REG_USB_CBW_LUN & 0x0F;
 
     /* Process command */
-    scsi_cmd_process_4d92();
+    scsi_cmd_process();
 }
 
 /*
- * scsi_cmd_process_4d92 - Process SCSI command
+ * scsi_cmd_process - Process SCSI command
  * Address: 0x4d92-0x4e6c (219 bytes)
  *
  * Main SCSI command processing function.
  */
-static void scsi_cmd_process_4d92(void)
+static void scsi_cmd_process(void)
 {
     /* Command processing logic */
-    scsi_cmd_state_4c98();
+    scsi_cmd_state_machine();
 }
 
 /*
- * scsi_cmd_state_4c98 - Command state machine
+ * scsi_cmd_state_machine - Command state machine
  * Address: 0x4c98-0x4d91 (250 bytes)
  *
  * State machine for SCSI command execution.
  */
-static void scsi_cmd_state_4c98(void)
+static void scsi_cmd_state_machine(void)
 {
     /* State machine implementation */
 }
@@ -1030,57 +1032,57 @@ void scsi_ep_init_handler(void)
 }
 
 /*
- * scsi_check_e716_541f - Check transfer status register
+ * scsi_check_link_status - Check link status
  * Address: 0x541f-0x5425 (7 bytes)
  *
- * Returns bits 0-1 of transfer status.
+ * Returns bits 0-1 of link status register.
  */
-uint8_t scsi_check_e716_541f(void)
+uint8_t scsi_check_link_status(void)
 {
     return REG_LINK_STATUS_E716 & LINK_STATUS_E716_MASK;
 }
 
 /*
- * scsi_handler_5305 - Flash ready handler
+ * scsi_flash_ready_check - Check flash ready status
  * Address: 0x5305-0x5320 (28 bytes)
  *
  * Handles flash ready status checking.
  */
-void scsi_handler_5305(void)
+void scsi_flash_ready_check(void)
 {
     uint8_t status1, status2, status3;
 
-    scsi_cmd_clear_4c40();
+    scsi_cmd_clear();
 
     status1 = REG_FLASH_READY_STATUS;
     status2 = REG_FLASH_READY_STATUS;
     status3 = REG_FLASH_READY_STATUS;
 
-    /* Note: dispatch_0534 is a bank switch stub; actual params may be passed via globals */
+    /* Note: handler_d6bc is a bank switch stub; actual params may be passed via globals */
     (void)status1; (void)status2; (void)status3;
-    dispatch_0534();
+    handler_d6bc();  /* was: dispatch_0534 */
 
     G_SYS_FLAGS_07F6 = 1;
 }
 
 /*
- * scsi_cmd_clear_4c40 - Clear command state
+ * scsi_cmd_clear - Clear command state
  * Address: 0x4c40-0x4c97 (88 bytes)
  *
  * Clears SCSI command state and buffers.
  */
-static void scsi_cmd_clear_4c40(void)
+static void scsi_cmd_clear(void)
 {
     /* Clear command state */
 }
 
 /*
- * scsi_transfer_check_5373 - Check transfer completion
+ * scsi_dma_check_mask - Check DMA completion by mask
  * Address: 0x5373-0x5397 (37 bytes)
  *
  * Checks if transfer is complete based on mask.
  */
-void scsi_transfer_check_5373(uint8_t param)
+void scsi_dma_check_mask(uint8_t param)
 {
     uint8_t status;
     static __code const uint8_t mask_table[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
@@ -1093,12 +1095,12 @@ void scsi_transfer_check_5373(uint8_t param)
 }
 
 /*
- * scsi_queue_dispatch_52c7 - Queue dispatch handler
+ * scsi_queue_dispatch - Queue dispatch handler
  * Address: 0x52c7-0x5304 (62 bytes)
  *
  * Dispatches queue operations based on mask.
  */
-void scsi_queue_dispatch_52c7(uint8_t param)
+void scsi_queue_dispatch(uint8_t param)
 {
     uint8_t status;
     static __code const uint8_t mask_table[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
@@ -1112,10 +1114,10 @@ void scsi_queue_dispatch_52c7(uint8_t param)
 }
 
 /*
- * helper_1580 - Helper function stub
+ * pcie_setup_transaction - Setup PCIe transaction
  * Address: 0x1580
  */
-static void helper_1580(uint8_t param)
+static void pcie_setup_transaction(uint8_t param)
 {
     (void)param;  /* Stub - actual implementation pending */
 }

@@ -26,4 +26,10 @@ Do not use XDATA outside registers.h and globals.h! Don't use `*(__idata uint8_t
 
 Prioritize functions that you have already reversed the caller of.
 
+Whenever you see a function with a name that includes the address in it, think about if you can give it a better name from context.
+
+Registers and variables in general should not have aliases.
+
+You may not be the only one working in the repo. Don't do git checkout and make sure you read before you read.
+
 Checking in and making sure it builds every once in a while is good. You can also see how far along you are by comparing the size of our compiled firmware bin to fw.bin
