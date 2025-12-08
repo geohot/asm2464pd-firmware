@@ -182,6 +182,10 @@ static void usb_endpoint_status_handler(void);
 /* Forward declaration - usb_set_transfer_active_flag */
 void usb_set_transfer_active_flag(void);
 
+/* Forward declarations for transfer helpers */
+void usb_xfer_setup_8a7e(uint8_t param1);
+uint8_t usb_xfer_finish_8a3d(void);
+
 /*
  * usb_enable - Enable USB interface
  * Address: 0x1b7e-0x1b87 (10 bytes)
@@ -4085,4 +4089,301 @@ __xdata uint8_t *usb_calc_dptr_from_0x3c(void)
     uint8_t idata_3c = *(__idata uint8_t *)0x3C;
     uint16_t addr = 0x0C + idata_3c;
     return (__xdata uint8_t *)addr;
+}
+
+/*===========================================================================
+ * Bank 1 USB Descriptor Setup Functions (0x897d-0x8a89)
+ *
+ * These functions are in Bank 1 (address 0x10000-0x17FFF mapped at 0x8000)
+ * and handle USB descriptor setup, writing to the 0x59xx address space
+ * for USB descriptor configuration.
+ *===========================================================================*/
+
+/* External helpers from pcie.c used by USB descriptor setup */
+extern void pcie_tlp_handler_b402(void);  /* 0xb402 */
+
+/* External helpers from Bank 1 */
+extern void usb_descriptor_helper_a648(uint8_t val);  /* 0xa648 */
+extern void usb_descriptor_helper_a644(uint8_t hi, uint8_t lo);  /* 0xa644 */
+extern void usb_descriptor_helper_a637(void);  /* 0xa637 */
+extern void usb_descriptor_helper_a651(uint8_t hi, uint8_t lo, uint8_t val);  /* 0xa651 */
+extern void usb_descriptor_helper_a655(uint8_t idx, uint8_t val);  /* 0xa655 */
+
+/*
+ * usb_desc_setup_897d - USB descriptor setup with parameter
+ * Bank 1 Address: 0x897d-0x8991 (21 bytes) [actual addr: 0x1097d]
+ *
+ * Sets up a USB descriptor by writing param to *param_ptr,
+ * calling helper a648(1), clearing *param_ptr, then jumping to a644(0x58, 0x0d).
+ *
+ * Original disassembly (from ghidra.c):
+ *   *param_2 = param_1;
+ *   FUN_CODE_a648(1);
+ *   *param_2 = 0;
+ *   FUN_CODE_a644(0x58,0xd);  // does not return
+ */
+void usb_desc_setup_897d(uint8_t param, __xdata uint8_t *ptr)
+{
+    *ptr = param;
+    usb_descriptor_helper_a648(1);
+    *ptr = 0;
+    usb_descriptor_helper_a644(0x58, 0x0D);
+}
+
+/*
+ * usb_desc_setup_8992 - USB descriptor setup dispatch
+ * Bank 1 Address: 0x8992-0x89ac (27 bytes) [actual addr: 0x10992]
+ *
+ * Dispatch to a644(0x58, 0x0e) - does not return.
+ *
+ * Original disassembly:
+ *   FUN_CODE_a644(0x58,0xe);  // does not return
+ */
+void usb_desc_setup_8992(void)
+{
+    usb_descriptor_helper_a644(0x58, 0x0E);
+}
+
+/*
+ * usb_desc_setup_89ad - USB descriptor setup dispatch 2
+ * Bank 1 Address: 0x89ad-0x89bc (16 bytes) [actual addr: 0x109ad]
+ *
+ * Dispatch to a644(0x58, 0x10) - does not return.
+ *
+ * Original disassembly:
+ *   FUN_CODE_a644(0x58,0x10);  // does not return
+ */
+void usb_desc_setup_89ad(void)
+{
+    usb_descriptor_helper_a644(0x58, 0x10);
+}
+
+/*
+ * usb_desc_setup_89bd - USB descriptor setup with serial number
+ * Bank 1 Address: 0x89bd-0x89c5 (9 bytes header + body) [actual addr: 0x109bd]
+ *
+ * Complex descriptor setup that:
+ * 1. Calls a637() to initialize
+ * 2. Sets *param_1 to point to 0x59AC (descriptor address)
+ * 3. Calls 8a7e(0x42) for USB transfer
+ * 4. If 0x0ACD != 0, sets up serial number strings from 0x0B13-0x0B1A
+ *    using a651 and a655 helpers, then calls 8a3d
+ * 5. Otherwise checks 0x0AE5, sets 0x07E9 = 1 if zero, returns 0x0A83
+ *
+ * Original disassembly:
+ *   FUN_CODE_a637();
+ *   *param_1 = 0xac;
+ *   param_1[1] = 0x59;
+ *   FUN_CODE_8a7e(0x42);
+ *   if (DAT_EXTMEM_0acd != 0) {
+ *     ... setup serial strings ...
+ *     return FUN_CODE_8a3d();
+ *   }
+ *   if (DAT_EXTMEM_0ae5 == 0) DAT_EXTMEM_07e9 = 1;
+ *   return DAT_EXTMEM_0a83;
+ */
+uint8_t usb_desc_setup_89bd(__xdata uint8_t *param)
+{
+    usb_descriptor_helper_a637();
+
+    /* Set param to point to 0x59AC */
+    param[0] = 0xAC;
+    param[1] = 0x59;
+
+    /* Call transfer helper with 0x42 */
+    usb_xfer_setup_8a7e(0x42);
+
+    /* Check if serial number data available */
+    if (XDATA8(0x0ACD) != 0) {
+        /* Set up serial number strings */
+        usb_descriptor_helper_a651(0x59, 0x1A, XDATA8(0x0B13));
+        usb_descriptor_helper_a655(1, XDATA8(0x0B14));
+        usb_descriptor_helper_a655(2, XDATA8(0x0B15));
+        usb_descriptor_helper_a655(3, XDATA8(0x0B16));
+        usb_descriptor_helper_a655(4, XDATA8(0x0B17));
+        usb_descriptor_helper_a655(5, XDATA8(0x0B18));
+        usb_descriptor_helper_a655(6, XDATA8(0x0B19));
+        usb_descriptor_helper_a655(7, XDATA8(0x0B1A));
+        usb_descriptor_helper_a651(0x59, 0x70, XDATA8(0x0ACE));
+        return usb_xfer_finish_8a3d();
+    }
+
+    /* No serial data - check init state */
+    if (XDATA8(0x0AE5) == 0) {
+        XDATA8(0x07E9) = 1;
+    }
+    return XDATA8(0x0A83);
+}
+
+/*
+ * usb_desc_setup_89c6 - USB descriptor setup with parameter and serial
+ * Bank 1 Address: 0x89c6-0x8a39 (116 bytes) [actual addr: 0x109c6]
+ *
+ * Similar to 89bd but takes an additional parameter that's written first.
+ *
+ * Original disassembly:
+ *   *param_2 = param_1;
+ *   FUN_CODE_8a7e(0x42);
+ *   ... same serial number logic as 89bd ...
+ */
+uint8_t usb_desc_setup_89c6(uint8_t param, __xdata uint8_t *ptr)
+{
+    *ptr = param;
+
+    /* Call transfer helper with 0x42 */
+    usb_xfer_setup_8a7e(0x42);
+
+    /* Check if serial number data available */
+    if (XDATA8(0x0ACD) != 0) {
+        /* Set up serial number strings */
+        usb_descriptor_helper_a651(0x59, 0x1A, XDATA8(0x0B13));
+        usb_descriptor_helper_a655(1, XDATA8(0x0B14));
+        usb_descriptor_helper_a655(2, XDATA8(0x0B15));
+        usb_descriptor_helper_a655(3, XDATA8(0x0B16));
+        usb_descriptor_helper_a655(4, XDATA8(0x0B17));
+        usb_descriptor_helper_a655(5, XDATA8(0x0B18));
+        usb_descriptor_helper_a655(6, XDATA8(0x0B19));
+        usb_descriptor_helper_a655(7, XDATA8(0x0B1A));
+        usb_descriptor_helper_a651(0x59, 0x70, XDATA8(0x0ACE));
+        return usb_xfer_finish_8a3d();
+    }
+
+    /* No serial data - check init state */
+    if (XDATA8(0x0AE5) == 0) {
+        XDATA8(0x07E9) = 1;
+    }
+    return XDATA8(0x0A83);
+}
+
+/*
+ * usb_xfer_nop_8a3a - No-op transfer function
+ * Bank 1 Address: 0x8a3a-0x8a3c (3 bytes) [actual addr: 0x10a3a]
+ *
+ * Empty function - just returns.
+ */
+void usb_xfer_nop_8a3a(void)
+{
+    return;
+}
+
+/*
+ * usb_xfer_finish_8a3d - USB transfer finish and return action code
+ * Bank 1 Address: 0x8a3d-0x8a4d (17 bytes) [actual addr: 0x10a3d]
+ *
+ * Checks 0x0AE5 and if zero, sets 0x07E9 = 1.
+ * Returns value from 0x0A83.
+ *
+ * Original disassembly:
+ *   if (DAT_EXTMEM_0ae5 == 0) DAT_EXTMEM_07e9 = 1;
+ *   return DAT_EXTMEM_0a83;
+ */
+uint8_t usb_xfer_finish_8a3d(void)
+{
+    if (XDATA8(0x0AE5) == 0) {
+        XDATA8(0x07E9) = 1;
+    }
+    return XDATA8(0x0A83);
+}
+
+/*
+ * usb_xfer_setup_8a4e - USB transfer setup with parameters
+ * Bank 1 Address: 0x8a4e-0x8a66 (25 bytes) [actual addr: 0x10a4e]
+ *
+ * Sets up transfer parameters at 0x0ADE-0x0AE1, calls b402,
+ * then stores param2 to 0x0A83.
+ *
+ * Original disassembly:
+ *   DAT_EXTMEM_0ade = param_1;
+ *   DAT_EXTMEM_0adf = param_2;
+ *   DAT_EXTMEM_0ae0 = 0x58;
+ *   DAT_EXTMEM_0ae1 = 0xe9;
+ *   FUN_CODE_b402();
+ *   DAT_EXTMEM_0a83 = param_2;
+ */
+void usb_xfer_setup_8a4e(uint8_t param1, uint8_t param2)
+{
+    XDATA8(0x0ADE) = param1;
+    XDATA8(0x0ADF) = param2;
+    XDATA8(0x0AE0) = 0x58;
+    XDATA8(0x0AE1) = 0xE9;
+    pcie_tlp_handler_b402();
+    XDATA8(0x0A83) = param2;
+}
+
+/*
+ * usb_xfer_setup_8a67 - USB transfer setup with address write
+ * Bank 1 Address: 0x8a67-0x8a71 (11 bytes) [actual addr: 0x10a67]
+ *
+ * Writes param1 to [param2+1], calls b402, stores param3 to 0x0A83.
+ *
+ * Original disassembly:
+ *   *(param_2 + 1) = param_1;
+ *   FUN_CODE_b402();
+ *   DAT_EXTMEM_0a83 = param_3;
+ */
+void usb_xfer_setup_8a67(uint8_t param1, uint16_t addr, uint8_t param3)
+{
+    XDATA8(addr + 1) = param1;
+    pcie_tlp_handler_b402();
+    XDATA8(0x0A83) = param3;
+}
+
+/*
+ * usb_xfer_setup_8a72 - USB transfer setup with 0x12 write
+ * Bank 1 Address: 0x8a72-0x8a7d (12 bytes) [actual addr: 0x10a72]
+ *
+ * Writes 0x12 to *param1, calls b402, stores param2 to 0x0A83.
+ *
+ * Original disassembly:
+ *   *param_1 = 0x12;
+ *   FUN_CODE_b402();
+ *   DAT_EXTMEM_0a83 = param_2;
+ */
+void usb_xfer_setup_8a72(__xdata uint8_t *ptr, uint8_t param2)
+{
+    *ptr = 0x12;
+    pcie_tlp_handler_b402();
+    XDATA8(0x0A83) = param2;
+}
+
+/*
+ * usb_xfer_setup_8a7e - USB transfer setup with address write (3-param variant)
+ * Bank 1 Address: 0x8a7e-0x8a88 (11 bytes) [actual addr: 0x10a7e]
+ *
+ * Writes param1 to [param2+1], calls b402, stores param3 to 0x0A83.
+ * Similar to 8a67 - may be called with different DPTR context.
+ *
+ * Note: ghidra shows this as taking 3 params but in Bank 1 context,
+ * param2 comes from DPTR which is set by caller.
+ *
+ * Original disassembly:
+ *   *(param_2 + 1) = param_1;
+ *   FUN_CODE_b402();
+ *   DAT_EXTMEM_0a83 = param_3;
+ */
+void usb_xfer_setup_8a7e(uint8_t param1)
+{
+    /* In the actual call context, this is typically called with
+     * DPTR already pointing to the target address.
+     * The param is written to DPTR+1, then b402 is called. */
+    pcie_tlp_handler_b402();
+    XDATA8(0x0A83) = param1;
+}
+
+/*
+ * usb_xfer_flash_dispatch_8a89 - USB transfer with flash dispatch
+ * Bank 1 Address: 0x8a89-0x8d6d (~740 bytes) [actual addr: 0x10a89]
+ *
+ * Stores param to 0x0A9D, then calls flash_func_0bc8(0xef, 0x4c, 0xff).
+ * Does not return (jumps to flash dispatch).
+ *
+ * Original disassembly:
+ *   DAT_EXTMEM_0a9d = param_1;
+ *   flash_func_0bc8(0xef,0x4c,0xff);  // does not return
+ */
+void usb_xfer_flash_dispatch_8a89(uint8_t param)
+{
+    XDATA8(0x0A9D) = param;
+    /* Call flash dispatch - this is a bank switch + jump that doesn't return */
+    /* flash_func_0bc8(0xEF, 0x4C, 0xFF); */
 }

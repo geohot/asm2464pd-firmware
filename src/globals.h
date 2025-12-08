@@ -36,7 +36,9 @@ __idata __at(0x23) extern uint8_t I_WORK_23;         /* Work variable 0x23 */
 __idata __at(0x38) extern uint8_t I_WORK_38;         /* Work variable 0x38 */
 __idata __at(0x39) extern uint8_t I_WORK_39;         /* Work variable 0x39 */
 __idata __at(0x3A) extern uint8_t I_WORK_3A;         /* Work variable 0x3A */
+__idata __at(0x3B) extern uint8_t I_WORK_3B;         /* Work variable 0x3B */
 __idata __at(0x3C) extern uint8_t I_WORK_3C;         /* Work variable 0x3C */
+__idata __at(0x3D) extern uint8_t I_WORK_3D;         /* Work variable 0x3D */
 __idata __at(0x3E) extern uint8_t I_WORK_3E;         /* Work variable 0x3E */
 __idata __at(0x40) extern uint8_t I_WORK_40;         /* Work variable 0x40 */
 __idata __at(0x41) extern uint8_t I_WORK_41;         /* Work variable 0x41 */
@@ -165,6 +167,7 @@ __idata __at(0x72) extern uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_FLASH_OP_COUNTER      XDATA_VAR8(0x07BD)  /* Flash operation counter */
 #define G_SYS_FLAGS_BASE        XDATA_VAR8(0x07E4)  /* Flags base */
 #define G_TRANSFER_ACTIVE       XDATA_VAR8(0x07E5)  /* Transfer active flag */
+#define G_XFER_FLAG_07EA        XDATA_VAR8(0x07EA)  /* Transfer flag 0x07EA (set in SCSI DMA) */
 #define G_SYS_FLAGS_07EC        XDATA_VAR8(0x07EC)  /* System flags 0x07EC */
 #define G_SYS_FLAGS_07ED        XDATA_VAR8(0x07ED)  /* System flags 0x07ED */
 #define G_SYS_FLAGS_07EE        XDATA_VAR8(0x07EE)  /* System flags 0x07EE */
@@ -242,6 +245,35 @@ __idata __at(0x72) extern uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_STATE_CTRL_0B3F       XDATA_VAR8(0x0B3F)  /* State control 0x0B3F */
 #define G_DMA_ENDPOINT_0578     XDATA_VAR8(0x0578)  /* DMA endpoint control */
 #define G_XFER_STATE_0AF3       XDATA_VAR8(0x0AF3)  /* Transfer state 0x0AF3 */
+
+//=============================================================================
+// State Machine Work Area (0x0A80-0x0ABF)
+//=============================================================================
+#define G_STATE_WORK_0A85       XDATA_VAR8(0x0A85)  /* State machine temp storage */
+#define G_STATE_WORK_0A86       XDATA_VAR8(0x0A86)  /* State machine counter */
+#define G_STATE_WORK_0B3D       XDATA_VAR8(0x0B3D)  /* State machine flag 0B3D */
+#define G_STATE_WORK_0B3E       XDATA_VAR8(0x0B3E)  /* State machine flag 0B3E */
+#define G_STATE_WORK_002D       XDATA_VAR8(0x002D)  /* System work byte 0x2D */
+
+//=============================================================================
+// Flash Buffer Area Control (0x7000-0x7FFF)
+//=============================================================================
+#define G_FLASH_BUF_707B        XDATA_VAR8(0x707B)  /* Flash buffer byte 0x707B */
+#define G_FLASH_BUF_707D        XDATA_VAR8(0x707D)  /* Flash buffer byte 0x707D */
+
+//=============================================================================
+// Work Variables 0x0A5x-0x0A9x
+//=============================================================================
+#define G_NIBBLE_SWAP_0A5B      XDATA_VAR8(0x0A5B)  /* Nibble swap work variable */
+#define G_NIBBLE_SWAP_0A5C      XDATA_VAR8(0x0A5C)  /* Nibble swap work variable */
+#define G_LANE_STATE_0A9D       XDATA_VAR8(0x0A9D)  /* Lane state value */
+#define G_LINK_STATE_0AD1       XDATA_VAR8(0x0AD1)  /* Link state counter */
+#define G_LINK_STATE_0AD2       XDATA_VAR8(0x0AD2)  /* Link state flag */
+
+//=============================================================================
+// Timer/Init Control 0x0B40
+//=============================================================================
+#define G_TIMER_INIT_0B40       XDATA_VAR8(0x0B40)  /* Timer init control */
 
 //=============================================================================
 // USB/SCSI Buffer Area Control (0xD800-0xDFFF)

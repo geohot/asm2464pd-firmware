@@ -802,3 +802,80 @@ void flash_erase_sector(uint32_t addr)
     flash_run_transaction(0x20);
 }
 
+/*===========================================================================
+ * Bank 1 Flash Dispatch Stub Functions (0x873a-0x8d6e)
+ *
+ * These functions are in Bank 1 (address 0x10000-0x17FFF mapped at 0x8000)
+ * and serve as dispatch stubs that call flash_func_0bc8 with 0xFF parameter.
+ * These are error/fallback handlers that jump to flash error recovery.
+ *
+ * flash_func_0bc8 is a core dispatcher at 0x0bc8 that handles state machine
+ * transitions and error recovery. The 0xFF parameter typically indicates
+ * an error condition or reset state.
+ *===========================================================================*/
+
+/* External flash dispatcher function */
+extern void flash_func_0bc8(uint8_t param);  /* 0x0bc8 - Main flash dispatcher */
+
+/*
+ * flash_dispatch_stub_873a - Flash error dispatch stub
+ * Bank 1 Address: 0x873a-0x8742 (9 bytes) [actual addr: 0x1073a]
+ *
+ * Calls flash_func_0bc8(0xff) which does not return.
+ * This is an error fallback - jumps to flash error recovery.
+ *
+ * Original disassembly (from ghidra.c):
+ *   // WARNING: Subroutine does not return
+ *   flash_func_0bc8(0xff);
+ */
+void flash_dispatch_stub_873a(void)
+{
+    flash_func_0bc8(0xFF);
+}
+
+/*
+ * flash_dispatch_stub_8743 - Flash error dispatch stub
+ * Bank 1 Address: 0x8743-0x874b (9 bytes) [actual addr: 0x10743]
+ *
+ * Identical to 873a - possibly for different state machine entry point.
+ *
+ * Original disassembly:
+ *   // WARNING: Subroutine does not return
+ *   flash_func_0bc8(0xff);
+ */
+void flash_dispatch_stub_8743(void)
+{
+    flash_func_0bc8(0xFF);
+}
+
+/*
+ * flash_dispatch_stub_874c - Flash error dispatch stub
+ * Bank 1 Address: 0x874c-0x8754 (9 bytes) [actual addr: 0x1074c]
+ *
+ * Identical to 873a - possibly for different state machine entry point.
+ *
+ * Original disassembly:
+ *   // WARNING: Subroutine does not return
+ *   flash_func_0bc8(0xff);
+ */
+void flash_dispatch_stub_874c(void)
+{
+    flash_func_0bc8(0xFF);
+}
+
+/*
+ * flash_dispatch_stub_8d6e - Flash error dispatch stub
+ * Bank 1 Address: 0x8d6e-0x8d76 (9 bytes) [actual addr: 0x10d6e]
+ *
+ * Identical to 873a - possibly for different state machine entry point.
+ * This one is at the end of the Bank 1 function group before the debug init.
+ *
+ * Original disassembly:
+ *   // WARNING: Subroutine does not return
+ *   flash_func_0bc8(0xff);
+ */
+void flash_dispatch_stub_8d6e(void)
+{
+    flash_func_0bc8(0xFF);
+}
+

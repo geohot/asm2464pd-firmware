@@ -2001,3 +2001,91 @@ void pcie_set_interrupt_flag(void)
     XDATA8(0x0ad7) = 0x01;
     XDATA8(0x0ade) = 0;
 }
+
+/*===========================================================================
+ * Bank 1 PCIe Address Helper Functions (0x839c-0x83b9)
+ *
+ * These functions are in Bank 1 (address 0x10000-0x17FFF mapped at 0x8000)
+ * and handle PCIe address setup for transactions. They store 32-bit addresses
+ * to the global G_PCIE_ADDR at 0x05AF.
+ *===========================================================================*/
+
+/* External helper from Bank 1 */
+extern void pcie_bank1_helper_e902(void);  /* 0xe902 - Bank 1 setup */
+
+/*
+ * pcie_addr_store_839c - Store PCIe address with offset adjustment
+ * Bank 1 Address: 0x839c-0x83b8 (29 bytes) [actual addr: 0x1039c]
+ *
+ * Calls e902 helper, loads current address from 0x05AF,
+ * then stores back adjusted address (param4 + 4 with borrow handling).
+ *
+ * The borrow handling: if param4 > 0xFB (251), there's overflow when adding 4,
+ * so param3 is decremented by 1.
+ *
+ * Original disassembly (from ghidra.c):
+ *   FUN_CODE_e902();
+ *   xdata_load_dword(0x5af);
+ *   xdata_store_dword(0x5af, param_1, param_2,
+ *                     param_3 - (((0xfb < param_4) << 7) >> 7),
+ *                     param_4 + 4);
+ *
+ * Note: The expression (((0xfb < param_4) << 7) >> 7) evaluates to:
+ *   1 if param_4 > 0xFB (i.e., param_4 >= 0xFC, so param_4 + 4 overflows)
+ *   0 otherwise
+ */
+void pcie_addr_store_839c(uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4)
+{
+    uint8_t borrow;
+    uint8_t new_p3;
+    uint8_t new_p4;
+
+    /* Call bank 1 helper for setup */
+    pcie_bank1_helper_e902();
+
+    /* Calculate adjusted values */
+    new_p4 = p4 + 4;
+    borrow = (p4 > 0xFB) ? 1 : 0;  /* Borrow if overflow */
+    new_p3 = p3 - borrow;
+
+    /* Store 32-bit address to globals */
+    G_PCIE_ADDR_0 = p1;
+    G_PCIE_ADDR_1 = p2;
+    G_PCIE_ADDR_2 = new_p3;
+    G_PCIE_ADDR_3 = new_p4;
+}
+
+/*
+ * pcie_addr_store_83b9 - Store PCIe address with offset (variant)
+ * Bank 1 Address: 0x83b9-0x83d5 (29 bytes) [actual addr: 0x103b9]
+ *
+ * Identical to 839c - likely called in different context or a duplicate
+ * for code alignment/bank purposes.
+ *
+ * Original disassembly:
+ *   FUN_CODE_e902();
+ *   xdata_load_dword(0x5af);
+ *   xdata_store_dword(0x5af, param_1, param_2,
+ *                     param_3 - (((0xfb < param_4) << 7) >> 7),
+ *                     param_4 + 4);
+ */
+void pcie_addr_store_83b9(uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4)
+{
+    uint8_t borrow;
+    uint8_t new_p3;
+    uint8_t new_p4;
+
+    /* Call bank 1 helper for setup */
+    pcie_bank1_helper_e902();
+
+    /* Calculate adjusted values */
+    new_p4 = p4 + 4;
+    borrow = (p4 > 0xFB) ? 1 : 0;  /* Borrow if overflow */
+    new_p3 = p3 - borrow;
+
+    /* Store 32-bit address to globals */
+    G_PCIE_ADDR_0 = p1;
+    G_PCIE_ADDR_1 = p2;
+    G_PCIE_ADDR_2 = new_p3;
+    G_PCIE_ADDR_3 = new_p4;
+}

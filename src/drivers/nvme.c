@@ -2260,22 +2260,24 @@ void nvme_queue_helper(void)
  * NVMe Command Engine Functions (0x9500-0x9900)
  *===========================================================================*/
 
-/* Additional registers for NVMe command engine */
-#define REG_CMD_ISSUE           XDATA_REG8(0xE400)
-#define REG_CMD_TAG             XDATA_REG8(0xE401)
-#define REG_CMD_LBA_0           XDATA_REG8(0xE422)
-#define REG_CMD_LBA_1           XDATA_REG8(0xE423)
-#define REG_CMD_LBA_2           XDATA_REG8(0xE424)
-#define REG_CMD_LBA_3           XDATA_REG8(0xE446)
-#define REG_CMD_COUNT_LOW       XDATA_REG8(0xE425)
-#define REG_CMD_COUNT_HIGH      XDATA_REG8(0xE426)
-#define REG_CMD_CTRL            XDATA_REG8(0xE427)
-#define REG_CMD_TIMEOUT         XDATA_REG8(0xE428)
-#define REG_CMD_PARAM_L         XDATA_REG8(0xE42B)
-#define REG_CMD_PARAM_H         XDATA_REG8(0xE42C)
-#define REG_CMD_PARAM           XDATA_REG8(0xE430)
-#define REG_CMD_STATUS          XDATA_REG8(0xE431)
-#define REG_INT_CTRL_C801       XDATA_REG8(0xC801)
+/* Additional registers for NVMe command engine - now defined in registers.h */
+/* The addresses below are kept as comments for reference:
+ * REG_CMD_ISSUE           0xE400 (now defined in registers.h)
+ * REG_CMD_TAG             0xE401 (now defined in registers.h)
+ * REG_CMD_LBA_0           0xE422 (now defined in registers.h as REG_CMD_PARAM)
+ * REG_CMD_LBA_1           0xE423
+ * REG_CMD_LBA_2           0xE424
+ * REG_CMD_LBA_3           0xE446
+ * REG_CMD_COUNT_LOW       0xE425
+ * REG_CMD_COUNT_HIGH      0xE426
+ * REG_CMD_CTRL            0xE427
+ * REG_CMD_TIMEOUT         0xE428
+ * REG_CMD_PARAM_L         0xE42B
+ * REG_CMD_PARAM_H         0xE42C
+ * REG_CMD_PARAM           0xE430
+ * REG_CMD_STATUS          0xE431
+ * REG_INT_CTRL_C801       0xC801 (now defined in registers.h)
+ */
 
 /* Additional globals */
 #define G_CMD_STATE_07C4        XDATA_VAR8(0x07C4)
@@ -3148,26 +3150,26 @@ void nvme_admin_abe9(uint8_t param1, uint8_t param2, uint8_t param3)
  * PCIe TLP/NVMe Handler Functions (0xb100-0xba00)
  *===========================================================================*/
 
-/* Additional registers for PCIe/flash */
-#define REG_FLASH_CMD           XDATA_REG8(0xC880)
-#define REG_FLASH_CSR           XDATA_REG8(0xC881)
-#define REG_FLASH_ADDR_LO       XDATA_REG8(0xC882)
-#define REG_FLASH_ADDR_MD       XDATA_REG8(0xC883)
-#define REG_FLASH_ADDR_HI       XDATA_REG8(0xC884)
-#define REG_FLASH_DATA_LEN      XDATA_REG8(0xC885)
-#define REG_FLASH_DATA_LEN_HI   XDATA_REG8(0xC886)
-#define REG_TIMER3_CSR          XDATA_REG8(0xCCB9)
-#define REG_CPU_STATUS_CC81     XDATA_REG8(0xCC81)
-#define REG_CPU_STATUS_CC91     XDATA_REG8(0xCC91)
+/* Additional registers for PCIe/flash - most now defined in registers.h */
+/* The following are NOT the same as registers.h (different addresses): */
+#define REG_FLASH_CMD_ALT           XDATA_REG8(0xC880)  /* Alternate flash cmd (not 0xC8AA) */
+#define REG_FLASH_CSR_ALT           XDATA_REG8(0xC881)  /* Alternate flash CSR (not 0xC8A9) */
+#define REG_FLASH_ADDR_LO_ALT       XDATA_REG8(0xC882)  /* Alternate flash addr (not 0xC8A1) */
+#define REG_FLASH_ADDR_MD_ALT       XDATA_REG8(0xC883)  /* Alternate flash addr (not 0xC8A2) */
+#define REG_FLASH_ADDR_HI_ALT       XDATA_REG8(0xC884)  /* Alternate flash addr (not 0xC8AB) */
+#define REG_FLASH_DATA_LEN_ALT      XDATA_REG8(0xC885)  /* Alternate flash len (not 0xC8A3) */
+#define REG_FLASH_DATA_LEN_HI_ALT   XDATA_REG8(0xC886)  /* Alternate flash len hi (not 0xC8A4) */
+#define REG_TIMER3_CSR_ALT          XDATA_REG8(0xCCB9)  /* Alternate timer3 CSR (not 0xCC23) */
+/* REG_CPU_STATUS_CC81 and REG_CPU_STATUS_CC91 are now in registers.h */
 #define G_WORK_CCCF9            XDATA_VAR8(0xCCF9)
 #define G_WORK_CCD9             XDATA_VAR8(0xCCD9)
 
-/* Additional globals for flash */
-#define G_FLASH_RESET_0AAA      XDATA_VAR8(0x0AAA)
-#define G_FLASH_ERROR_0         XDATA_VAR8(0x0AA8)
-#define G_FLASH_ERROR_1         XDATA_VAR8(0x0AA9)
-#define G_FLASH_LEN_LO          XDATA_VAR8(0x0AAB)
-#define G_FLASH_LEN_HI          XDATA_VAR8(0x0AAC)
+/* Additional globals for flash - now using alternate names to avoid conflicts */
+/* G_FLASH_RESET_0AAA, G_FLASH_ERROR_0, G_FLASH_ERROR_1 are now in globals.h */
+/* G_FLASH_LEN_LO (0x0AB1) and G_FLASH_LEN_HI (0x0AB2) are in globals.h */
+/* These are DIFFERENT addresses (0x0AAB/0x0AAC vs 0x0AB1/0x0AB2): */
+#define G_FLASH_LEN_LO_ALT          XDATA_VAR8(0x0AAB)  /* Alternate flash len low */
+#define G_FLASH_LEN_HI_ALT          XDATA_VAR8(0x0AAC)  /* Alternate flash len high */
 
 /*
  * nvme_pcie_init_b820 - PCIe/flash init

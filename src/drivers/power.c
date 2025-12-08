@@ -269,6 +269,18 @@ void power_check_status_e647(void)
 }
 
 /*
+ * power_check_status - Check power status with parameter
+ * Address: TBD - stub implementation
+ *
+ * Called from SCSI/protocol code with queue index parameter.
+ */
+void power_check_status(uint8_t param)
+{
+    (void)param;
+    /* TODO: Implement actual power status check */
+}
+
+/*
  * power_set_state - Set power state and config
  * Address: Called at entry, calls FUN_CODE_53c0
  *
