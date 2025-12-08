@@ -2435,7 +2435,9 @@ extern void pcie_cleanup_05fc(void);                          /* 0x05fc - Cleanu
 extern void pcie_handler_e974(void);                          /* 0xe974 - Bank 1 handler */
 extern void pcie_handler_e06b(uint8_t param);                 /* 0xe06b - Bank 1 handler with param */
 extern void pcie_setup_a38b(uint8_t source);                  /* 0xa38b - Setup helper */
+extern void FUN_CODE_e7ae(void);                              /* 0xe7ae - UART/bridge idle wait */
 extern uint8_t pcie_get_status_a372(void);                    /* 0xa372 - Get status at 0x40 */
+uint8_t pcie_queue_handler_a62d(void);                        /* 0xa62d - Queue event handler */
 
 /*
  * pcie_interrupt_handler - Main PCIe interrupt handler
@@ -2661,7 +2663,9 @@ void pcie_interrupt_handler(void)
  */
 uint8_t pcie_queue_handler_a62d(void)
 {
-    /* Call bank 1 handler at 0xe7ae */
+    /* Ensure UART/bridge is idle before sampling link width */
+    FUN_CODE_e7ae();
+
     /* Read status from link width register, mask with 0xe0 */
     return REG_LINK_WIDTH_E710 & 0xe0;
 }

@@ -290,6 +290,11 @@
 #define REG_UART_MCR            XDATA_REG8(0xC008)
 #define REG_UART_LSR            XDATA_REG8(0xC009)
 #define REG_UART_MSR            XDATA_REG8(0xC00A)
+/*
+ * Additional UART/bridge status register used for transmit gating.
+ * Bits 0-2 clear when the interface is idle.
+ */
+#define REG_UART_STATUS_C00E    XDATA_REG8(0xC00E)
 
 //=============================================================================
 // Link/PHY Control Registers (0xC200-0xC2FF)

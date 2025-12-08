@@ -1917,8 +1917,27 @@ void helper_e73a(void)
     FUN_CODE_e73a();
 }
 
-/* 0xe7ae: PCIe/DMA related - stub */
-void FUN_CODE_e7ae(void) {}
+/*
+ * handler_e7ae - UART/bridge transmit idle wait
+ * Address: 0xe7ae-0xe7bb
+ *
+ * Waits for the UART transmit FIFO and bridge interface to be idle before
+ * PCIe queue status is sampled. The original firmware polls until:
+ *   - REG_UART_TFBF bits[4:0] == 0x10 (TX buffer ready)
+ *   - REG_UART_STATUS_C00E bits[2:0] == 0   (bridge busy flags clear)
+ */
+void FUN_CODE_e7ae(void)
+{
+    uint8_t status;
+
+    do {
+        status = REG_UART_TFBF;
+    } while ((status & 0x1F) != 0x10);
+
+    do {
+        status = REG_UART_STATUS_C00E;
+    } while ((status & 0x07) != 0x00);
+}
 
 /* 0xe883: Handler - stub */
 void FUN_CODE_e883(void) {}
