@@ -217,6 +217,14 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_EVENT_CTRL_09FA       XDATA_VAR8(0x09FA)  /* Event control */
 
 //=============================================================================
+// PCIe Tunnel Adapter Config (0x0A52-0x0A55)
+//=============================================================================
+#define G_PCIE_ADAPTER_CFG_LO   XDATA_VAR8(0x0A52)  /* Adapter config low (link config high) */
+#define G_PCIE_ADAPTER_CFG_HI   XDATA_VAR8(0x0A53)  /* Adapter config high (link config low) */
+#define G_PCIE_ADAPTER_MODE     XDATA_VAR8(0x0A54)  /* Adapter mode config */
+#define G_PCIE_ADAPTER_AUX      XDATA_VAR8(0x0A55)  /* Adapter auxiliary config */
+
+//=============================================================================
 // Endpoint Dispatch Work Area (0x0A00-0x0BFF)
 //=============================================================================
 #define G_LOOP_STATE            XDATA_VAR8(0x0A59)  /* Main loop state flag */
@@ -377,5 +385,11 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_PCIE_STATUS_0B36      XDATA_VAR8(0x0B36)  /* PCIe status work byte */
 #define G_PCIE_STATUS_0B37      XDATA_VAR8(0x0B37)  /* PCIe status work byte */
 #define G_PCIE_STATUS_0B19      XDATA_VAR8(0x0B19)  /* PCIe status flag */
+
+//=============================================================================
+// Power State Machine Work Area (0x0A60-0x0A6F)
+//=============================================================================
+#define G_POWER_STATE_MAX_0A61  XDATA_VAR8(0x0A61)  /* Power state iteration max */
+#define G_POWER_STATE_IDX_0A62  XDATA_VAR8(0x0A62)  /* Power state iteration index */
 
 #endif /* __GLOBALS_H__ */

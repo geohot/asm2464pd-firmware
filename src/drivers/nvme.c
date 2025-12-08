@@ -2493,7 +2493,7 @@ void nvme_cmd_shift_6(__xdata uint8_t *ptr, uint8_t val)
 void nvme_int_ctrl_set_bit4(void)
 {
     uint8_t val = REG_INT_ENABLE;
-    REG_INT_ENABLE = (val & 0xEF) | 0x10;
+    REG_INT_ENABLE = (val & ~INT_ENABLE_SYSTEM) | INT_ENABLE_SYSTEM;
 }
 
 /*

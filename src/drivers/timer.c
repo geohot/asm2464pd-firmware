@@ -492,7 +492,7 @@ void timer_link_status_handler(void)
     REG_CPU_EXEC_STATUS_2 = 0x04;
 
     REG_LINK_CTRL_E324 = REG_LINK_CTRL_E324 & 0xFB;  /* Clear bit 2 */
-    REG_TIMER_CTRL_CC3B = REG_TIMER_CTRL_CC3B & 0xFE;  /* Clear bit 0 */
+    REG_TIMER_CTRL_CC3B = REG_TIMER_CTRL_CC3B & ~TIMER_CTRL_ENABLE;
 
     /* Set bits 5,6 in 0xCC3A */
     REG_TIMER_ENABLE_B = (REG_TIMER_ENABLE_B & 0x9F) | 0x60;

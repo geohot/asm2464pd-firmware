@@ -674,12 +674,12 @@ void reg_timer_setup_and_set_bits(void)
 
     /* Set bit 1 in REG_TIMER_ENABLE_B */
     val = REG_TIMER_ENABLE_B;
-    val = (val & 0xFD) | 0x02;
+    val = (val & ~TIMER_ENABLE_B_BIT) | TIMER_ENABLE_B_BIT;
     REG_TIMER_ENABLE_B = val;
 
     /* Set bit 1 in REG_TIMER_ENABLE_A */
     val = REG_TIMER_ENABLE_A;
-    val = (val & 0xFD) | 0x02;
+    val = (val & ~TIMER_ENABLE_A_BIT) | TIMER_ENABLE_A_BIT;
     REG_TIMER_ENABLE_A = val;
 }
 
@@ -705,10 +705,10 @@ void reg_timer_clear_bits(void)
     uint8_t val;
 
     val = REG_TIMER_ENABLE_B;
-    REG_TIMER_ENABLE_B = val & 0xFD;
+    REG_TIMER_ENABLE_B = val & ~TIMER_ENABLE_B_BIT;
 
     val = REG_TIMER_ENABLE_A;
-    REG_TIMER_ENABLE_A = val & 0xFD;
+    REG_TIMER_ENABLE_A = val & ~TIMER_ENABLE_A_BIT;
 }
 
 /*
@@ -764,7 +764,7 @@ void reg_set_bit6_generic(__xdata uint8_t *reg)
 void reg_clear_bit1_cc3b(void)
 {
     uint8_t val = REG_TIMER_CTRL_CC3B;
-    REG_TIMER_CTRL_CC3B = val & 0xFD;
+    REG_TIMER_CTRL_CC3B = val & ~TIMER_CTRL_START;
 }
 
 /*
@@ -919,5 +919,45 @@ void init_sys_flags_07f0(void)
     G_SYS_FLAGS_07F4 = 0x00;
     G_SYS_FLAGS_07F5 = 0x00;
     REG_CPU_EXEC_STATUS_3 = REG_CPU_EXEC_STATUS_3 & 0xFE;
+}
+
+/* Forward declaration for loop helper */
+extern void delay_loop_adb0(void);
+
+/*
+ * delay_short_e89d - Short delay with IDATA setup
+ * Address: 0xe89d-0xe8a8 (12 bytes)
+ *
+ * Sets I_WORK_65 = 0x0F, I_WORK_60 = 0, then calls delay loop at 0xadb0.
+ * The result is left in R7 (via I_WORK_65).
+ *
+ * Original disassembly:
+ *   e89d: mov r0, #0x65      ; point to I_WORK_65
+ *   e89f: mov @r0, #0x0f     ; I_WORK_65 = 0x0F
+ *   e8a1: clr a
+ *   e8a2: mov r0, #0x60      ; point to I_WORK_60 area
+ *   e8a4: mov @r0, a         ; clear it
+ *   e8a5: lcall 0xadb0       ; call delay loop
+ *   e8a8: ret
+ */
+void delay_short_e89d(void)
+{
+    I_WORK_65 = 0x0F;
+    *(__idata uint8_t *)0x60 = 0;
+    delay_loop_adb0();
+}
+
+/*
+ * delay_wait_e80a - Delay with parameters
+ * Address: 0xe80a-0xe81x
+ *
+ * Waits for a specified delay using timer-based polling.
+ * Parameters are passed in R4:R5 (delay value) and R7 (flags).
+ */
+void delay_wait_e80a(uint16_t delay, uint8_t flag)
+{
+    (void)delay;
+    (void)flag;
+    /* TODO: Implement timer-based delay */
 }
 

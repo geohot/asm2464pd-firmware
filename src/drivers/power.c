@@ -78,6 +78,11 @@
 #include "globals.h"
 #include "structs.h"
 
+/* External declarations */
+extern void usb_mode_config_d07f(uint8_t param);     /* state_helpers.c */
+extern void nvme_queue_config_e214(void);            /* nvme.c */
+extern void delay_short_e89d(void);                  /* utils.c */
+
 /*
  * power_set_suspended - Set power status suspended bit (bit 6)
  * Address: 0xcb23-0xcb2c (10 bytes)
@@ -364,9 +369,241 @@ void power_disable_clocks(void)
 }
 
 /* Forward declarations for helper functions */
-extern void usb_mode_config_d07f(uint8_t param);
 extern void nvme_queue_config_e214(void);
 extern void power_init_complete_e8ef(uint8_t param);
+extern void delay_short_e89d(void);                    /* 0xe89d - Short delay */
+extern void delay_wait_e80a(uint16_t delay, uint8_t flag);  /* 0xe80a - Delay with params */
+
+/* Helper to read 32 bits from DPTR */
+static void xdata_read32(__xdata uint8_t *ptr, uint8_t *r4, uint8_t *r5, uint8_t *r6, uint8_t *r7);
+/* Helper to write 32 bits to DPTR */
+static void xdata_write32(__xdata uint8_t *ptr, uint8_t r4, uint8_t r5, uint8_t r6, uint8_t r7);
+
+/* 0x0d84: Read 4 bytes from DPTR into R4-R7 */
+static void xdata_read32(__xdata uint8_t *ptr, uint8_t *r4, uint8_t *r5, uint8_t *r6, uint8_t *r7)
+{
+    *r4 = ptr[0];
+    *r5 = ptr[1];
+    *r6 = ptr[2];
+    *r7 = ptr[3];
+}
+
+/* 0x0dc5: Write R4-R7 to 4 bytes at DPTR */
+static void xdata_write32(__xdata uint8_t *ptr, uint8_t r4, uint8_t r5, uint8_t r6, uint8_t r7)
+{
+    ptr[0] = r4;
+    ptr[1] = r5;
+    ptr[2] = r6;
+    ptr[3] = r7;
+}
+
+/*
+ * power_state_machine_d02a - Power state initialization loop
+ * Address: 0xd02a-0xd07e (85 bytes)
+ *
+ * Initializes power states by iterating through a table at 0xB220.
+ * Each iteration reads 4 bytes and copies them to 0x8000 + (index * 4).
+ *
+ * Parameters:
+ *   max_iterations (R7): Maximum number of iterations
+ *
+ * Returns:
+ *   0x00: Success - all iterations completed
+ *   0xFF: Failure - delay_short returned non-zero
+ *
+ * Algorithm:
+ *   G_POWER_STATE_MAX_0A61 = max_iterations
+ *   G_POWER_STATE_IDX_0A62 = 0
+ *   loop:
+ *     if (G_POWER_STATE_IDX_0A62 >= G_POWER_STATE_MAX_0A61) return 0
+ *     delay_short_e89d()
+ *     if (result != 0) return 0xFF
+ *     read 4 bytes from REG_PCIE_DATA (0xB220)
+ *     write to table at 0x8000 + (G_POWER_STATE_IDX_0A62 * 4)
+ *     if (IDATA[0x65] != 0) increment IDATA[0x64]
+ *     G_POWER_STATE_IDX_0A62++
+ *     goto loop
+ */
+uint8_t power_state_machine_d02a(uint8_t max_iterations)
+{
+    uint8_t r4, r5, r6, r7;
+    uint8_t idx;
+    __xdata uint8_t *table_ptr;
+
+    /* Store max and clear index */
+    G_POWER_STATE_MAX_0A61 = max_iterations;
+    G_POWER_STATE_IDX_0A62 = 0;
+
+    while (1) {
+        /* Check if we've completed all iterations */
+        if (G_POWER_STATE_IDX_0A62 >= G_POWER_STATE_MAX_0A61) {
+            return 0;  /* Success */
+        }
+
+        /* Call delay helper */
+        delay_short_e89d();
+
+        /* Check if delay returned error (R7 != 0 in assembly) */
+        /* The delay function modifies IDATA[0x65], if non-zero it's an error */
+        if (I_WORK_65 != 0) {
+            return 0xFF;  /* Failure */
+        }
+
+        /* Read 4 bytes from REG_PCIE_DATA (0xB220) */
+        xdata_read32((__xdata uint8_t *)0xB220, &r4, &r5, &r6, &r7);
+
+        /* Calculate table address: 0x8000 + (index * 4) */
+        idx = G_POWER_STATE_IDX_0A62;
+        table_ptr = (__xdata uint8_t *)(0x8000 + ((uint16_t)idx * 4));
+
+        /* Write 4 bytes to the table */
+        xdata_write32(table_ptr, r4, r5, r6, r7);
+
+        /* Check IDATA[0x65] and conditionally increment IDATA[0x64] */
+        /* mov r0, #0x64; inc @r0; mov a, @r0; dec r0; jnz d074 */
+        /* If value at 0x65 != 0, increment value at 0x64 */
+        if (*(__idata uint8_t *)0x65 != 0) {
+            (*(__idata uint8_t *)0x64)++;
+        }
+
+        /* Increment index and continue */
+        G_POWER_STATE_IDX_0A62++;
+    }
+}
+
+/*
+ * power_set_suspended_and_event_cad6 - Set suspend bit and power event
+ * Address: 0xcad6-0xcae5 (16 bytes)
+ *
+ * Sets the suspended bit in power status and writes 0x10 to power event.
+ * Part of the USB suspend/resume sequence.
+ *
+ * Original disassembly:
+ *   cad6: mov dptr, #0x92c2   ; Power status register
+ *   cad9: movx a, @dptr       ; Read current value
+ *   cada: anl a, #0xbf        ; Clear bit 6
+ *   cadc: orl a, #0x40        ; Set bit 6
+ *   cade: movx @dptr, a       ; Write back
+ *   cadf: mov dptr, #0x92e1   ; Power event register
+ *   cae2: mov a, #0x10        ; Event value
+ *   cae4: movx @dptr, a       ; Write event
+ *   cae5: ret
+ */
+void power_set_suspended_and_event_cad6(void)
+{
+    uint8_t val;
+
+    /* Set bit 6 of power status (suspended flag) */
+    val = REG_POWER_STATUS;
+    REG_POWER_STATUS = (val & 0xBF) | 0x40;
+
+    /* Write 0x10 to power event register */
+    REG_POWER_EVENT_92E1 = 0x10;
+}
+
+/*
+ * power_toggle_usb_bit2_caed - Toggle USB bit 2
+ * Address: 0xcaed-0xcafa (14 bytes)
+ *
+ * Reads USB status, sets bit 2, writes back, then reads again,
+ * clears bit 2, writes back. This toggles bit 2 as a pulse.
+ *
+ * Original disassembly:
+ *   caed: mov dptr, #0x9000   ; USB status register
+ *   caf0: movx a, @dptr       ; Read current
+ *   caf1: anl a, #0xfb        ; Clear bit 2
+ *   caf3: orl a, #0x04        ; Set bit 2
+ *   caf5: movx @dptr, a       ; Write back
+ *   caf6: movx a, @dptr       ; Read again
+ *   caf7: anl a, #0xfb        ; Clear bit 2
+ *   caf9: movx @dptr, a       ; Write back
+ *   cafa: ret
+ */
+void power_toggle_usb_bit2_caed(void)
+{
+    uint8_t val;
+
+    /* Set bit 2 */
+    val = REG_USB_STATUS;
+    REG_USB_STATUS = (val & 0xFB) | 0x04;
+
+    /* Clear bit 2 */
+    val = REG_USB_STATUS;
+    REG_USB_STATUS = val & 0xFB;
+}
+
+/*
+ * power_set_phy_bit1_cafb - Set PHY control bit 1
+ * Address: 0xcafb-0xcb04 (10 bytes)
+ *
+ * Sets bit 1 in PHY control register 0x91C0.
+ *
+ * Original disassembly:
+ *   cafb: mov dptr, #0x91c0   ; PHY control register
+ *   cafe: movx a, @dptr       ; Read current
+ *   caff: anl a, #0xfd        ; Clear bit 1
+ *   cb01: orl a, #0x02        ; Set bit 1
+ *   cb03: movx @dptr, a       ; Write back
+ *   cb04: ret
+ */
+void power_set_phy_bit1_cafb(void)
+{
+    uint8_t val;
+
+    val = REG_USB_PHY_CTRL_91C0;
+    REG_USB_PHY_CTRL_91C0 = (val & 0xFD) | 0x02;
+}
+
+/*
+ * phy_power_init_d916 - Initialize PHY power settings
+ * Address: 0xd916-0xd955 (64 bytes)
+ *
+ * Initializes PHY power configuration for USB power management.
+ * Calls helper functions for suspend state and USB/PHY setup.
+ *
+ * Parameters:
+ *   param (R7): If non-zero, calls delay_wait_e80a(0x0257, 5)
+ *
+ * Algorithm:
+ *   1. Call power_set_suspended_and_event_cad6()  - set suspend and event
+ *   2. Call power_toggle_usb_bit2_caed()          - toggle USB bit 2
+ *   3. Call power_set_phy_bit1_cafb()             - set PHY bit 1
+ *   4. Read 0x9090, clear bit 7, write back
+ *   5. If R7 != 0, call delay_wait_e80a(0x0257, 5)
+ *   6. Write 0x04 to 0x9300
+ *   7. Write 0x02 to 0x91D1, then 0x40, then 0x80 to 0x9301
+ *   8. Write 0x08 to 0x91D1, then 0x01
+ *   9. Clear G_SYSTEM_STATE_0AE2
+ */
+void phy_power_init_d916(uint8_t param)
+{
+    uint8_t val;
+
+    /* Call helper functions */
+    power_set_suspended_and_event_cad6();
+    power_toggle_usb_bit2_caed();
+    power_set_phy_bit1_cafb();
+
+    /* Clear bit 7 of 0x9090 */
+    val = REG_USB_INT_MASK_9090;
+    REG_USB_INT_MASK_9090 = val & 0x7F;
+
+    /* If param != 0, do a delay */
+    if (param != 0) {
+        delay_wait_e80a(0x0257, 5);
+    }
+
+    /* Configure buffer and PHY */
+    REG_BUF_CFG_9300 = 0x04;
+    REG_USB_PHY_CTRL_91D1 = 0x02;
+    REG_BUF_CFG_9301 = 0x40;
+    REG_BUF_CFG_9301 = 0x80;
+    REG_USB_PHY_CTRL_91D1 = 0x08;
+    REG_USB_PHY_CTRL_91D1 = 0x01;
+
+    /* Clear system state */
+    G_SYSTEM_STATE_0AE2 = 0;
+}
 
 /*
  * power_clear_init_flag - Clear power init flag

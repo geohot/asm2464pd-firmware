@@ -4,7 +4,7 @@ We are trying to match each function in the original firmware to ours, giving go
 
 Our firmware should build and the output should match fw.bin as close as possible. Build temporaries and artifacts should go in build/ The firmware we build should run on the device.
 
-You can use radare on the fw.bin files to get the 8051 assembly. Be aware 8051 only has a 64kb code size, so addresses after 0x10000 are in the second bank. There's an indirect jump/call to get to that bank, and I believe the second bank is mapped at 0x8000 (so 0x8000 is 0x10000 if you are in second bank)
+You can use radare on the fw.bin files to get the 8051 assembly, don't forget the 8051 architecture flag. Be aware 8051 only has a 64kb code size, so addresses after 0x10000 are in the second bank. There's an indirect jump/call to get to that bank, and I believe the second bank is mapped at 0x8000 (so 0x8000 is 0x10000 if you are in second bank)
 
 0-0x8000 is always 0-0x8000
 In bank 0:  0x8000-0x10000 is 0x8000-0x10000
@@ -26,10 +26,10 @@ Do not use XDATA outside registers.h and globals.h! Don't use `*(__idata uint8_t
 
 Prioritize functions that you have already reversed the caller of.
 
-Whenever you see a function with a name that includes the address in it, think about if you can give it a better name from context.
+Whenever you see a function or register with a name that includes the address in it, think about if you can give it a better name from context.
 
 Registers and variables in general should not have aliases. Adding bitfields to registers.h similar to what's there is encouraged.
 
-You may not be the only one working in the repo. Don't do git checkout and make sure you read before you read.
+You may not be the only one working in the repo. Don't do git checkout and make sure you read before you write.
 
 Checking in and making sure it builds every once in a while is good. You can also see how far along you are by comparing the size of our compiled firmware bin to fw.bin

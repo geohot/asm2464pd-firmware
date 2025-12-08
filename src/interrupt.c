@@ -233,7 +233,7 @@ uint8_t int_check_nvme_complete(void)
  */
 uint8_t int_check_timer(void)
 {
-    return (REG_INT_SYSTEM & 0x10);
+    return (REG_INT_SYSTEM & INT_SYSTEM_TIMER);
 }
 
 /*===========================================================================

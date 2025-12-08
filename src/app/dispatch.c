@@ -28,6 +28,9 @@
 #include "sfr.h"
 #include "registers.h"
 
+/* External function declarations */
+extern void pcie_adapter_config(void);
+
 /*===========================================================================
  * Bank Switch Functions (0x0300-0x0321)
  *===========================================================================*/
@@ -290,8 +293,116 @@ void dispatch_0458(void) { jump_bank_0(0xE77A); }
 /* 0x045D: Target 0xC00D - pcie_tunnel_enable (defined in pcie.c) */
 void dispatch_045d(void) { jump_bank_0(0xC00D); }
 
-/* 0x0462: Target 0xCD6C - pcie_tunnel_setup */
-void pcie_tunnel_setup(void) { jump_bank_0(0xCD6C); }
+/*
+ * pcie_tunnel_setup - Configure USB4 PCIe tunnel mode
+ * Address: 0xCD6C-0xCDC5
+ *
+ * Sets up the PCIe tunnel for USB4/eGPU mode. This function:
+ * 1. Clears CPU mode bit 4 (exit NVMe mode)
+ * 2. Configures adapter registers via pcie_adapter_config
+ * 3. Writes to bank-switched USB4 path registers
+ * 4. Sets tunnel mode in adapter register 0xB482
+ * 5. Configures link control registers
+ *
+ * Bank-switched writes use SFR 0x93 as memory bank select.
+ * With bank=1, writes go to USB4 tunnel path registers:
+ *   0x4084, 0x5084, 0x6043, 0x6025
+ *
+ * Original disassembly:
+ *   cd6c: mov dptr, #0xca06    ; CPU mode
+ *   cd6f: movx a, @dptr
+ *   cd70: anl a, #0xef         ; Clear bit 4
+ *   cd72: movx @dptr, a
+ *   cd73: lcall 0xc8db         ; pcie_adapter_config
+ *   cd76: mov r3, #0x02        ; Bank param
+ *   cd78: mov r2, #0x40        ; Addr high
+ *   cd7a: mov r1, #0x84        ; Addr low
+ *   cd7c: mov a, #0x22         ; Value
+ *   cd7e: lcall 0x0be6         ; Bank write
+ *   ...
+ *   cdc3: ljmp 0x0be6          ; Final bank write (tail call)
+ */
+void pcie_tunnel_setup(void)
+{
+    uint8_t tmp;
+
+    /* Clear CPU mode bit 4 (exit NVMe mode) */
+    tmp = REG_CPU_MODE_NEXT;
+    tmp &= 0xEF;
+    REG_CPU_MODE_NEXT = tmp;
+
+    /* Configure adapter registers */
+    pcie_adapter_config();
+
+    /* Bank-switched writes to USB4 tunnel path registers
+     * Uses SFR 0x93 as bank select (bank=1 for USB4 path)
+     * Write 0x22 to 0x4084 and 0x5084 */
+    __asm
+        mov     0x93, #0x01     ; Set bank = 1
+        mov     dptr, #0x4084
+        mov     a, #0x22
+        movx    @dptr, a        ; bank1[0x4084] = 0x22
+        mov     dptr, #0x5084
+        movx    @dptr, a        ; bank1[0x5084] = 0x22
+        mov     0x93, #0x00     ; Clear bank select
+    __endasm;
+
+    /* Set bit 0 of REG_PCIE_TUNNEL_CTRL (0xB401) */
+    tmp = REG_PCIE_TUNNEL_CTRL;
+    tmp &= 0xFE;  /* Clear bit 0 first */
+    tmp |= 0x01;  /* Then set bit 0 */
+    REG_PCIE_TUNNEL_CTRL = tmp;
+
+    /* Set bit 0 of REG_TUNNEL_ADAPTER_MODE (0xB482) */
+    tmp = REG_TUNNEL_ADAPTER_MODE;
+    tmp &= 0xFE;
+    tmp |= 0x01;
+    REG_TUNNEL_ADAPTER_MODE = tmp;
+
+    /* Set high nibble of 0xB482 to 0xF0 (tunnel mode) */
+    tmp = REG_TUNNEL_ADAPTER_MODE;
+    tmp &= 0x0F;  /* Keep low nibble */
+    tmp |= TUNNEL_MODE_ENABLED;  /* Set high nibble to 0xF0 */
+    REG_TUNNEL_ADAPTER_MODE = tmp;
+
+    /* Clear bit 0 of REG_PCIE_TUNNEL_CTRL (0xB401) */
+    tmp = REG_PCIE_TUNNEL_CTRL;
+    tmp &= 0xFE;
+    REG_PCIE_TUNNEL_CTRL = tmp;
+
+    /* Set bit 0 of REG_TUNNEL_LINK_CTRL (0xB480) */
+    tmp = REG_TUNNEL_LINK_CTRL;
+    tmp &= 0xFE;
+    tmp |= 0x01;
+    REG_TUNNEL_LINK_CTRL = tmp;
+
+    /* Clear bit 0 of REG_TUNNEL_LINK_STATE (0xB430) */
+    tmp = REG_TUNNEL_LINK_STATE;
+    tmp &= 0xFE;
+    REG_TUNNEL_LINK_STATE = tmp;
+
+    /* Set bit 4 of REG_PCIE_TLP_CTRL_B298 (0xB298) */
+    tmp = REG_PCIE_TLP_CTRL_B298;
+    tmp &= 0xEF;  /* Clear bit 4 first */
+    tmp |= 0x10;  /* Then set bit 4 */
+    REG_PCIE_TLP_CTRL_B298 = tmp;
+
+    /* Final bank-switched writes:
+     * Write 0x70 to 0x6043
+     * Set bit 7 of 0x6025 */
+    __asm
+        mov     0x93, #0x01     ; Set bank = 1
+        mov     dptr, #0x6043
+        mov     a, #0x70
+        movx    @dptr, a        ; bank1[0x6043] = 0x70
+        mov     dptr, #0x6025
+        movx    a, @dptr        ; Read bank1[0x6025]
+        anl     a, #0x7f        ; Clear bit 7
+        orl     a, #0x80        ; Set bit 7
+        movx    @dptr, a        ; Write back
+        mov     0x93, #0x00     ; Clear bank select
+    __endasm;
+}
 
 /* 0x0467: Target 0xE57D - handler_e57d */
 void dispatch_0467(void) { jump_bank_0(0xE57D); }

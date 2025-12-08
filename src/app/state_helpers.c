@@ -1517,3 +1517,136 @@ void error_state_config(void)
     REG_CPU_DMA_CCDA = 0x00;
     REG_CPU_DMA_CCDB = 0xC8;
 }
+
+/*
+ * reg_set_bit6_bba8 - Set bit 6 of register at DPTR
+ * Address: 0xbba8-0xbbae (7 bytes)
+ *
+ * Reads register, clears bit 6, sets bit 6 (always sets bit 6).
+ *
+ * Parameters:
+ *   addr: Register address to modify
+ *
+ * Original disassembly:
+ *   bba8: movx a, @dptr       ; Read current value
+ *   bba9: anl a, #0xbf        ; Clear bit 6
+ *   bbab: orl a, #0x40        ; Set bit 6
+ *   bbad: movx @dptr, a       ; Write back
+ *   bbae: ret
+ */
+void reg_set_bit6_bba8(__xdata uint8_t *addr)
+{
+    uint8_t val = *addr;
+    val = (val & 0xBF) | 0x40;
+    *addr = val;
+}
+
+/*
+ * reg_set_bit1_bbaf - Set bit 1 of register at DPTR
+ * Address: 0xbbaf-0xbbb5 (7 bytes)
+ *
+ * Reads register, clears bit 1, sets bit 1 (always sets bit 1).
+ *
+ * Parameters:
+ *   addr: Register address to modify
+ *
+ * Original disassembly:
+ *   bbaf: movx a, @dptr       ; Read current value
+ *   bbb0: anl a, #0xfd        ; Clear bit 1
+ *   bbb2: orl a, #0x02        ; Set bit 1
+ *   bbb4: movx @dptr, a       ; Write back
+ *   bbb5: ret
+ */
+void reg_set_bit1_bbaf(__xdata uint8_t *addr)
+{
+    uint8_t val = *addr;
+    val = (val & 0xFD) | 0x02;
+    *addr = val;
+}
+
+/* External declarations for called functions */
+extern void dispatch_057f(void);                 /* dispatch.c */
+extern void helper_dd42(uint8_t param);          /* stubs.c */
+extern void handler_e7c1(uint8_t param);         /* via dispatch */
+
+/*
+ * system_state_handler_ca0d - Handle system state transitions
+ * Address: 0xca0d-0xca70 (100 bytes)
+ *
+ * Main handler for system state transitions. Checks event control
+ * and system state, performs appropriate actions based on state.
+ *
+ * State machine:
+ *   - If G_EVENT_CTRL_09FA == 4: call handler_dd42(4), handler_e7c1(0)
+ *   - If G_SYSTEM_STATE_0AE2 == 1: call dispatch_057f, set bit 6 of 0x92E1,
+ *                                  clear bit 6 of power status
+ *   - If G_SYSTEM_STATE_0AE2 == 2: clear bit 1 of PHY control 0x91C0
+ *   - If G_SYSTEM_STATE_0AE2 == 4: clear bit 0 of 0xCC30, configure 0xE710,
+ *                                  clear bit 1 of 0x91C0, set bit 1 of 0xCC3B
+ *   - Finally: set G_SYSTEM_STATE_0AE2 = 0x10
+ *
+ * Original disassembly:
+ *   ca0d: mov dptr, #0x09fa   ; G_EVENT_CTRL_09FA
+ *   ca10: movx a, @dptr
+ *   ca11: cjne a, #0x04, ca1e ; if != 4, skip
+ *   ca14: mov r7, #0x04
+ *   ca16: lcall 0xdd42        ; handler_dd42(4)
+ *   ca19: clr a
+ *   ca1a: mov r7, a
+ *   ca1b: lcall 0xe7c1        ; handler_e7c1(0)
+ *   ca1e: mov dptr, #0x0ae2   ; G_SYSTEM_STATE_0AE2
+ *   ...
+ *   ca70: ret
+ */
+void system_state_handler_ca0d(void)
+{
+    uint8_t val;
+
+    /* Check event control for state 4 */
+    if (G_EVENT_CTRL_09FA == 4) {
+        helper_dd42(4);
+        handler_e7c1(0);
+    }
+
+    /* Handle system state transitions */
+    val = G_SYSTEM_STATE_0AE2;
+
+    if (val == 1) {
+        /* State 1: Resume from suspend */
+        dispatch_057f();
+
+        /* Set bit 6 of power event register (0x92E1) */
+        reg_set_bit6_bba8(&REG_POWER_EVENT_92E1);
+
+        /* Clear bit 6 of power status (clear suspended flag) */
+        val = REG_POWER_STATUS;
+        REG_POWER_STATUS = val & 0xBF;
+    }
+    else if (val == 2) {
+        /* State 2: PHY state change */
+        /* Clear bit 1 of PHY control */
+        val = REG_USB_PHY_CTRL_91C0;
+        REG_USB_PHY_CTRL_91C0 = val & 0xFD;
+    }
+    else if (val == 4) {
+        /* State 4: Full reset/reconfigure */
+
+        /* Clear bit 0 of CPU mode */
+        val = REG_CPU_MODE;
+        REG_CPU_MODE = val & 0xFE;
+
+        /* Configure link width: clear bits 0-4, set 0x1F */
+        val = REG_LINK_WIDTH_E710;
+        REG_LINK_WIDTH_E710 = (val & 0xE0) | 0x1F;
+
+        /* Clear bit 1 of PHY control */
+        val = REG_USB_PHY_CTRL_91C0;
+        REG_USB_PHY_CTRL_91C0 = val & 0xFD;
+
+        /* Set bit 1 of 0xCC3B */
+        reg_set_bit1_bbaf((__xdata uint8_t *)0xCC3B);
+    }
+
+    /* Set system state to 0x10 (idle/ready) */
+    G_SYSTEM_STATE_0AE2 = 0x10;
+}

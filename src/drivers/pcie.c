@@ -1103,6 +1103,91 @@ void pcie_tunnel_enable(void)
     G_MAX_LOG_ENTRIES = 0x00;
 }
 
+/*
+ * pcie_adapter_config - Configure PCIe tunnel adapter registers
+ * Address: 0xC8DB-0xC941
+ *
+ * Writes adapter configuration from globals (0x0A52-0x0A55) to
+ * PCIe tunnel adapter hardware registers (0xB410-0xB42B).
+ *
+ * Config globals:
+ *   0x0A52 (G_PCIE_ADAPTER_CFG_LO) - Link config high byte
+ *   0x0A53 (G_PCIE_ADAPTER_CFG_HI) - Link config low byte
+ *   0x0A54 (G_PCIE_ADAPTER_MODE)   - Mode config
+ *   0x0A55 (G_PCIE_ADAPTER_AUX)    - Auxiliary config
+ *
+ * Original disassembly:
+ *   c8db: mov dptr, #0x0a53    ; Load cfg_hi
+ *   c8de: movx a, @dptr
+ *   c8df: mov r7, a
+ *   c8e0: mov dptr, #0xb410    ; Write to adapter reg 10
+ *   c8e3: movx @dptr, a
+ *   ...
+ *   c941: ret
+ */
+void pcie_adapter_config(void)
+{
+    uint8_t cfg_hi, cfg_lo, cfg_mode, cfg_aux;
+
+    /* Read config from globals */
+    cfg_hi = G_PCIE_ADAPTER_CFG_HI;    /* 0x0A53 */
+    cfg_lo = G_PCIE_ADAPTER_CFG_LO;    /* 0x0A52 */
+
+    /* Write to tunnel config registers 0xB410-0xB411 */
+    REG_TUNNEL_CFG_A_LO = cfg_hi;
+    REG_TUNNEL_CFG_A_HI = cfg_lo;
+
+    /* Write to tunnel data registers 0xB420-0xB421, load aux config */
+    REG_TUNNEL_DATA_LO = cfg_hi;
+    REG_TUNNEL_DATA_HI = cfg_lo;
+    cfg_aux = G_PCIE_ADAPTER_AUX;      /* 0x0A55 */
+
+    /* Write credits to 0xB412 */
+    REG_TUNNEL_CREDITS = cfg_aux;
+
+    /* Read mode config and write to 0xB413 */
+    cfg_mode = G_PCIE_ADAPTER_MODE;    /* 0x0A54 */
+    REG_TUNNEL_CFG_MODE = cfg_mode;
+
+    /* Write status registers 0xB422-0xB423 */
+    REG_TUNNEL_STATUS_0 = cfg_aux;
+    REG_TUNNEL_STATUS_1 = cfg_mode;
+
+    /* Write fixed capability pattern 0x06, 0x04, 0x00 to 0xB415-0xB417 */
+    REG_TUNNEL_CAP_0 = 0x06;
+    REG_TUNNEL_CAP_1 = 0x04;
+    REG_TUNNEL_CAP_2 = 0x00;
+
+    /* Write same pattern to 0xB425-0xB427 */
+    REG_TUNNEL_CAP2_0 = 0x06;
+    REG_TUNNEL_CAP2_1 = 0x04;
+    REG_TUNNEL_CAP2_2 = 0x00;
+
+    /* Reload config values */
+    cfg_hi = G_PCIE_ADAPTER_CFG_HI;
+    cfg_lo = G_PCIE_ADAPTER_CFG_LO;
+
+    /* Write to tunnel link config registers 0xB41A-0xB41B */
+    REG_TUNNEL_LINK_CFG_LO = cfg_hi;
+    REG_TUNNEL_LINK_CFG_HI = cfg_lo;
+
+    /* Write to auxiliary config 0xB42A-0xB42B, reload aux */
+    REG_TUNNEL_AUX_CFG_LO = cfg_hi;
+    REG_TUNNEL_AUX_CFG_HI = cfg_lo;
+    cfg_aux = G_PCIE_ADAPTER_AUX;
+
+    /* Write path credits to 0xB418 */
+    REG_TUNNEL_PATH_CREDITS = cfg_aux;
+
+    /* Reload mode and write to path mode 0xB419 */
+    cfg_mode = G_PCIE_ADAPTER_MODE;
+    REG_TUNNEL_PATH_MODE = cfg_mode;
+
+    /* Write to path 2 registers 0xB428-0xB429 */
+    REG_TUNNEL_PATH2_CRED = cfg_aux;
+    REG_TUNNEL_PATH2_MODE = cfg_mode;
+}
+
 /*===========================================================================
  * PCIe Config/Helper Functions (0x9916-0x9aba)
  *
@@ -1510,9 +1595,9 @@ void pcie_write_config_and_trigger(__xdata uint8_t *ptr, uint8_t val)
 
     *ptr = val;
 
-    ctrl = REG_PCIE_LINK_CTRL;
+    ctrl = REG_TUNNEL_LINK_CTRL;
     ctrl = (ctrl & 0xFE) | 0x01;
-    REG_PCIE_LINK_CTRL = ctrl;
+    REG_TUNNEL_LINK_CTRL = ctrl;
 }
 
 /*

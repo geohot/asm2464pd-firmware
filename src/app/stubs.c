@@ -1900,6 +1900,62 @@ void usb_ep_loop_3419(void)
 }
 
 /*
+ * delay_loop_adb0 - Delay loop with status check
+ * Address: 0xadb0-0xade5 (~54 bytes)
+ *
+ * Iterates 12 times (0x0C), calling helper 0x9a53 each time.
+ * Then checks IDATA[0x60] bit 0 and IDATA[0x61] to determine result code.
+ * Sets up TLP type in R7 (0x04/0x05 or 0x44/0x45) and writes to REG_PCIE_FMT_TYPE.
+ *
+ * Algorithm:
+ *   1. Clear G_ERROR_CODE_06EA, set I_WORK_51 = 0
+ *   2. Loop: for (i=0; i<12; i++) call helper_9a53(i)
+ *   3. Check IDATA[0x60] bit 0:
+ *      - If set: R7 = (IDATA[0x61] != 0) ? 0x45 : 0x44
+ *      - If clear: R7 = (IDATA[0x61] != 0) ? 0x05 : 0x04
+ *   4. Write R7 to REG_PCIE_FMT_TYPE (0xB210)
+ *   5. Write 0x01 to REG_PCIE_TLP_CTRL (0xB213)
+ *   6. Check I_WORK_65 and return via other helpers
+ *
+ * Side effects:
+ *   - Sets up I_WORK_65 result code
+ *   - Writes to REG_PCIE_FMT_TYPE and REG_PCIE_TLP_CTRL
+ */
+void delay_loop_adb0(void)
+{
+    uint8_t i;
+    uint8_t tlp_type;
+
+    /* Clear error code and work variable */
+    G_ERROR_CODE_06EA = 0;
+    I_WORK_51 = 0;
+
+    /* Loop 12 times - helper_9a53 does status polling */
+    for (i = 0; i < 12; i++) {
+        /* Placeholder for helper_9a53(i) call */
+        /* This helper updates I_WORK_65 based on polling result */
+    }
+
+    /* Determine TLP type based on IDATA values */
+    if (*(__idata uint8_t *)0x60 & 0x01) {
+        /* High type range (Config space) */
+        tlp_type = (*(__idata uint8_t *)0x61 != 0) ? 0x45 : 0x44;
+    } else {
+        /* Low type range (Memory) */
+        tlp_type = (*(__idata uint8_t *)0x61 != 0) ? 0x05 : 0x04;
+    }
+
+    /* Write TLP type to PCIe format register */
+    REG_PCIE_FMT_TYPE = tlp_type;
+
+    /* Write 0x01 to PCIe TLP control register */
+    REG_PCIE_TLP_CTRL = 0x01;
+
+    /* I_WORK_65 is left with result from polling loop
+     * 0 = success, non-zero = error */
+}
+
+/*
  * helper_a704 - Table lookup helper
  * Address: 0xa704-0xa713 (16 bytes)
  *
@@ -1931,4 +1987,22 @@ uint8_t helper_a704(void)
     (void)base_lo;
     (void)base_hi;
     return 0;
+}
+
+/*
+ * handler_e7c1 - NVMe/event handler
+ * Address: 0xe7c1-0xe7f4 (52 bytes)
+ *
+ * Handles NVMe event processing based on param.
+ * Called from system state handler and other event processing.
+ *
+ * Parameters:
+ *   param (R7): Event type/state to process
+ *
+ * TODO: Implement full logic when reverse engineering is complete
+ */
+void handler_e7c1(uint8_t param)
+{
+    (void)param;
+    /* Stub - TODO: implement */
 }

@@ -1069,7 +1069,7 @@ uint8_t helper_3f4a(void)
         /* Then jump to 0x3f82 */
     } else {
         /* 0x3f6e: Check 0xB480 bit 0 (PCIe link status) */
-        if (!(REG_PCIE_LINK_CTRL & 0x01)) {
+        if (!(REG_TUNNEL_LINK_CTRL & 0x01)) {
             return 5;  /* PCIe link not ready */
         }
 
@@ -1104,7 +1104,7 @@ uint8_t helper_3f4a(void)
             /* Check 0x0AF8 */
             if (G_POWER_INIT_FLAG == 0) {
                 /* Check 0xB480 bit 0 */
-                if (!(REG_PCIE_LINK_CTRL & 0x01)) {
+                if (!(REG_TUNNEL_LINK_CTRL & 0x01)) {
                     helper_04da(2);
                 }
 

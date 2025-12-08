@@ -71,7 +71,6 @@
 //=============================================================================
 // Core USB registers (0x9000-0x901F)
 #define REG_USB_STATUS          XDATA_REG8(0x9000)
-#define REG_PCIE_LINK_CTRL      XDATA_REG8(0xB480)  // PCIe link control (bit 0 = link up)
 #define   USB_STATUS_ACTIVE       0x01  // Bit 0: USB active/pending
 #define   USB_STATUS_INDICATOR    0x10  // Bit 4: USB status indicator
 #define   USB_STATUS_CONNECTED    0x80  // Bit 7: USB ready/connected
@@ -174,6 +173,7 @@
 #define REG_POWER_CTRL_92C8     XDATA_REG8(0x92C8)
 #define REG_POWER_DOMAIN        XDATA_REG8(0x92E0)
 #define   POWER_DOMAIN_BIT1       0x02  // Bit 1: Power domain control
+#define REG_POWER_EVENT_92E1    XDATA_REG8(0x92E1)  // Power event register
 
 // Buffer config registers (0x9300-0x93FF)
 #define REG_BUF_CFG_9300        XDATA_REG8(0x9300)
@@ -184,15 +184,11 @@
 #define REG_BUF_CFG_9305        XDATA_REG8(0x9305)
 
 //=============================================================================
-// PCIe Passthrough Registers (0xB210-0xB4C8)
+// PCIe Passthrough Registers (0xB210-0xB8FF)
 //=============================================================================
+
+// PCIe TLP registers (0xB210-0xB284)
 #define REG_PCIE_FMT_TYPE       XDATA_REG8(0xB210)
-#define REG_PCIE_QUEUE_INDEX_LO XDATA_REG8(0xB80C)  // Queue index low
-#define REG_PCIE_QUEUE_INDEX_HI XDATA_REG8(0xB80D)  // Queue index high
-#define REG_PCIE_QUEUE_FLAGS_LO XDATA_REG8(0xB80E)  // Queue flags low
-#define   PCIE_QUEUE_FLAG_VALID    0x01  // Bit 0: Queue entry valid
-#define REG_PCIE_QUEUE_FLAGS_HI XDATA_REG8(0xB80F)  // Queue flags high
-#define   PCIE_QUEUE_ID_MASK       0x0E  // Bits 1-3: Queue ID (shifted)
 #define REG_PCIE_TLP_CTRL       XDATA_REG8(0xB213)
 #define REG_PCIE_TLP_LENGTH     XDATA_REG8(0xB216)
 #define REG_PCIE_BYTE_EN        XDATA_REG8(0xB217)
@@ -211,10 +207,15 @@
 #define REG_PCIE_TRIGGER        XDATA_REG8(0xB254)
 #define REG_PCIE_PM_ENTER       XDATA_REG8(0xB255)
 #define REG_PCIE_COMPL_STATUS   XDATA_REG8(0xB284)
+// PCIe status registers (0xB296-0xB298)
 #define REG_PCIE_STATUS         XDATA_REG8(0xB296)
 #define   PCIE_STATUS_ERROR       0x01  // Bit 0: Error flag
 #define   PCIE_STATUS_COMPLETE    0x02  // Bit 1: Completion status
 #define   PCIE_STATUS_BUSY        0x04  // Bit 2: Busy flag
+#define REG_PCIE_TLP_CTRL_B298  XDATA_REG8(0xB298)  // TLP control (bit 4 = tunnel enable)
+#define   PCIE_TLP_CTRL_TUNNEL    0x10  // Bit 4: Tunnel enable
+
+// PCIe Tunnel Control (0xB401-0xB404)
 #define REG_PCIE_TUNNEL_CTRL    XDATA_REG8(0xB401)  // PCIe tunnel control
 #define   PCIE_TUNNEL_ENABLE      0x01  // Bit 0: Tunnel enable
 #define REG_PCIE_CTRL_B402      XDATA_REG8(0xB402)
@@ -222,13 +223,57 @@
 #define   PCIE_CTRL_B402_BIT1     0x02  // Bit 1: Control flag 1
 #define REG_PCIE_LINK_PARAM_B404 XDATA_REG8(0xB404) // PCIe link parameters
 #define   PCIE_LINK_PARAM_MASK    0x0F  // Bits 0-3: Link parameters
+
+// PCIe Tunnel Adapter Configuration (0xB410-0xB42B)
+// These registers configure the USB4 PCIe tunnel adapter path
+#define REG_TUNNEL_CFG_A_LO     XDATA_REG8(0xB410)  // Tunnel config A low (from 0x0A53)
+#define REG_TUNNEL_CFG_A_HI     XDATA_REG8(0xB411)  // Tunnel config A high (from 0x0A52)
+#define REG_TUNNEL_CREDITS      XDATA_REG8(0xB412)  // Tunnel credits (from 0x0A55)
+#define REG_TUNNEL_CFG_MODE     XDATA_REG8(0xB413)  // Tunnel mode config (from 0x0A54)
+#define REG_TUNNEL_CAP_0        XDATA_REG8(0xB415)  // Tunnel capability 0 (fixed 0x06)
+#define REG_TUNNEL_CAP_1        XDATA_REG8(0xB416)  // Tunnel capability 1 (fixed 0x04)
+#define REG_TUNNEL_CAP_2        XDATA_REG8(0xB417)  // Tunnel capability 2 (fixed 0x00)
+#define REG_TUNNEL_PATH_CREDITS XDATA_REG8(0xB418)  // Tunnel path credits (from 0x0A55)
+#define REG_TUNNEL_PATH_MODE    XDATA_REG8(0xB419)  // Tunnel path mode (from 0x0A54)
+#define REG_TUNNEL_LINK_CFG_LO  XDATA_REG8(0xB41A)  // Tunnel link config low (from 0x0A53)
+#define REG_TUNNEL_LINK_CFG_HI  XDATA_REG8(0xB41B)  // Tunnel link config high (from 0x0A52)
+#define REG_TUNNEL_DATA_LO      XDATA_REG8(0xB420)  // Tunnel data register low
+#define REG_TUNNEL_DATA_HI      XDATA_REG8(0xB421)  // Tunnel data register high
+#define REG_TUNNEL_STATUS_0     XDATA_REG8(0xB422)  // Tunnel status byte 0
+#define REG_TUNNEL_STATUS_1     XDATA_REG8(0xB423)  // Tunnel status byte 1
+
 #define REG_PCIE_LANE_COUNT     XDATA_REG8(0xB424)
+#define REG_TUNNEL_CAP2_0       XDATA_REG8(0xB425)  // Tunnel capability set 2 (fixed 0x06)
+#define REG_TUNNEL_CAP2_1       XDATA_REG8(0xB426)  // Tunnel capability set 2 (fixed 0x04)
+#define REG_TUNNEL_CAP2_2       XDATA_REG8(0xB427)  // Tunnel capability set 2 (fixed 0x00)
+#define REG_TUNNEL_PATH2_CRED   XDATA_REG8(0xB428)  // Tunnel path 2 credits
+#define REG_TUNNEL_PATH2_MODE   XDATA_REG8(0xB429)  // Tunnel path 2 mode
+#define REG_TUNNEL_AUX_CFG_LO   XDATA_REG8(0xB42A)  // Tunnel auxiliary config low
+#define REG_TUNNEL_AUX_CFG_HI   XDATA_REG8(0xB42B)  // Tunnel auxiliary config high
+
+// Adapter Link State (0xB430-0xB4C8)
+#define REG_TUNNEL_LINK_STATE   XDATA_REG8(0xB430)  // Tunnel link state (bit 0 = up)
 #define REG_PCIE_LINK_STATE     XDATA_REG8(0xB434)  // PCIe link state (low nibble = lane mask)
 #define REG_PCIE_LANE_CONFIG    XDATA_REG8(0xB436)  // PCIe lane configuration
 #define   PCIE_LANE_CFG_LO_MASK   0x0F  // Bits 0-3: Low config
 #define   PCIE_LANE_CFG_HI_MASK   0xF0  // Bits 4-7: High config
+
+// PCIe Tunnel Link Control (0xB480-0xB482)
+#define REG_TUNNEL_LINK_CTRL    XDATA_REG8(0xB480)  // Tunnel link control (bit 0 = link up)
+#define REG_TUNNEL_ADAPTER_MODE XDATA_REG8(0xB482)  // Tunnel adapter mode
+#define   TUNNEL_MODE_MASK        0xF0  // Bits 4-7: Tunnel mode
+#define   TUNNEL_MODE_ENABLED     0xF0  // High nibble 0xF0 = tunnel mode enabled
+
 #define REG_PCIE_LINK_STATUS_ALT XDATA_REG16(0xB4AE)
 #define REG_PCIE_LANE_MASK      XDATA_REG8(0xB4C8)
+
+// PCIe Queue Registers (0xB80C-0xB80F)
+#define REG_PCIE_QUEUE_INDEX_LO XDATA_REG8(0xB80C)  // Queue index low
+#define REG_PCIE_QUEUE_INDEX_HI XDATA_REG8(0xB80D)  // Queue index high
+#define REG_PCIE_QUEUE_FLAGS_LO XDATA_REG8(0xB80E)  // Queue flags low
+#define   PCIE_QUEUE_FLAG_VALID    0x01  // Bit 0: Queue entry valid
+#define REG_PCIE_QUEUE_FLAGS_HI XDATA_REG8(0xB80F)  // Queue flags high
+#define   PCIE_QUEUE_ID_MASK       0x0E  // Bits 1-3: Queue ID (shifted)
 
 //=============================================================================
 // UART Controller (0xC000-0xC00F)
