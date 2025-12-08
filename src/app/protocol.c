@@ -1592,16 +1592,21 @@ uint8_t helper_322e(void)
 }
 
 /*
- * helper_313f - Count check helper
- * Address: 0x313f
+ * helper_313f - Check if 32-bit value at IDATA address is non-zero
+ * Address: 0x313f-0x3146 (8 bytes)
  *
- * Checks count at IDATA[r0_val] and returns status.
+ * Original disassembly:
+ *   313f: lcall 0x0d78    ; idata_load_dword - load IDATA[R0] into R4-R7
+ *   3142: mov a, r4
+ *   3143: orl a, r5
+ *   3144: orl a, r6
+ *   3145: orl a, r7
+ *   3146: ret             ; Returns non-zero if any byte is non-zero
  */
 uint8_t helper_313f(uint8_t r0_val)
 {
-    (void)r0_val;
-    /* TODO: Implement count check from 0x313f */
-    return 0;  /* Default: count is zero */
+    __idata uint8_t *ptr = (__idata uint8_t *)r0_val;
+    return ptr[0] | ptr[1] | ptr[2] | ptr[3];
 }
 
 /*

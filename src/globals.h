@@ -48,6 +48,7 @@ __idata __at(0x51) extern uint8_t I_WORK_51;         /* Work variable 0x51 */
 __idata __at(0x52) extern uint8_t I_WORK_52;         /* Work variable 0x52 */
 __idata __at(0x53) extern uint8_t I_WORK_53;         /* Work variable 0x53 */
 __idata __at(0x55) extern uint8_t I_WORK_55;         /* Work variable 0x55 */
+__idata __at(0x65) extern uint8_t I_WORK_65;         /* Work variable 0x65 */
 __idata __at(0x6A) extern uint8_t I_STATE_6A;        /* State machine variable */
 __idata __at(0x6B) extern uint8_t I_TRANSFER_6B;     /* Transfer pending byte 0 */
 __idata __at(0x6C) extern uint8_t I_TRANSFER_6C;     /* Transfer pending byte 1 */
@@ -58,6 +59,11 @@ __idata __at(0x70) extern uint8_t I_BUF_THRESH_LO;   /* Buffer threshold low */
 __idata __at(0x71) extern uint8_t I_BUF_THRESH_HI;   /* Buffer threshold high */
 __idata __at(0x72) extern uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 
+/* IDATA pointers for SCSI register-based operations */
+#define IDATA_CMD_BUF     ((__idata uint8_t *)0x09)   /* Command buffer pointer */
+#define IDATA_TRANSFER    ((__idata uint8_t *)0x6B)   /* Transfer data pointer */
+#define IDATA_BUF_CTRL    ((__idata uint8_t *)0x6F)   /* Buffer control pointer */
+
 //=============================================================================
 // System Work Area (0x0000-0x01FF)
 //=============================================================================
@@ -65,9 +71,11 @@ __idata __at(0x72) extern uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_IO_CMD_TYPE           XDATA_VAR8(0x0001)  /* I/O command type byte */
 #define G_IO_CMD_STATE          XDATA_VAR8(0x0002)  /* I/O command state byte */
 #define G_EP_STATUS_CTRL        XDATA_VAR8(0x0003)  /* Endpoint status control (checked by usb_ep_process) */
+#define G_WORK_0006             XDATA_VAR8(0x0006)  /* Work variable 0x0006 */
 #define G_WORK_0007             XDATA_VAR8(0x0007)  /* Work variable 0x0007 */
 #define G_EP_CHECK_FLAG         XDATA_VAR8(0x000A)  /* Endpoint check flag */
 #define G_SYS_FLAGS_0052        XDATA_VAR8(0x0052)  /* System flags 0x0052 */
+#define G_USB_SETUP_RESULT      XDATA_VAR8(0x0053)  /* USB setup result storage */
 #define G_BUFFER_LENGTH_HIGH    XDATA_VAR8(0x0054)  /* Buffer length high byte (for mode 4) */
 #define G_NVME_QUEUE_READY      XDATA_VAR8(0x0055)  /* NVMe queue ready flag */
 #define G_USB_ADDR_HI_0056      XDATA_VAR8(0x0056)  /* USB address high 0x0056 */
@@ -77,11 +85,13 @@ __idata __at(0x72) extern uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_USB_INDEX_COUNTER     XDATA_VAR8(0x014E)  /* USB index counter (5-bit) */
 #define G_SCSI_CTRL             XDATA_VAR8(0x0171)  /* SCSI control */
 #define G_USB_WORK_01B4         XDATA_VAR8(0x01B4)  /* USB work variable 0x01B4 */
+#define G_USB_WORK_01B6         XDATA_VAR8(0x01B6)  /* USB work variable 0x01B6 */
 
 //=============================================================================
 // DMA Work Area (0x0200-0x02FF)
 //=============================================================================
 #define G_DMA_MODE_SELECT       XDATA_VAR8(0x0203)  /* DMA mode select */
+#define G_DMA_STATE_0214        XDATA_VAR8(0x0214)  /* DMA state/status */
 #define G_DMA_PARAM1            XDATA_VAR8(0x020D)  /* DMA parameter 1 */
 #define G_DMA_PARAM2            XDATA_VAR8(0x020E)  /* DMA parameter 2 */
 #define G_DMA_WORK_0216         XDATA_VAR8(0x0216)  /* DMA work variable 0x0216 */
@@ -159,6 +169,7 @@ __idata __at(0x72) extern uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 //=============================================================================
 #define G_MAX_LOG_ENTRIES       XDATA_VAR8(0x06E5)  /* Max error log entries */
 #define G_STATE_FLAG_06E6       XDATA_VAR8(0x06E6)  /* Processing complete flag / error flag */
+#define G_SCSI_STATUS_06CB      XDATA_VAR8(0x06CB)  /* SCSI status byte */
 #define G_WORK_06E8             XDATA_VAR8(0x06E8)  /* Work variable 0x06E8 */
 #define G_ERROR_CODE_06EA       XDATA_VAR8(0x06EA)  /* Error code */
 #define G_MISC_FLAG_06EC        XDATA_VAR8(0x06EC)  /* Miscellaneous flag */
@@ -196,6 +207,9 @@ __idata __at(0x72) extern uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_LOOP_STATE            XDATA_VAR8(0x0A59)  /* Main loop state flag */
 #define G_ACTION_CODE_0A83      XDATA_VAR8(0x0A83)  /* Action code storage for state_action_dispatch */
 #define   ACTION_CODE_EXTENDED    0x02  // Bit 1: Extended mode flag
+#define G_ACTION_PARAM_0A84     XDATA_VAR8(0x0A84)  /* Action parameter (byte after action code) */
+#define G_DMA_PARAM_0A8D        XDATA_VAR8(0x0A8D)  /* DMA parameter storage */
+#define G_DMA_MODE_0A8E         XDATA_VAR8(0x0A8E)  /* DMA mode storage */
 #define G_EP_DISPATCH_VAL1      XDATA_VAR8(0x0A7B)  /* Endpoint dispatch value 1 */
 #define G_EP_DISPATCH_VAL2      XDATA_VAR8(0x0A7C)  /* Endpoint dispatch value 2 */
 #define G_EP_DISPATCH_VAL3      XDATA_VAR8(0x0A7D)  /* Endpoint dispatch value 3 */
@@ -237,6 +251,7 @@ __idata __at(0x72) extern uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_USB_PARAM_0B00        XDATA_VAR8(0x0B00)  /* USB parameter storage */
 #define G_USB_INIT_0B01         XDATA_VAR8(0x0B01)  /* USB init state flag */
 #define G_USB_TRANSFER_FLAG     XDATA_VAR8(0x0B2E)  /* USB transfer flag */
+#define G_INTERFACE_READY_0B2F  XDATA_VAR8(0x0B2F)  /* Interface ready flag */
 #define G_TRANSFER_BUSY_0B3B    XDATA_VAR8(0x0B3B)  /* Transfer busy flag */
 #define G_USB_STATE_0B41        XDATA_VAR8(0x0B41)  /* USB state check */
 #define G_BUFFER_STATE_0AA6     XDATA_VAR8(0x0AA6)  /* Buffer state flags */
@@ -244,7 +259,8 @@ __idata __at(0x72) extern uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_STATE_CTRL_0B3E       XDATA_VAR8(0x0B3E)  /* State control 0x0B3E */
 #define G_STATE_CTRL_0B3F       XDATA_VAR8(0x0B3F)  /* State control 0x0B3F */
 #define G_DMA_ENDPOINT_0578     XDATA_VAR8(0x0578)  /* DMA endpoint control */
-#define G_XFER_STATE_0AF3       XDATA_VAR8(0x0AF3)  /* Transfer state 0x0AF3 */
+#define G_XFER_STATE_0AF3       XDATA_VAR8(0x0AF3)  /* Transfer state / direction (bit 7) */
+#define G_XFER_LUN_0AF4         XDATA_VAR8(0x0AF4)  /* Transfer LUN (bits 0-3) */
 
 //=============================================================================
 // State Machine Work Area (0x0A80-0x0ABF)

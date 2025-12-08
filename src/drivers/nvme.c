@@ -3177,8 +3177,8 @@ void nvme_admin_abe9(uint8_t param1, uint8_t param2, uint8_t param3)
  */
 void nvme_pcie_init_b820(void)
 {
-    extern void xdata_store_dword(uint16_t addr, uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3);
-    xdata_store_dword(0x0AAD, 0, 0, 0, 0);
+    extern void xdata_store_dword(__xdata uint8_t *ptr, uint32_t val);
+    xdata_store_dword((__xdata uint8_t *)0x0AAD, 0);
     G_FLASH_LEN_LO = 0;
     G_FLASH_LEN_HI = 0;
 }
@@ -3189,8 +3189,8 @@ void nvme_pcie_init_b820(void)
  */
 void nvme_pcie_init_b825(void)
 {
-    extern void xdata_store_dword(uint16_t addr, uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3);
-    xdata_store_dword(0x0AAD, 0, 0, 0, 0);
+    extern void xdata_store_dword(__xdata uint8_t *ptr, uint32_t val);
+    xdata_store_dword((__xdata uint8_t *)0x0AAD, 0);
     G_FLASH_LEN_LO = 0;
     G_FLASH_LEN_HI = 0;
 }
@@ -3201,8 +3201,8 @@ void nvme_pcie_init_b825(void)
  */
 void nvme_pcie_init_b833(void)
 {
-    extern void xdata_store_dword(uint16_t addr, uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3);
-    xdata_store_dword(0x0AAD, 0, 0, 0, 0);
+    extern void xdata_store_dword(__xdata uint8_t *ptr, uint32_t val);
+    xdata_store_dword((__xdata uint8_t *)0x0AAD, 0);
     G_FLASH_LEN_LO = 0;
 }
 
@@ -3212,8 +3212,8 @@ void nvme_pcie_init_b833(void)
  */
 void nvme_pcie_init_b838(void)
 {
-    extern void xdata_store_dword(uint16_t addr, uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3);
-    xdata_store_dword(0x0AAD, 0, 0, 0, 0);
+    extern void xdata_store_dword(__xdata uint8_t *ptr, uint32_t val);
+    xdata_store_dword((__xdata uint8_t *)0x0AAD, 0);
 }
 
 /*

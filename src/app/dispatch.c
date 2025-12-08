@@ -37,153 +37,154 @@ extern void jump_bank_1(uint16_t addr);
  * These all jump to 0x0300 (jump_bank_0)
  *===========================================================================*/
 
-// 0x0322-0x0326: Dispatch to 0xCA0D (system state handler)
+/* 0x0322: Target 0xCA0D - system_state_handler */
 void dispatch_0322(void) { jump_bank_0(0xCA0D); }
 
-// 0x0327-0x032B: Dispatch to 0xB1CB (usb_power_init)
+/* 0x0327: Target 0xB1CB - usb_power_init */
 void dispatch_0327(void) { jump_bank_0(0xB1CB); }
 
-// 0x032C-0x0330: Dispatch to 0x92C5
+/* 0x032C: Target 0x92C5 - REG_PHY_POWER config handler */
 void dispatch_032c(void) { jump_bank_0(0x92C5); }
 
-// 0x0331-0x0335: Dispatch to 0xC4B3
+/* 0x0331: Target 0xC4B3 - error_log_handler */
 void dispatch_0331(void) { jump_bank_0(0xC4B3); }
 
-// 0x0336-0x033A: Dispatch to 0xBF0F
+/* 0x0336: Target 0xBF0F - reg_restore_handler */
 void dispatch_0336(void) { jump_bank_0(0xBF0F); }
 
-// 0x033B-0x033F: Dispatch to 0xCF7F
+/* 0x033B: Target 0xCF7F - handler_cf7f */
 void dispatch_033b(void) { jump_bank_0(0xCF7F); }
 
-// 0x0340-0x0344: Dispatch to 0xBF8E (handler_bf8e)
+/* 0x0340: Target 0xBF8E - handler_bf8e */
 void dispatch_0340(void) { jump_bank_0(0xBF8E); }
 
-// 0x0345-0x0349: Dispatch to 0x9C2B
+/* 0x0345: Target 0x9C2B - nvme_queue_handler */
 void dispatch_0345(void) { jump_bank_0(0x9C2B); }
 
-// 0x034A-0x034E: Dispatch to 0xC66A
+/* 0x034A: Target 0xC66A - phy_handler */
 void dispatch_034a(void) { jump_bank_0(0xC66A); }
 
-// 0x034F-0x0353: Dispatch to 0xE94D
+/* 0x034F: Target 0xE94D - handler_e94d (stub) */
 void dispatch_034f(void) { jump_bank_0(0xE94D); }
 
-// 0x0354-0x0358: Dispatch to 0xE925
+/* 0x0354: Target 0xE925 - handler_e925 (stub) */
 void dispatch_0354(void) { jump_bank_0(0xE925); }
 
-// 0x0359-0x035D: Dispatch to 0xDEE3
+/* 0x0359: Target 0xDEE3 - handler_dee3 */
 void dispatch_0359(void) { jump_bank_0(0xDEE3); }
 
-// 0x035E-0x0362: Dispatch to 0xE6BD
+/* 0x035E: Target 0xE6BD - handler_e6bd */
 void dispatch_035e(void) { jump_bank_0(0xE6BD); }
 
-// 0x0363-0x0367: Dispatch to 0xE969
+/* 0x0363: Target 0xE969 - handler_e969 (stub) */
 void dispatch_0363(void) { jump_bank_0(0xE969); }
 
-// 0x0368-0x036C: Dispatch to 0xDF15
+/* 0x0368: Target 0xDF15 - handler_df15 */
 void dispatch_0368(void) { jump_bank_0(0xDF15); }
 
-// 0x036D-0x0371: Dispatch to 0xE96F
+/* 0x036D: Target 0xE96F - handler_e96f (stub) */
 void dispatch_036d(void) { jump_bank_0(0xE96F); }
 
-// 0x0372-0x0376: Dispatch to 0xE970
+/* 0x0372: Target 0xE970 - handler_e970 (stub) */
 void dispatch_0372(void) { jump_bank_0(0xE970); }
 
-// 0x0377-0x037B: Dispatch to 0xE952
+/* 0x0377: Target 0xE952 - handler_e952 (stub) */
 void dispatch_0377(void) { jump_bank_0(0xE952); }
 
-// 0x037C-0x0380: Dispatch to 0xE941
+/* 0x037C: Target 0xE941 - handler_e941 (stub) */
 void dispatch_037c(void) { jump_bank_0(0xE941); }
 
-// 0x0381-0x0385: Dispatch to 0xE947
+/* 0x0381: Target 0xE947 - handler_e947 (stub) */
 void dispatch_0381(void) { jump_bank_0(0xE947); }
 
-// 0x0386-0x038A: Dispatch to 0xE92C
+/* 0x0386: Target 0xE92C - handler_e92c (stub) */
 void dispatch_0386(void) { jump_bank_0(0xE92C); }
 
-// 0x038B-0x038F: Dispatch to 0xD2BD
+/* 0x038B: Target 0xD2BD - handler_d2bd */
 void dispatch_038b(void) { jump_bank_0(0xD2BD); }
 
-// 0x0390-0x0394: Dispatch to 0xCD10
+/* 0x0390: Target 0xCD10 - handler_cd10 */
 void dispatch_0390(void) { jump_bank_0(0xCD10); }
 
-// 0x0395-0x0399: Dispatch to 0xDA8F
+/* 0x0395: Target 0xDA8F - handler_da8f */
 void dispatch_0395(void) { jump_bank_0(0xDA8F); }
 
-// 0x039A-0x039E: Dispatch to 0xD810 (protocol handler)
+/* 0x039A: Target 0xD810 - usb_buffer_handler */
 void dispatch_039a(void) { jump_bank_0(0xD810); }
 
-// 0x039F-0x03A3: Dispatch to 0xD916 (d916 handler)
+/* 0x039F: Target 0xD916 - handler_d916 */
 void dispatch_039f(void) { jump_bank_0(0xD916); }
 
-// 0x03A4-0x03A8: Dispatch to 0xCB37
+/* 0x03A4: Target 0xCB37 - power_ctrl_cb37 */
 void dispatch_03a4(void) { jump_bank_0(0xCB37); }
 
 /*===========================================================================
  * Bank 1 Dispatch Functions (0x03A9-0x0411)
  * These all jump to 0x0311 (jump_bank_1)
+ * Bank 1 CPU addr = file offset - 0x8000 (e.g., 0x89DB -> file 0x109DB)
  *===========================================================================*/
 
-// 0x03A9-0x03AD: Dispatch to Bank1 0x89DB
+/* 0x03A9: Target Bank1:0x89DB (file 0x109DB) - handler_89db */
 void dispatch_03a9(void) { jump_bank_1(0x89DB); }
 
-// 0x03AE-0x03B2: Dispatch to Bank1 0xEF3E
+/* 0x03AE: Target Bank1:0xEF3E (file 0x16F3E) - handler_ef3e */
 void dispatch_03ae(void) { jump_bank_1(0xEF3E); }
 
-// 0x03B3-0x03B7: Dispatch to Bank1 0xA327
+/* 0x03B3: Target Bank1:0xA327 (file 0x12327) - handler_a327 */
 void dispatch_03b3(void) { jump_bank_1(0xA327); }
 
-// 0x03B8-0x03BC: Dispatch to Bank1 0xBD76
+/* 0x03B8: Target Bank1:0xBD76 (file 0x13D76) - handler_bd76 */
 void dispatch_03b8(void) { jump_bank_1(0xBD76); }
 
-// 0x03BD-0x03C1: Dispatch to Bank1 0xDDE0
+/* 0x03BD: Target Bank1:0xDDE0 (file 0x15DE0) - handler_dde0 */
 void dispatch_03bd(void) { jump_bank_1(0xDDE0); }
 
-// 0x03C2-0x03C6: Dispatch to Bank1 0xE12B
+/* 0x03C2: Target Bank1:0xE12B (file 0x1612B) - handler_e12b */
 void dispatch_03c2(void) { jump_bank_1(0xE12B); }
 
-// 0x03C7-0x03CB: Dispatch to Bank1 0xEF42
+/* 0x03C7: Target Bank1:0xEF42 (file 0x16F42) - handler_ef42 */
 void dispatch_03c7(void) { jump_bank_1(0xEF42); }
 
-// 0x03CC-0x03D0: Dispatch to Bank1 0xE632
+/* 0x03CC: Target Bank1:0xE632 (file 0x16632) - handler_e632 */
 void dispatch_03cc(void) { jump_bank_1(0xE632); }
 
-// 0x03D1-0x03D5: Dispatch to Bank1 0xD440
+/* 0x03D1: Target Bank1:0xD440 (file 0x15440) - handler_d440 */
 void dispatch_03d1(void) { jump_bank_1(0xD440); }
 
-// 0x03D6-0x03DA: Dispatch to Bank1 0xC65F
+/* 0x03D6: Target Bank1:0xC65F (file 0x1465F) - handler_c65f */
 void dispatch_03d6(void) { jump_bank_1(0xC65F); }
 
-// 0x03DB-0x03DF: Dispatch to Bank1 0xEF46
+/* 0x03DB: Target Bank1:0xEF46 (file 0x16F46) - handler_ef46 */
 void dispatch_03db(void) { jump_bank_1(0xEF46); }
 
-// 0x03E0-0x03E4: Dispatch to Bank1 0xE01F
+/* 0x03E0: Target Bank1:0xE01F (file 0x1601F) - handler_e01f */
 void dispatch_03e0(void) { jump_bank_1(0xE01F); }
 
-// 0x03E5-0x03E9: Dispatch to Bank1 0xCA52
+/* 0x03E5: Target Bank1:0xCA52 (file 0x14A52) - handler_ca52 */
 void dispatch_03e5(void) { jump_bank_1(0xCA52); }
 
-// 0x03EA-0x03EE: Dispatch to Bank1 0xEC9B
+/* 0x03EA: Target Bank1:0xEC9B (file 0x16C9B) - handler_ec9b */
 void dispatch_03ea(void) { jump_bank_1(0xEC9B); }
 
-// 0x03EF-0x03F3: Dispatch to Bank1 0xC98D
+/* 0x03EF: Target Bank1:0xC98D (file 0x1498D) - handler_c98d */
 void dispatch_03ef(void) { jump_bank_1(0xC98D); }
 
-// 0x03F4-0x03F8: Dispatch to Bank1 0xDD1A
+/* 0x03F4: Target Bank1:0xDD1A (file 0x15D1A) - handler_dd1a */
 void dispatch_03f4(void) { jump_bank_1(0xDD1A); }
 
-// 0x03F9-0x03FD: Dispatch to Bank1 0xDD7E
+/* 0x03F9: Target Bank1:0xDD7E (file 0x15D7E) - handler_dd7e */
 void dispatch_03f9(void) { jump_bank_1(0xDD7E); }
 
-// 0x03FE-0x0402: Dispatch to Bank1 0xDA30
+/* 0x03FE: Target Bank1:0xDA30 (file 0x15A30) - handler_da30 */
 void dispatch_03fe(void) { jump_bank_1(0xDA30); }
 
-// 0x0403-0x0407: Dispatch to Bank1 0xBC5E
+/* 0x0403: Target Bank1:0xBC5E (file 0x13C5E) - handler_bc5e */
 void dispatch_0403(void) { jump_bank_1(0xBC5E); }
 
-// 0x0408-0x040C: Dispatch to Bank1 0xE89B
+/* 0x0408: Target Bank1:0xE89B (file 0x1689B) - handler_e89b */
 void dispatch_0408(void) { jump_bank_1(0xE89B); }
 
-// 0x040D-0x0411: Dispatch to Bank1 0xDBE7
+/* 0x040D: Target Bank1:0xDBE7 (file 0x15BE7) - handler_dbe7 */
 void dispatch_040d(void) { jump_bank_1(0xDBE7); }
 
 /*===========================================================================
@@ -368,8 +369,8 @@ void dispatch_052a(void) { jump_bank_0(0xE961); }
 // 0x052F-0x0533: Dispatch to 0xAF5E (handler_pcie_nvme - Bank 0)
 void dispatch_052f(void) { jump_bank_0(0xAF5E); }
 
-// 0x0534-0x0538: Dispatch to 0xE959 (Bank 0)
-void dispatch_0534(void) { jump_bank_0(0xE959); }
+// 0x0534-0x0538: Dispatch to 0xD6BC (Bank 0)
+void dispatch_0534(void) { jump_bank_0(0xD6BC); }
 
 // 0x0539-0x053D: Dispatch to 0xE963 (Bank 0)
 void dispatch_0539(void) { jump_bank_0(0xE963); }

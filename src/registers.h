@@ -89,7 +89,8 @@
 #define REG_USB_MSC_CFG         XDATA_REG8(0x900B)
 #define REG_USB_DATA_L          XDATA_REG8(0x9010)
 #define REG_USB_DATA_H          XDATA_REG8(0x9011)
-#define REG_USB_FIFO_L          XDATA_REG8(0x9012)
+#define REG_USB_FIFO_STATUS     XDATA_REG8(0x9012)  /* USB FIFO/status register */
+#define   USB_FIFO_STATUS_READY   0x01  // Bit 0: USB ready/active
 #define REG_USB_FIFO_H          XDATA_REG8(0x9013)
 #define REG_USB_MODE_9018       XDATA_REG8(0x9018)
 #define REG_USB_MODE_VAL_9019   XDATA_REG8(0x9019)
@@ -117,9 +118,12 @@
 #define REG_USB_STATUS_0D       XDATA_REG8(0x910D)
 #define REG_USB_STATUS_0E       XDATA_REG8(0x910E)
 #define REG_USB_EP_STATUS       XDATA_REG8(0x9118)
-#define REG_USB_BUFFER_ALT      XDATA_REG8(0x911B)
-#define REG_USB_DATA_911D       XDATA_REG8(0x911D)
-#define REG_USB_DATA_911E       XDATA_REG8(0x911E)
+#define REG_USB_CBW_LEN_HI      XDATA_REG8(0x9119)  /* CBW length high byte */
+#define REG_USB_CBW_LEN_LO      XDATA_REG8(0x911A)  /* CBW length low byte */
+#define REG_USB_BUFFER_ALT      XDATA_REG8(0x911B)  /* CBW sig byte 0 / 'U' */
+#define REG_USB_CBW_SIG1        XDATA_REG8(0x911C)  /* CBW sig byte 1 / 'S' */
+#define REG_USB_CBW_SIG2        XDATA_REG8(0x911D)  /* CBW sig byte 2 / 'B' */
+#define REG_USB_CBW_SIG3        XDATA_REG8(0x911E)  /* CBW sig byte 3 / 'C' */
 #define REG_USB_STATUS_1F       XDATA_REG8(0x911F)
 // Note: 0x9120-0x9123 dual use: USB status AND CBW tag storage
 #define REG_USB_STATUS_20       XDATA_REG8(0x9120)
@@ -129,6 +133,12 @@
 #define REG_CBW_TAG_1           XDATA_REG8(0x9121)  // Dual-use
 #define REG_CBW_TAG_2           XDATA_REG8(0x9122)  // Dual-use
 #define REG_CBW_TAG_3           XDATA_REG8(0x9123)
+#define REG_USB_CBW_XFER_LEN_0  XDATA_REG8(0x9123)  /* CBW transfer length byte 0 (LSB) */
+#define REG_USB_CBW_XFER_LEN_1  XDATA_REG8(0x9124)  /* CBW transfer length byte 1 */
+#define REG_USB_CBW_XFER_LEN_2  XDATA_REG8(0x9125)  /* CBW transfer length byte 2 */
+#define REG_USB_CBW_XFER_LEN_3  XDATA_REG8(0x9126)  /* CBW transfer length byte 3 (MSB) */
+#define REG_USB_CBW_FLAGS       XDATA_REG8(0x9127)  /* CBW flags (bit 7 = direction) */
+#define REG_USB_CBW_LUN         XDATA_REG8(0x9128)  /* CBW LUN (bits 0-3) */
 
 // USB PHY registers (0x91C0-0x91FF)
 #define REG_USB_PHY_CTRL_91C0   XDATA_REG8(0x91C0)
@@ -211,6 +221,7 @@
 // UART Controller (0xC000-0xC00F)
 //=============================================================================
 #define REG_UART_BASE           XDATA_REG8(0xC000)
+#define REG_UART_THR_RBR        XDATA_REG8(0xC000)  // Data register (THR write, RBR read)
 #define REG_UART_THR            XDATA_REG8(0xC001)  // TX (WO)
 #define REG_UART_RBR            XDATA_REG8(0xC001)  // RX (RO)
 #define REG_UART_IER            XDATA_REG8(0xC002)
@@ -445,6 +456,8 @@
 #define REG_SCSI_DMA_PARAM4     XDATA_REG8(0xCE44)
 #define REG_SCSI_DMA_PARAM5     XDATA_REG8(0xCE45)
 #define REG_SCSI_DMA_COMPL      XDATA_REG8(0xCE5C)
+#define REG_SCSI_DMA_MASK       XDATA_REG8(0xCE5D)  /* SCSI DMA mask register */
+#define REG_SCSI_DMA_QUEUE      XDATA_REG8(0xCE5F)  /* SCSI DMA queue control */
 #define REG_SCSI_TRANSFER_CTRL  XDATA_REG8(0xCE70)
 #define REG_SCSI_TRANSFER_MODE  XDATA_REG8(0xCE72)
 #define REG_SCSI_BUF_CTRL0      XDATA_REG8(0xCE73)
@@ -454,10 +467,14 @@
 #define REG_SCSI_BUF_ADDR1      XDATA_REG8(0xCE77)
 #define REG_SCSI_BUF_ADDR2      XDATA_REG8(0xCE78)
 #define REG_SCSI_BUF_ADDR3      XDATA_REG8(0xCE79)
-#define REG_SCSI_CMD_LIMIT_LO   XDATA_REG8(0xCE80)
-#define REG_SCSI_CMD_LIMIT_HI   XDATA_REG8(0xCE81)
-#define REG_SCSI_CMD_MODE       XDATA_REG8(0xCE82)
-#define REG_SCSI_CMD_FLAGS      XDATA_REG8(0xCE83)
+#define REG_SCSI_BUF_CTRL       XDATA_REG8(0xCE80)  /* SCSI buffer control global */
+#define REG_SCSI_CMD_LIMIT_LO   REG_SCSI_BUF_CTRL   /* Alias: SCSI command limit low */
+#define REG_SCSI_BUF_THRESH_HI  XDATA_REG8(0xCE81)  /* SCSI buffer threshold high */
+#define REG_SCSI_CMD_LIMIT_HI   REG_SCSI_BUF_THRESH_HI  /* Alias: SCSI command limit high */
+#define REG_SCSI_BUF_THRESH_LO  XDATA_REG8(0xCE82)  /* SCSI buffer threshold low */
+#define REG_SCSI_CMD_MODE       REG_SCSI_BUF_THRESH_LO  /* Alias: SCSI command mode */
+#define REG_SCSI_BUF_FLOW       XDATA_REG8(0xCE83)  /* SCSI buffer flow control */
+#define REG_SCSI_CMD_FLAGS      REG_SCSI_BUF_FLOW   /* Alias: SCSI command flags */
 #define   SCSI_DMA_COMPL_MODE0    0x01  // Bit 0: Mode 0 complete
 #define   SCSI_DMA_COMPL_MODE10   0x02  // Bit 1: Mode 0x10 complete
 #define REG_XFER_STATUS_CE60    XDATA_REG8(0xCE60)  // Transfer status CE60
@@ -469,6 +486,8 @@
 #define   SCSI_DMA_QUEUE_MASK     0x0F  // Bits 0-3: Queue status (0-15)
 #define REG_XFER_STATUS_CE6C    XDATA_REG8(0xCE6C)  // Transfer status CE6C (bit 7: ready)
 #define REG_SCSI_DMA_STATUS     XDATA_REG16(0xCE6E)
+#define REG_SCSI_DMA_STATUS_L   XDATA_REG8(0xCE6E)   /* SCSI DMA status low byte */
+#define REG_SCSI_DMA_STATUS_H   XDATA_REG8(0xCE6F)   /* SCSI DMA status high byte */
 #define REG_XFER_STATUS_CE86    XDATA_REG8(0xCE86)
 #define REG_XFER_CTRL_CE88      XDATA_REG8(0xCE88)
 #define REG_XFER_READY          XDATA_REG8(0xCE89)

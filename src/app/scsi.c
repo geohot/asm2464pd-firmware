@@ -22,7 +22,7 @@ extern void idata_load_dword(uint8_t addr);
 extern void idata_store_dword(uint8_t addr);
 extern uint8_t helper_0cab(uint8_t r0, uint8_t r1, uint8_t r6, uint8_t r7);
 extern void helper_0c64(uint8_t a, uint8_t b);
-extern uint8_t helper_313f(uint8_t param, uint8_t r0);
+extern uint8_t helper_313f(uint8_t r0_val);
 extern uint8_t helper_3298(void);
 extern uint8_t helper_328a(void);
 extern void flash_add_to_xdata16(uint8_t lo, uint8_t hi);
@@ -84,27 +84,9 @@ extern void nvme_util_check_command_ready(void);
 extern void nvme_load_transfer_data(void);
 extern void dma_setup_transfer(uint8_t p1, uint8_t p2, uint8_t p3);
 extern void usb_copy_status_to_buffer(void);
-extern void xdata_store_dword(uint8_t r0, uint16_t dptr, uint8_t r4, uint8_t r5, uint8_t r6, uint8_t r7);
-extern void dispatch_0534(uint8_t p1, uint8_t p2, uint8_t p3);
+extern void xdata_store_dword(__xdata uint8_t *ptr, uint32_t val);
+extern void dispatch_0534(void);
 extern void dispatch_0426(uint8_t param);
-
-/* IDATA pointers for register-based operations */
-#define IDATA_CMD_BUF     ((__idata uint8_t *)0x09)
-#define IDATA_TRANSFER    ((__idata uint8_t *)0x6B)
-#define IDATA_BUF_CTRL    ((__idata uint8_t *)0x6F)
-
-/* Additional IDATA variables */
-#define I_WORK_3B         (*((__idata uint8_t *)0x3B))
-
-/* Additional registers */
-#define REG_USB_STATUS_REG      XDATA_REG8(0x9012)
-#define REG_SCSI_DMA_STATUS_L   XDATA_REG8(0xCE6E)
-#define REG_SCSI_DMA_STATUS_H   XDATA_REG8(0xCE6F)
-#define REG_BUFFER_CTRL_GLOBAL  XDATA_REG8(0xCE80)
-#define REG_BUFFER_THRESHOLD_HIGH XDATA_REG8(0xCE81)
-#define REG_BUFFER_THRESHOLD_LOW  XDATA_REG8(0xCE82)
-#define REG_BUFFER_FLOW_CTRL    XDATA_REG8(0xCE83)
-#define REG_UART_THR_RBR        XDATA_REG8(0xC000)
 
 /* Forward declarations */
 static void scsi_setup_buffer_length(uint8_t hi, uint8_t lo);
@@ -177,7 +159,7 @@ void scsi_process_transfer(uint8_t param_lo, uint8_t param_hi)
     }
 
     /* Call protocol handler with offset 9 */
-    if (helper_313f(count_lo - 0x10, 9) == 0) {
+    if (helper_313f(9) == 0) {
         return;
     }
 
@@ -235,17 +217,17 @@ void scsi_state_handler_40d9(void)
     if (state == 0x09) {
         /* State 0x09: Setup complete flag */
         G_STATE_FLAG_06E6 = 1;
-        offset = *(__idata uint8_t *)0x0D;
+        offset = I_QUEUE_IDX;
         result = helper_1b0b(offset + 0x71);
 
         if (result != 0) {
             /* Error path */
             helper_1b30(offset + 0x08);
-            *(__xdata uint8_t *)0x06CB = 0xE0;
+            G_SCSI_STATUS_06CB = 0xE0;
         } else {
             /* Success path */
             helper_1b2e(offset);
-            *(__xdata uint8_t *)0x06CB = 0x60;
+            G_SCSI_STATUS_06CB = 0x60;
             helper_1c13(offset + 0x0C);
         }
         usb_set_transfer_flag();
@@ -254,16 +236,16 @@ void scsi_state_handler_40d9(void)
 
     if (state == 0x0A) {
         /* State 0x0A: Similar to 0x09 with different address */
-        *(__xdata uint8_t *)0x07EA = 1;
-        offset = *(__idata uint8_t *)0x0D;
+        G_XFER_FLAG_07EA = 1;
+        offset = I_QUEUE_IDX;
         result = helper_1b0b(offset + 0x71);
 
         if (result != 0) {
             helper_1b30(offset + 0x08);
-            *(__xdata uint8_t *)0x07EA = 0xF4;
+            G_XFER_FLAG_07EA = 0xF4;
         } else {
             helper_1b2e(offset);
-            *(__xdata uint8_t *)0x07EA = 0x74;
+            G_XFER_FLAG_07EA = 0x74;
             helper_1c13(offset + 0x0C);
         }
         usb_set_transfer_flag();
@@ -322,13 +304,13 @@ void scsi_action_handler_419d(uint8_t param)
     usb_reset_interface(event_result + 0x06);
 
     I_WORK_3A = G_ACTION_CODE_0A83;
-    I_WORK_3B = *(__xdata uint8_t *)(0x0A83 + 1);
+    I_WORK_3B = G_ACTION_PARAM_0A84;
 
     G_SYS_FLAGS_0052 |= 0x10;
 
     event_result = usb_event_handler();
     setup_result = usb_setup_endpoint(event_result + 0x04);
-    *(__xdata uint8_t *)0x0053 = setup_result;
+    G_USB_SETUP_RESULT = setup_result;
     G_BUFFER_LENGTH_HIGH = 0;
 
     reg_poll(setup_result);
@@ -347,7 +329,7 @@ void scsi_mode_setup_425f(uint8_t param)
 {
     uint8_t mode;
 
-    *(__xdata uint8_t *)0x0A8E = param;
+    G_DMA_MODE_0A8E = param;
     G_XFER_MODE_0AF9 = param;
     G_XFER_COUNT_LO = 0;
     G_XFER_COUNT_HI = 0;
@@ -384,23 +366,23 @@ void scsi_dma_handler_43d3(uint8_t param)
     uint8_t status;
     uint8_t event_result;
 
-    *(__xdata uint8_t *)0x0A8D = param;
+    G_DMA_PARAM_0A8D = param;
 
     /* Check bit 0 */
     if ((param & 0x01) != 0) {
         helper_3f4a();
         if (param != 0) {
-            *(__xdata uint8_t *)0x0214 = param;
+            G_DMA_STATE_0214 = param;
             return;
         }
     }
 
-    status = REG_USB_STATUS_REG;
-    if ((status & 0x01) == 0) {
+    status = REG_USB_FIFO_STATUS;
+    if ((status & USB_FIFO_STATUS_READY) == 0) {
         return;
     }
 
-    param = *(__xdata uint8_t *)0x0A8D;
+    param = G_DMA_PARAM_0A8D;
 
     /* Check bit 1 - setup endpoint */
     if ((param >> 1) & 0x01) {
@@ -441,27 +423,27 @@ void scsi_dma_handler_43d3(uint8_t param)
     }
 
     /* Check bit 5 - DMA check mode 1 */
-    param = *(__xdata uint8_t *)0x0A8D;
+    param = G_DMA_PARAM_0A8D;
     if ((param >> 5) & 0x01) {
         IDATA_TRANSFER[0] = 0;
         IDATA_TRANSFER[1] = 0;
         IDATA_TRANSFER[2] = 0;
         IDATA_TRANSFER[3] = 0;
         if (reg_poll(0) == 0) {
-            *(__xdata uint8_t *)0x0214 = 5;
+            G_DMA_STATE_0214 = 5;
             return;
         }
     }
 
     /* Check bit 6 - DMA start */
-    param = *(__xdata uint8_t *)0x0A8D;
+    param = G_DMA_PARAM_0A8D;
     if ((param >> 6) & 0x01) {
         IDATA_TRANSFER[0] = 0;
         IDATA_TRANSFER[1] = 0;
         IDATA_TRANSFER[2] = 0x40;
         IDATA_TRANSFER[3] = 0;
         dma_start_transfer();
-        *(__xdata uint8_t *)0x0214 = 5;
+        G_DMA_STATE_0214 = 5;
     }
 }
 
@@ -479,7 +461,7 @@ void scsi_dma_start_4469(uint8_t param)
     IDATA_TRANSFER[3] = 0;
 
     dma_start_transfer();
-    *(__xdata uint8_t *)0x0214 = 5;
+    G_DMA_STATE_0214 = 5;
 }
 
 /*
@@ -499,7 +481,7 @@ static void scsi_init_interface(void)
     if ((flags & 0x80) != 0) {
         interface_ready_check(0, 0x13, 5);
         dispatch_039f(0);
-        *(__xdata uint8_t *)0x0B2F = 1;
+        G_INTERFACE_READY_0B2F = 1;
         dispatch_04fd();
     }
 
@@ -537,7 +519,7 @@ static void scsi_init_interface(void)
         REG_BUF_CFG_9301 = 0x80;
         REG_USB_PHY_CTRL_91D1 = 8;
         REG_USB_PHY_CTRL_91D1 = 1;
-        *(__xdata uint8_t *)0x01B6 = 0;
+        G_USB_WORK_01B6 = 0;
         nvme_check_completion(0xCC30);
         G_STATE_FLAG_06E6 = 1;
         dispatch_032c();
@@ -557,62 +539,62 @@ void scsi_buffer_handler_45d0(void)
     uint8_t val;
     uint8_t mode;
 
-    *(__xdata uint8_t *)0x044D = 0;
+    G_LOG_INIT_044D = 0;
     helper_166f();
 
-    val = *(__xdata uint8_t *)0x044D;
+    val = G_LOG_INIT_044D;
     if (val == 1) {
         usb_calc_addr_with_offset();
-        *(__xdata uint8_t *)0xCE6F = *(__xdata uint8_t *)0x044D;
+        REG_SCSI_DMA_STATUS_H = G_LOG_INIT_044D;
         return;
     }
 
     usb_calc_addr_with_offset();
-    val = *(__xdata uint8_t *)0x044D;
+    val = G_LOG_INIT_044D;
     helper_15d4();
 
-    if (*(__xdata uint8_t *)0x044D > 1) {
-        val = *(__xdata uint8_t *)0x0578;
+    if (G_LOG_INIT_044D > 1) {
+        val = G_DMA_ENDPOINT_0578;
         mode = helper_1646();
     }
 
     usb_shift_right_3(val);
 
     if (mode < 3) {
-        *(__xdata uint8_t *)0xCE6F = val;
-        *(__xdata uint8_t *)0xCE6F = val + 1;
+        REG_SCSI_DMA_STATUS_H = val;
+        REG_SCSI_DMA_STATUS_H = val + 1;
         return;
     }
 
     if (mode < 5) {
         uint8_t bit = (val >> 2) & 0x01;
         helper_15ef(0, 0);
-        *(__xdata uint8_t *)0x0578 = *(__xdata uint8_t *)0x0578 & (bit ? 0x0F : 0xF0);
+        G_DMA_ENDPOINT_0578 = G_DMA_ENDPOINT_0578 & (bit ? 0x0F : 0xF0);
         return;
     }
 
     if (mode < 9) {
         helper_15f1(0x40);
-        *(__xdata uint8_t *)0x0578 = 0;
+        G_DMA_ENDPOINT_0578 = 0;
         return;
     }
 
     if (mode < 17) {
         helper_15ef(mode - 17, 0);
-        *(__xdata uint8_t *)0x0578 = 0;
+        G_DMA_ENDPOINT_0578 = 0;
         helper_15f1(0x3F);
-        *(__xdata uint8_t *)0x0578 = 0;
+        G_DMA_ENDPOINT_0578 = 0;
         return;
     }
 
     helper_15ef(mode - 17, 0);
-    *(__xdata uint8_t *)0x0578 = 0;
+    G_DMA_ENDPOINT_0578 = 0;
     helper_15f1(0x3F);
-    *(__xdata uint8_t *)0x0578 = 0;
+    G_DMA_ENDPOINT_0578 = 0;
     helper_15f1(0x3E);
-    *(__xdata uint8_t *)0x0578 = 0;
+    G_DMA_ENDPOINT_0578 = 0;
     helper_15f1(0x3D);
-    *(__xdata uint8_t *)0x0578 = 0;
+    G_DMA_ENDPOINT_0578 = 0;
 }
 
 /*
@@ -643,19 +625,19 @@ void scsi_transfer_check_466b(void)
     G_PCIE_TXN_COUNT_LO = usb_get_sys_status_offset();
     helper_157d();
 
-    val = *(__xdata uint8_t *)0x0A8E;
+    val = G_DMA_MODE_0A8E;
     if (val == 0x10) {
         return;
     }
 
-    val = *(__xdata uint8_t *)0x0A8E;
+    val = G_DMA_MODE_0A8E;
 
     if (val == 0x80) {
         transfer_func_1633(0xB480);
         protocol_dispatch(G_PCIE_TXN_COUNT_LO);
         scsi_pcie_send_status(0);
         helper_1579();
-        *(__xdata uint8_t *)0x05A6 = 3;
+        G_PCIE_TXN_COUNT_LO = 3;
         interface_ready_check(0, 199, 3);
 
         if (G_ERROR_CODE_06EA == 0xFE) {
@@ -664,7 +646,7 @@ void scsi_transfer_check_466b(void)
 
         scsi_dispatch_0426();
         helper_1579();
-        *(__xdata uint8_t *)0x05A6 = 5;
+        G_PCIE_TXN_COUNT_LO = 5;
         return;
     }
 
@@ -684,15 +666,15 @@ void scsi_queue_handler_480c(void)
 {
     uint8_t status;
 
-    status = *(__xdata uint8_t *)0xE716;
-    if ((status & 0x03) == 0) {
+    status = REG_LINK_STATUS_E716;
+    if ((status & LINK_STATUS_E716_MASK) == 0) {
         return;
     }
 
-    status = REG_USB_STATUS_REG;
-    if ((status & 0x01) == 0) {
+    status = REG_USB_FIFO_STATUS;
+    if ((status & USB_FIFO_STATUS_READY) == 0) {
         /* USB not ready */
-        status = *(__xdata uint8_t *)0xCE89;
+        status = REG_XFER_READY;
         if ((status >> 2) & 0x01) {
             nvme_util_advance_queue();
         }
@@ -821,8 +803,8 @@ static void scsi_set_usb_mode(uint8_t mode)
     uint8_t status;
     uint8_t speed;
 
-    status = REG_USB_STATUS_REG;
-    if ((status & 0x01) == 0) {
+    status = REG_USB_FIFO_STATUS;
+    if ((status & USB_FIFO_STATUS_READY) == 0) {
         return;
     }
 
@@ -832,9 +814,9 @@ static void scsi_set_usb_mode(uint8_t mode)
     }
 
     if (mode != 0) {
-        *(__xdata uint8_t *)0x91D0 = 0x08;
+        REG_USB_EP_CTRL_91D0 = 0x08;
     } else {
-        *(__xdata uint8_t *)0x91D0 = 0x10;
+        REG_USB_EP_CTRL_91D0 = 0x10;
     }
 }
 
@@ -846,9 +828,9 @@ static void scsi_set_usb_mode(uint8_t mode)
  */
 void scsi_dma_status_533d(uint8_t param)
 {
-    *(__xdata uint8_t *)0xCE95 = param >> 1;
+    REG_XFER_MODE_CE95 = param >> 1;
 
-    if (*(__xdata uint8_t *)0xCE65 == 0) {
+    if (REG_XFER_CTRL_CE65 == 0) {
         return;
     }
 
@@ -883,10 +865,10 @@ void scsi_status_update_5359(uint8_t param)
  */
 void scsi_write_residue_53c0(void)
 {
-    REG_BUFFER_CTRL_GLOBAL = I_BUF_CTRL_GLOBAL;
-    REG_BUFFER_THRESHOLD_HIGH = I_BUF_THRESH_HI;
-    REG_BUFFER_THRESHOLD_LOW = I_BUF_THRESH_LO;
-    REG_BUFFER_FLOW_CTRL = I_BUF_FLOW_CTRL;
+    REG_SCSI_BUF_CTRL = I_BUF_CTRL_GLOBAL;
+    REG_SCSI_BUF_THRESH_HI = I_BUF_THRESH_HI;
+    REG_SCSI_BUF_THRESH_LO = I_BUF_THRESH_LO;
+    REG_SCSI_BUF_FLOW = I_BUF_FLOW_CTRL;
 }
 
 /*
@@ -897,11 +879,11 @@ void scsi_write_residue_53c0(void)
  */
 static void scsi_pcie_send_status(uint8_t param)
 {
-    *(__idata uint8_t *)0x65 = 3;
+    I_WORK_65 = 3;
     helper_1580(G_PCIE_TXN_COUNT_LO);
 
     /* Store status */
-    xdata_store_dword(0, 0xB220, 0, 0, 0, param | 0x08);
+    xdata_store_dword(&REG_PCIE_DATA, (uint32_t)(param | 0x08) << 24);
     dispatch_044e();
 }
 
@@ -913,8 +895,8 @@ static void scsi_pcie_send_status(uint8_t param)
  */
 uint8_t scsi_cbw_validate_51ef(void)
 {
-    uint8_t len_hi = *(__xdata uint8_t *)0x9119;
-    uint8_t len_lo = *(__xdata uint8_t *)0x911A;
+    uint8_t len_hi = REG_USB_CBW_LEN_HI;
+    uint8_t len_lo = REG_USB_CBW_LEN_LO;
 
     /* Check length is 0x1F (31 bytes for CBW) */
     if (len_lo != 0x1F || len_hi != 0x00) {
@@ -923,9 +905,9 @@ uint8_t scsi_cbw_validate_51ef(void)
 
     /* Validate 'USBC' signature */
     if (REG_USB_BUFFER_ALT != 'U') return 0;
-    if (*(__xdata uint8_t *)0x911C != 'S') return 0;
-    if (*(__xdata uint8_t *)0x911D != 'B') return 0;
-    if (*(__xdata uint8_t *)0x911E != 'C') return 0;
+    if (REG_USB_CBW_SIG1 != 'S') return 0;
+    if (REG_USB_CBW_SIG2 != 'B') return 0;
+    if (REG_USB_CBW_SIG3 != 'C') return 0;
 
     return 1;
 }
@@ -979,7 +961,7 @@ void scsi_transfer_handler_5069(uint8_t param)
         return;
     }
 
-    if (*(__xdata uint8_t *)0x044B == 1 && *(__xdata uint8_t *)0x0006 != 0) {
+    if (G_LOG_COUNTER_044B == 1 && G_WORK_0006 != 0) {
         dma_setup_transfer(0, 0x3A, 2);
     }
 
@@ -996,15 +978,15 @@ void scsi_copy_cbw_data_5112(void)
 {
     usb_copy_status_to_buffer();
 
-    /* Copy CBW transfer length to IDATA */
-    I_TRANSFER_6B = *(__xdata uint8_t *)0x9126;
-    I_TRANSFER_6C = *(__xdata uint8_t *)0x9125;
-    I_TRANSFER_6D = *(__xdata uint8_t *)0x9124;
-    I_TRANSFER_6E = *(__xdata uint8_t *)0x9123;
+    /* Copy CBW transfer length to IDATA (big-endian to little-endian) */
+    I_TRANSFER_6B = REG_USB_CBW_XFER_LEN_3;
+    I_TRANSFER_6C = REG_USB_CBW_XFER_LEN_2;
+    I_TRANSFER_6D = REG_USB_CBW_XFER_LEN_1;
+    I_TRANSFER_6E = REG_USB_CBW_XFER_LEN_0;
 
     /* Extract direction and LUN */
-    *(__xdata uint8_t *)0x0AF3 = *(__xdata uint8_t *)0x9127 & 0x80;
-    *(__xdata uint8_t *)0x0AF4 = *(__xdata uint8_t *)0x9128 & 0x0F;
+    G_XFER_STATE_0AF3 = REG_USB_CBW_FLAGS & 0x80;
+    G_XFER_LUN_0AF4 = REG_USB_CBW_LUN & 0x0F;
 
     /* Process command */
     scsi_cmd_process_4d92();
@@ -1055,7 +1037,7 @@ void scsi_ep_init_handler(void)
  */
 uint8_t scsi_check_e716_541f(void)
 {
-    return *(__xdata uint8_t *)0xE716 & 0x03;
+    return REG_LINK_STATUS_E716 & LINK_STATUS_E716_MASK;
 }
 
 /*
@@ -1074,7 +1056,9 @@ void scsi_handler_5305(void)
     status2 = REG_FLASH_READY_STATUS;
     status3 = REG_FLASH_READY_STATUS;
 
-    dispatch_0534(status3 & 0x20, status2 & 0x02, status1 & 0x01);
+    /* Note: dispatch_0534 is a bank switch stub; actual params may be passed via globals */
+    (void)status1; (void)status2; (void)status3;
+    dispatch_0534();
 
     G_SYS_FLAGS_07F6 = 1;
 }
@@ -1101,7 +1085,7 @@ void scsi_transfer_check_5373(uint8_t param)
     uint8_t status;
     static __code const uint8_t mask_table[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
 
-    status = *(__xdata uint8_t *)0xCE5D;
+    status = REG_SCSI_DMA_MASK;
     if ((status & mask_table[param]) != 0) {
         usb_shift_right_3(param);
         /* Additional processing */
@@ -1119,11 +1103,11 @@ void scsi_queue_dispatch_52c7(uint8_t param)
     uint8_t status;
     static __code const uint8_t mask_table[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
 
-    status = *(__xdata uint8_t *)0xCE5F;
+    status = REG_SCSI_DMA_QUEUE;
     if ((status & mask_table[param]) != 0) {
         transfer_func_16b0(param);
-        *(__xdata uint8_t *)0xCE5F = param + 2;
-        *(__xdata uint8_t *)0xCE5F = param + 3;
+        REG_SCSI_DMA_QUEUE = param + 2;
+        REG_SCSI_DMA_QUEUE = param + 3;
     }
 }
 
