@@ -234,8 +234,10 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 
 //=============================================================================
 // Flash Config Storage (0x0860-0x08FF)
-// Loaded from flash buffer at 0x7076+ during config initialization
+// Loaded from flash buffer at 0x7074+ during config initialization
 //=============================================================================
+#define G_FLASH_CFG_086C        XDATA_VAR8(0x086C)  /* Flash config from 0x7074 */
+#define G_FLASH_CFG_086D        XDATA_VAR8(0x086D)  /* Flash config from 0x7075 */
 #define G_FLASH_CFG_086E        XDATA_VAR8(0x086E)  /* Flash config from 0x7076 */
 #define G_FLASH_CFG_086F        XDATA_VAR8(0x086F)  /* Flash config from 0x7077 */
 #define G_FLASH_CFG_0870        XDATA_VAR8(0x0870)  /* Flash config from 0x7078 */
@@ -377,6 +379,9 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_FLASH_BUF_705D        XDATA_VAR8(0x705D)  /* Flash buffer data 2 */
 #define G_FLASH_BUF_705E        XDATA_VAR8(0x705E)  /* Flash buffer data 3 */
 #define G_FLASH_BUF_705F        XDATA_VAR8(0x705F)  /* Flash buffer data 4 */
+#define G_FLASH_BUF_7064        XDATA_VAR8(0x7064)  /* Flash buffer array 3 start */
+#define G_FLASH_BUF_7074        XDATA_VAR8(0x7074)  /* Flash config byte 0x7074 */
+#define G_FLASH_BUF_7075        XDATA_VAR8(0x7075)  /* Flash config byte 0x7075 */
 #define G_FLASH_BUF_7076        XDATA_VAR8(0x7076)  /* Flash config source byte 0 */
 #define G_FLASH_BUF_7077        XDATA_VAR8(0x7077)  /* Flash config source byte 1 */
 #define G_FLASH_BUF_7078        XDATA_VAR8(0x7078)  /* Flash config source byte 2 */

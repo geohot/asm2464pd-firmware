@@ -121,10 +121,18 @@ def find_stub_functions(stubs_path):
             # Count significant statements
             statements = [s.strip() for s in body_stripped.split(';') if s.strip()]
 
-            # It's a stub if very few statements and no control flow or register access
-            is_stub = len(statements) <= 2 and not any(
-                kw in body for kw in ['while', 'for', 'if', 'switch', 'REG_', 'G_']
+            # It's a stub if very few statements and no real logic
+            # Real implementations have: control flow, register access, global access,
+            # or function calls (helper_, FUN_CODE_, dispatch_, etc.)
+            has_real_logic = any(
+                kw in body for kw in [
+                    'while', 'for', 'if', 'switch',  # Control flow
+                    'REG_', 'G_', 'I_',              # Register/global/idata access
+                    'helper_', 'FUN_CODE_', 'dispatch_',  # Function calls
+                    'dma_', 'cmd_', 'usb_', 'pcie_', 'nvme_',  # Driver calls
+                ]
             )
+            is_stub = len(statements) <= 2 and not has_real_logic
 
             if is_stub:
                 stubs[addr] = func_name

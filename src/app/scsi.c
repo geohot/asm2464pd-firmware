@@ -71,8 +71,8 @@ extern void protocol_dispatch(uint8_t param);
 extern void transfer_func_1633(uint16_t param);
 extern void helper_1579(void);
 extern uint8_t usb_get_sys_status_offset(void);
-extern void helper_3219(void);
-extern void helper_3291(void);
+extern void nvme_call_and_signal_3219(void);
+extern uint8_t queue_idx_get_3291(void);
 extern void nvme_init_step(void);
 extern void transfer_func_16b0(uint8_t param);
 extern void helper_16e9(uint8_t param);
@@ -1142,7 +1142,7 @@ extern void helper_1677(void);
 extern void usb_calc_queue_addr(uint8_t param);
 extern void usb_calc_queue_addr_next(uint8_t param);
 extern uint8_t helper_313d(void);
-extern void helper_3267(void);
+extern void nvme_ep_config_init_3267(void);
 extern void helper_3181(void);
 extern void helper_3279(void);
 extern void helper_1ce4(void);
@@ -1245,7 +1245,7 @@ void scsi_transfer_check(void)
         return;
     }
 
-    helper_3267();
+    nvme_ep_config_init_3267();
 
     /* Poll for transfer completion */
     while (1) {
@@ -1411,10 +1411,10 @@ void scsi_state_handler(void)
     /* Check USB status bit 0 */
     usb_status = REG_USB_STATUS;
     if (usb_status & 0x01) {
-        helper_3291();
+        queue_idx_get_3291();
         handler_039a_buffer_dispatch();  /* via 0x0206 */
     } else {
-        helper_3219();
+        nvme_call_and_signal_3219();
     }
 
     I_STATE_6A = 5;
@@ -1874,10 +1874,10 @@ void scsi_state_switch_4784(void)
 check_usb_status:
     /* Check USB control register bit 0 */
     if (REG_USB_STATUS & 0x01) {
-        helper_3291();
+        queue_idx_get_3291();
         helper_0206();
     } else {
-        helper_3219();
+        nvme_call_and_signal_3219();
     }
 
     /* Set state to 5 */
@@ -2476,6 +2476,19 @@ void scsi_clear_mode_545c(void)
 void scsi_helper_5462(void)
 {
     helper_1cf0();
+}
+
+/*
+ * scsi_loop_process_573b - Loop-based data processing
+ * Address: 0x573b-0x5764 (42 bytes)
+ *
+ * Complex loop function with djnz instructions. Called from jump tables.
+ * Ghidra shows complex parameter list but decompilation is unreliable.
+ * TODO: Needs detailed reverse engineering if called directly.
+ */
+void scsi_loop_process_573b(void)
+{
+    /* Stub - complex loop function, needs detailed RE */
 }
 
 /*

@@ -2279,6 +2279,84 @@ void setup_c415_from_0475_1b47(void)
     REG_NVME_CTRL_STATUS |= 0x02;  /* Set bit 1 */
 }
 
+/* Forward declarations */
+extern void flash_config_copy_9403(void);
+extern uint8_t reg_read_indexed_0a84(uint8_t offset, uint8_t base);
+
+/*
+ * flash_config_init_9388 - Initialize flash config arrays from flash buffer
+ * Address: 0x9388-0x9401 (entry point within 0x9378-0x9401)
+ *
+ * This function initializes configuration arrays from flash buffer data.
+ * For entries that read as 0xFF (invalid/unprogrammed), default values are used.
+ *
+ * Array initialization:
+ *   0x703C-0x7043 -> 0x01BD-0x01C4 (8 bytes, default 0x20)
+ *   0x7044-0x7063 -> 0x08B0-0x08CF (32 bytes, default 0x00)
+ *   0x7064-0x7073 -> 0x01C5-0x01D4 (16 bytes, default 0x20, if 0x7064 valid)
+ *
+ * Also copies 0x7074-0x7075 to 0x086C-0x086D if valid.
+ *
+ * Note: 0x9388 is an overlapping code entry point that unconditionally writes
+ * the default value 0x20 before continuing. In C we implement the full behavior.
+ */
+void flash_config_init_9388(void)
+{
+    uint8_t i;
+    uint8_t val;
+    __xdata uint8_t *dst;
+
+    /* Loop 1: Copy 0x703C-0x7043 -> 0x01BD-0x01C4 (8 bytes) */
+    /* If source byte is 0xFF, use default 0x20 */
+    for (i = 0; i < 8; i++) {
+        val = reg_read_indexed_0a84(0x3C, i);  /* Read 0x703C+i */
+        if (val == 0xFF) {
+            val = 0x20;  /* Default value */
+        }
+        /* Store to 0x01BD+i */
+        dst = (__xdata uint8_t *)(0x01BD + i);
+        *dst = val;
+    }
+
+    /* Loop 2: Copy 0x7044-0x7063 -> 0x08B0-0x08CF (32 bytes) */
+    /* If source byte is 0xFF, use default 0x00 */
+    for (i = 0; i < 32; i++) {
+        val = reg_read_indexed_0a84(0x44, i);  /* Read 0x7044+i */
+        if (val == 0xFF) {
+            val = 0x00;  /* Default value */
+        }
+        /* Store to 0x08B0+i */
+        dst = (__xdata uint8_t *)(0x08B0 + i);
+        *dst = val;
+    }
+
+    /* Check if 0x7064 area is valid (not 0xFF) */
+    val = G_FLASH_BUF_7064;
+    if ((uint8_t)~val != 0) {  /* If not 0xFF */
+        /* Loop 3: Copy 0x7064-0x7073 -> 0x01C5-0x01D4 (16 bytes) */
+        /* If source byte is 0xFF, use default 0x20 */
+        for (i = 0; i < 16; i++) {
+            val = reg_read_indexed_0a84(0x64, i);  /* Read 0x7064+i */
+            if (val == 0xFF) {
+                val = 0x20;  /* Default value */
+            }
+            /* Store to 0x01C5+i */
+            dst = (__xdata uint8_t *)(0x01C5 + i);
+            *dst = val;
+        }
+    }
+
+    /* Check and copy 0x7074/0x7075 -> 0x086C/0x086D if valid */
+    val = G_FLASH_BUF_7074;
+    if (val != 0xFF || (uint8_t)~G_FLASH_BUF_7075 != 0) {
+        G_FLASH_CFG_086C = G_FLASH_BUF_7074;
+        G_FLASH_CFG_086D = G_FLASH_BUF_7075;
+    }
+
+    /* Continue with flash_config_copy_9403 behavior */
+    flash_config_copy_9403();
+}
+
 /*
  * flash_config_copy_9403 - Copy flash config to XDATA globals
  * Address: 0x9403-0x9535 (306 bytes)

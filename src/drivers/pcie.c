@@ -2474,7 +2474,7 @@ extern uint8_t dispatch_handler_0557(void);                   /* 0x0557 - Dispat
 extern void pcie_write_reg_0633(void);                        /* 0x0633 - Register write helper */
 extern void pcie_write_reg_0638(void);                        /* 0x0638 - Register write helper */
 extern void pcie_cleanup_05f7(void);                          /* 0x05f7 - Cleanup handler */
-extern void pcie_cleanup_05fc(void);                          /* 0x05fc - Cleanup handler */
+extern uint8_t pcie_cleanup_05fc(void);                       /* 0x05fc - Returns 0xF0 */
 extern void pcie_handler_e974(void);                          /* 0xe974 - Bank 1 handler */
 extern void pcie_handler_e06b(uint8_t param);                 /* 0xe06b - Bank 1 handler with param */
 extern void pcie_setup_a38b(uint8_t source);                  /* 0xa38b - Setup helper */
@@ -3133,4 +3133,319 @@ uint8_t pcie_init_write_e902(void)
 {
     G_PCIE_DIRECTION = 1;           /* Set direction to write */
     return pcie_tlp_init_and_transfer();
+}
+
+/*===========================================================================
+ * Bank 1 PCIe Handler Functions (moved from stubs.c)
+ *===========================================================================*/
+
+/* Extern declarations for helper stubs still in stubs.c */
+extern void helper_e677(void);
+extern void helper_9617(void);
+extern void helper_95bf(void);
+extern void helper_bd23(void);
+extern void helper_e50d(void);
+extern uint8_t helper_a2ff(void);
+extern void helper_0be6(void);
+
+/*
+ * pcie_handler_e890 - Bank 1 PCIe link state reset handler
+ * Address: 0xe890-0xe89a, 0xe83d-0xe84a, 0xe711-0xe725 (Bank 1)
+ *
+ * Resets PCIe extended registers and waits for completion.
+ *
+ * Disassembly (0xe890-0xe89a):
+ *   e890: mov r1, #0x37
+ *   e892: lcall 0xa351      ; ext_mem_read(0x02, 0x12, 0x37)
+ *   e895: anl a, #0x7f      ; Clear bit 7
+ *   e897: lcall 0x0be6      ; ext_mem_write
+ *   e89a: ljmp 0xe83d       ; Continue
+ *
+ * Continuation (0xe83d-0xe84a):
+ *   e83d: mov r1, #0x38
+ *   e83f: lcall 0xa38b      ; Write 0x01 to reg 0x38
+ *   e842: mov r1, #0x38     ; Poll loop
+ *   e844: lcall 0xa336      ; Read reg 0x38
+ *   e847: jb 0xe0.0, 0xe842 ; Loop while bit 0 set
+ *   e84a: ljmp 0xe711       ; Continue
+ *
+ * Continuation (0xe711-0xe725):
+ *   e711: mov r1, #0x35
+ *   e713: lcall 0xa301      ; ext_mem_read reg 0x35
+ *   e716: anl a, #0xc0      ; Keep bits 6-7 only
+ *   e718: lcall 0x0be6      ; Write back
+ *   e71b: clr a
+ *   e71c: lcall 0xa367      ; Write 0 to 0x3C and 0x3D
+ *   e71f: lcall 0x0be6      ; Write 0 to 0x3E
+ *   e722: inc r1            ; r1 = 0x3F
+ *   e723: ljmp 0x0be6       ; Write 0 to 0x3F
+ *
+ * PCIe extended registers (bank 0x02:0x12xx -> XDATA 0xB2xx):
+ *   0xB235: Link config
+ *   0xB237: Link status
+ *   0xB238: Command trigger
+ *   0xB23C-0xB23F: Lane config registers
+ */
+void pcie_handler_e890(void)
+{
+    uint8_t val;
+
+    /* Read link status, clear bit 7, write back */
+    val = XDATA_REG8(0xB237);
+    val &= 0x7F;
+    XDATA_REG8(0xB237) = val;
+
+    /* Write 0x01 to command trigger register */
+    XDATA_REG8(0xB238) = 0x01;
+
+    /* Poll until bit 0 clears (command complete) */
+    while (XDATA_REG8(0xB238) & 0x01) {
+        /* Wait for hardware */
+    }
+
+    /* Read link config, keep only bits 6-7, write back */
+    val = XDATA_REG8(0xB235);
+    val &= 0xC0;
+    XDATA_REG8(0xB235) = val;
+
+    /* Clear lane config registers 0x3C-0x3F */
+    XDATA_REG8(0xB23C) = 0x00;
+    XDATA_REG8(0xB23D) = 0x00;
+    XDATA_REG8(0xB23E) = 0x00;
+    XDATA_REG8(0xB23F) = 0x00;
+}
+
+/*
+ * pcie_txn_setup_e775 - Setup PCIe transaction from global count
+ * Address: 0xe775-0xe787 (19 bytes)
+ *
+ * Reads transaction count from G_PCIE_TXN_COUNT_LO, looks up entry in
+ * the 34-byte transaction table at 0x05B7, and stores bytes 0 and 1
+ * of the entry to I_WORK_61 and I_WORK_62.
+ *
+ * Original disassembly:
+ *   e775: mov dptr, #0x05a6  ; G_PCIE_TXN_COUNT_LO
+ *   e778: movx a, @dptr
+ *   e779: mov r7, a
+ *   e77a: lcall 0x99bc       ; DPTR = 0x05b7 + R7*0x22
+ *   e77d: movx a, @dptr      ; Read byte from table
+ *   e77e: mov r0, #0x61      ; I_WORK_61
+ *   e780: mov @r0, a         ; Store to idata 0x61
+ *   e781: lcall 0x9980       ; DPTR = 0x05b8 + R7*0x22
+ *   e784: movx a, @dptr      ; Read byte from table
+ *   e785: inc r0             ; I_WORK_62
+ *   e786: mov @r0, a         ; Store to idata 0x62
+ *   e787: ret
+ */
+void pcie_txn_setup_e775(void)
+{
+    uint8_t count = G_PCIE_TXN_COUNT_LO;
+    __xdata uint8_t *entry = G_PCIE_TXN_TABLE + (count * G_PCIE_TXN_ENTRY_SIZE);
+
+    I_WORK_61 = entry[0];
+    I_WORK_62 = entry[1];
+}
+
+/*
+ * pcie_channel_setup_e19e - Set up PCIe channel configuration
+ * Address: 0xe19e-0xe1c5 (40 bytes)
+ *
+ * Disassembly:
+ *   e19e: lcall 0xe677        ; Initial setup
+ *   e1a1: mov dptr, #0xcc1c   ; PCIe channel control
+ *   e1a4: movx a, @dptr
+ *   e1a5: anl a, #0xf8        ; Clear bits 0-2
+ *   e1a7: orl a, #0x06        ; Set bits 1-2
+ *   e1a9: movx @dptr, a
+ *   e1aa: mov dptr, #0xcc1e   ; Channel config
+ *   e1ad: clr a
+ *   e1ae: movx @dptr, a       ; Write 0
+ *   e1af: inc dptr            ; 0xcc1f
+ *   e1b0: mov a, #0x8b
+ *   e1b2: movx @dptr, a       ; Write 0x8b
+ *   e1b3: mov dptr, #0xcc5c   ; Secondary channel
+ *   e1b6: movx a, @dptr
+ *   e1b7: anl a, #0xf8        ; Clear bits 0-2
+ *   e1b9: orl a, #0x04        ; Set bit 2
+ *   e1bb: movx @dptr, a
+ *   e1bc: mov dptr, #0xcc5e   ; Secondary config
+ *   e1bf: clr a
+ *   e1c0: movx @dptr, a       ; Write 0
+ *   e1c1: inc dptr            ; 0xcc5f
+ *   e1c2: mov a, #0xc7
+ *   e1c4: movx @dptr, a       ; Write 0xc7
+ *   e1c5: ret
+ */
+void pcie_channel_setup_e19e(void)
+{
+    uint8_t val;
+
+    /* Initial setup */
+    helper_e677();
+
+    /* Configure primary PCIe channel 0xCC1C-0xCC1F */
+    val = XDATA_REG8(0xCC1C);
+    val = (val & 0xF8) | 0x06;  /* Clear bits 0-2, set bits 1-2 */
+    XDATA_REG8(0xCC1C) = val;
+
+    XDATA_REG8(0xCC1E) = 0x00;
+    XDATA_REG8(0xCC1F) = 0x8B;
+
+    /* Configure secondary PCIe channel 0xCC5C-0xCC5F */
+    val = XDATA_REG8(0xCC5C);
+    val = (val & 0xF8) | 0x04;  /* Clear bits 0-2, set bit 2 */
+    XDATA_REG8(0xCC5C) = val;
+
+    XDATA_REG8(0xCC5E) = 0x00;
+    XDATA_REG8(0xCC5F) = 0xC7;
+}
+
+/*
+ * pcie_dma_config_e330 - Configure PCIe DMA channels
+ * Address: 0xe330-0xe351 (34 bytes)
+ *
+ * Triggers DMA on 0xCC81, waits, sets bits on 0xCC80 and 0xCC98.
+ */
+void pcie_dma_config_e330(void)
+{
+    uint8_t val;
+
+    /* Trigger DMA on 0xCC81 */
+    XDATA_REG8(0xCC81) = 0x04;
+    XDATA_REG8(0xCC81) = 0x02;
+
+    /* Wait for DMA */
+    helper_9617();
+
+    /* Configure 0xCC80: set bits 0-1 */
+    val = XDATA_REG8(0xCC80);
+    XDATA_REG8(0xCC80) = val | 0x03;
+
+    /* Clear DMA */
+    helper_95bf();
+    helper_9617();
+
+    /* Configure 0xCC98: set bit 2 */
+    val = XDATA_REG8(0xCC98);
+    XDATA_REG8(0xCC98) = val | 0x04;
+}
+
+/*
+ * pcie_channel_disable_e5fe - Disable PCIe channel and clear flags
+ * Address: 0xe5fe-0xe616 (25 bytes)
+ *
+ * Clears bit 0 of 0xC6BD, calls helper, writes to 0xCC33/0xCC34.
+ */
+void pcie_channel_disable_e5fe(void)
+{
+    uint8_t val;
+
+    /* Clear bit 0 of 0xC6BD */
+    val = XDATA_REG8(0xC6BD);
+    XDATA_REG8(0xC6BD) = val & 0xFE;
+
+    /* Call helper with dptr=0xC801 */
+    helper_bd23();
+
+    /* Write 4 to 0xCC33 */
+    XDATA_REG8(0xCC33) = 0x04;
+
+    /* Clear bit 2 of 0xCC34 */
+    val = XDATA_REG8(0xCC34);
+    XDATA_REG8(0xCC34) = val & 0xFB;
+}
+
+/*
+ * pcie_disable_and_trigger_e74e - Disable PCIe and trigger channel
+ * Address: 0xe74e-0xe761 (20 bytes)
+ *
+ * Clears 0x0B1B, clears bit 4 of 0xCCF8, triggers on 0xCCF9.
+ */
+void pcie_disable_and_trigger_e74e(void)
+{
+    uint8_t val;
+
+    /* Clear status at 0x0B1B */
+    XDATA8(0x0B1B) = 0;
+
+    /* Clear bit 4 of 0xCCF8 */
+    val = XDATA_REG8(0xCCF8);
+    XDATA_REG8(0xCCF8) = val & 0xEF;
+
+    /* Trigger sequence on 0xCCF9 */
+    XDATA_REG8(0xCCF9) = 0x04;
+    XDATA_REG8(0xCCF9) = 0x02;
+}
+
+/*
+ * pcie_wait_and_ack_e80a - Wait for PCIe status and acknowledge
+ * Address: 0xe80a-0xe81a (17 bytes)
+ *
+ * Calls e50d helper, then polls bit 1 of 0xCC11 until set, then writes 2.
+ */
+void pcie_wait_and_ack_e80a(void)
+{
+    /* Call setup helper */
+    helper_e50d();
+
+    /* Wait for bit 1 of 0xCC11 to be set */
+    while (!(XDATA_REG8(0xCC11) & 0x02)) {
+        /* spin */
+    }
+
+    /* Acknowledge by writing 2 */
+    XDATA_REG8(0xCC11) = 0x02;
+}
+
+/*
+ * pcie_trigger_cc11_e8ef - Trigger PCIe on 0xCC11
+ * Address: 0xe8ef-0xe8f8 (10 bytes)
+ */
+void pcie_trigger_cc11_e8ef(void)
+{
+    XDATA_REG8(0xCC11) = 0x04;
+    XDATA_REG8(0xCC11) = 0x02;
+}
+
+/*
+ * clear_pcie_status_bytes_e8cd - Clear PCIe status bytes
+ * Address: 0xe8cd-0xe8d7 (11 bytes)
+ *
+ * Clears 0x0B34, 0x0B35, 0x0B36, 0x0B37 to 0.
+ */
+void clear_pcie_status_bytes_e8cd(void)
+{
+    XDATA8(0x0B34) = 0;
+    XDATA8(0x0B35) = 0;
+    XDATA8(0x0B36) = 0;
+    XDATA8(0x0B37) = 0;
+}
+
+/*
+ * get_pcie_status_flags_e00c - Build status flags from PCIe buffers
+ * Address: 0xe00c-0xe03b (48 bytes)
+ *
+ * Reads status buffers 0x0B34-0x0B37 and builds a status byte:
+ *   bit 0: set if 0x0B34 != 0
+ *   bit 1: set if 0x0B35 != 0
+ *   bit 2: set if 0x0B36 != 0
+ *   bit 3: set if 0x0B37 != 0
+ * Then calls helper_a2ff, combines results, and writes via helper_0be6
+ */
+uint8_t get_pcie_status_flags_e00c(void)
+{
+    uint8_t flags = 0;
+
+    if (XDATA8(0x0B34) != 0) flags |= 0x01;
+    if (XDATA8(0x0B35) != 0) flags |= 0x02;
+    if (XDATA8(0x0B36) != 0) flags |= 0x04;
+    if (XDATA8(0x0B37) != 0) flags |= 0x08;
+
+    /* Combine with upper nibble from helper */
+    flags |= (helper_a2ff() & 0xF0);
+
+    /* Write result via helper_0be6 */
+    helper_0be6();
+
+    return flags;
 }

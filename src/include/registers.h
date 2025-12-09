@@ -204,6 +204,7 @@
 #define REG_PCIE_CPL_DATA       XDATA_REG8(0xB22C)
 #define REG_PCIE_CPL_DATA_ALT   XDATA_REG8(0xB22D)
 #define REG_PCIE_NVME_DOORBELL  XDATA_REG32(0xB250)
+#define REG_PCIE_DOORBELL_CMD   XDATA_REG8(0xB251)   // Byte 1 of doorbell - command byte
 #define REG_PCIE_TRIGGER        XDATA_REG8(0xB254)
 #define REG_PCIE_PM_ENTER       XDATA_REG8(0xB255)
 #define REG_PCIE_COMPL_STATUS   XDATA_REG8(0xB284)
@@ -401,6 +402,7 @@
 #define   PHY_EXT_MODE            0x20  // Bit 5: PHY mode
 #define REG_PHY_EXT_B3          XDATA_REG8(0xC6B3)
 #define   PHY_EXT_LINK_READY      0x30  // Bits 4,5: Link ready status
+#define REG_PHY_CFG_C6A8        XDATA_REG8(0xC6A8)  /* PHY config (bit 0 = enable) */
 
 //=============================================================================
 // Interrupt Controller (0xC800-0xC80F)

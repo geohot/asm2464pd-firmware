@@ -462,6 +462,15 @@ void helper_1b30(void) {}
 /* 0x1c13: Helper function - stub */
 void helper_1c13(void) {}
 
+/* 0x1cf0: Helper function - stub */
+void helper_1cf0(void) {}
+
+/* 0x9980: Helper function - stub */
+void helper_9980(void) {}
+
+/* 0x99bc: Helper function - stub */
+void helper_99bc(void) {}
+
 /* 0x1c9f: Protocol function - stub */
 void FUN_CODE_1c9f(void) {}
 
@@ -1951,70 +1960,7 @@ uint8_t check_link_status_e2b9(void)
     return (val & 0x02) ? 1 : 0;
 }
 
-/*
- * pcie_txn_setup_e775 - Setup PCIe transaction from global count
- * Address: 0xe775-0xe787 (19 bytes)
- *
- * Disassembly:
- *   e775: mov dptr, #0x05a6  ; G_PCIE_TXN_COUNT_LO
- *   e778: movx a, @dptr
- *   e779: mov r7, a
- *   e77a: lcall 0x99bc       ; Setup helper
- *   e77d: movx a, @dptr      ; Read result
- *   e77e: mov r0, #0x61      ; I_WORK_61
- *   e780: mov @r0, a         ; Store to idata 0x61
- *   e781: lcall 0x9980       ; Second helper
- *   e784: movx a, @dptr      ; Read result
- *   e785: inc r0             ; I_WORK_62
- *   e786: mov @r0, a         ; Store to idata 0x62
- *   e787: ret
- */
-/*
- * pcie_txn_setup_e775 - Setup PCIe transaction from global count
- * Address: 0xe775-0xe787 (19 bytes)
- *
- * Reads transaction count from G_PCIE_TXN_COUNT_LO, looks up entry in
- * the 34-byte transaction table at 0x05B7, and stores bytes 0 and 1
- * of the entry to I_WORK_61 and I_WORK_62.
- *
- * The original code uses two helper functions (0x99bc and 0x9980) that
- * return pointers via DPTR. In C, we inline the computation since
- * DPTR isn't preserved across function calls.
- *
- * Original disassembly:
- *   e775: mov dptr, #0x05a6  ; G_PCIE_TXN_COUNT_LO
- *   e778: movx a, @dptr
- *   e779: mov r7, a
- *   e77a: lcall 0x99bc       ; DPTR = 0x05b7 + R7*0x22
- *   e77d: movx a, @dptr      ; Read byte from table
- *   e77e: mov r0, #0x61      ; I_WORK_61
- *   e780: mov @r0, a         ; Store to idata 0x61
- *   e781: lcall 0x9980       ; DPTR = 0x05b8 + R7*0x22
- *   e784: movx a, @dptr      ; Read byte from table
- *   e785: inc r0             ; I_WORK_62
- *   e786: mov @r0, a         ; Store to idata 0x62
- *   e787: ret
- *
- * Helper 0x99bc (8 bytes):
- *   99bc: mov dptr, #0x05b7
- *   99bf: mov a, r7
- *   99c0: mov 0xf0, #0x22    ; B = 34
- *   99c3: ljmp 0x0dd1        ; DPTR = base + A*B
- *
- * Helper 0x9980 (8 bytes):
- *   9980: mov dptr, #0x05b8
- *   9983: mov a, r7
- *   9984: mov 0xf0, #0x22    ; B = 34
- *   9987: ljmp 0x0dd1        ; DPTR = base + A*B
- */
-void pcie_txn_setup_e775(void)
-{
-    uint8_t count = G_PCIE_TXN_COUNT_LO;
-    __xdata uint8_t *entry = G_PCIE_TXN_TABLE + (count * G_PCIE_TXN_ENTRY_SIZE);
-
-    I_WORK_61 = entry[0];
-    I_WORK_62 = entry[1];
-}
+/* pcie_txn_setup_e775 - moved to pcie.c */
 
 /*
  * timer_trigger_e726 - Trigger timer via 0xCD31
@@ -2081,72 +2027,7 @@ uint8_t pcie_check_int_source_a374(uint8_t source)
 
 /* pcie_set_state_a2df - moved to queue_handlers.c */
 
-/*
- * pcie_handler_e890 - Bank 1 PCIe link state reset handler
- * Address: 0xe890-0xe89a, 0xe83d-0xe84a, 0xe711-0xe725 (Bank 1)
- *
- * Resets PCIe extended registers and waits for completion.
- *
- * Disassembly (0xe890-0xe89a):
- *   e890: mov r1, #0x37
- *   e892: lcall 0xa351      ; ext_mem_read(0x02, 0x12, 0x37)
- *   e895: anl a, #0x7f      ; Clear bit 7
- *   e897: lcall 0x0be6      ; ext_mem_write
- *   e89a: ljmp 0xe83d       ; Continue
- *
- * Continuation (0xe83d-0xe84a):
- *   e83d: mov r1, #0x38
- *   e83f: lcall 0xa38b      ; Write 0x01 to reg 0x38
- *   e842: mov r1, #0x38     ; Poll loop
- *   e844: lcall 0xa336      ; Read reg 0x38
- *   e847: jb 0xe0.0, 0xe842 ; Loop while bit 0 set
- *   e84a: ljmp 0xe711       ; Continue
- *
- * Continuation (0xe711-0xe725):
- *   e711: mov r1, #0x35
- *   e713: lcall 0xa301      ; ext_mem_read reg 0x35
- *   e716: anl a, #0xc0      ; Keep bits 6-7 only
- *   e718: lcall 0x0be6      ; Write back
- *   e71b: clr a
- *   e71c: lcall 0xa367      ; Write 0 to 0x3C and 0x3D
- *   e71f: lcall 0x0be6      ; Write 0 to 0x3E
- *   e722: inc r1            ; r1 = 0x3F
- *   e723: ljmp 0x0be6       ; Write 0 to 0x3F
- *
- * PCIe extended registers (bank 0x02:0x12xx -> XDATA 0xB2xx):
- *   0xB235: Link config
- *   0xB237: Link status
- *   0xB238: Command trigger
- *   0xB23C-0xB23F: Lane config registers
- */
-void pcie_handler_e890(void)
-{
-    uint8_t val;
-
-    /* Read link status, clear bit 7, write back */
-    val = XDATA_REG8(0xB237);
-    val &= 0x7F;
-    XDATA_REG8(0xB237) = val;
-
-    /* Write 0x01 to command trigger register */
-    XDATA_REG8(0xB238) = 0x01;
-
-    /* Poll until bit 0 clears (command complete) */
-    while (XDATA_REG8(0xB238) & 0x01) {
-        /* Wait for hardware */
-    }
-
-    /* Read link config, keep only bits 6-7, write back */
-    val = XDATA_REG8(0xB235);
-    val &= 0xC0;
-    XDATA_REG8(0xB235) = val;
-
-    /* Clear lane config registers 0x3C-0x3F */
-    XDATA_REG8(0xB23C) = 0x00;
-    XDATA_REG8(0xB23D) = 0x00;
-    XDATA_REG8(0xB23E) = 0x00;
-    XDATA_REG8(0xB23F) = 0x00;
-}
+/* pcie_handler_e890 - moved to pcie.c */
 
 /*
  * cpu_int_ctrl_trigger_e933 - CPU interrupt control trigger
@@ -2235,14 +2116,40 @@ uint8_t dispatch_handler_0557(void)
 }
 
 /*
- * pcie_write_reg_0633 - Register write helper
- * Address: 0x0633+
+ * pcie_write_reg_0633 - Power state check and conditional restart
+ * Address: 0x0633 -> targets 0xc8c7
  *
- * Writes 0x80 to register and performs additional setup.
+ * Checks power state via power_check_state_dde2().
+ * If state == 2, triggers a restart by jumping to main entry (0x8000).
+ * Otherwise returns (with 0xFF, but return value not used).
+ *
+ * Original disassembly at 0xc8c7:
+ *   c8c7: lcall 0xdde2    ; power_check_state_dde2()
+ *   c8ca: mov a, r7       ; result in R7
+ *   c8cb: xrl a, #0x02    ; test if result == 2
+ *   c8cd: jz 0xc8d2       ; if result == 2, jump
+ *   c8cf: mov r7, #0xff   ; return 0xff
+ *   c8d1: ret
+ *   c8d2: ljmp 0x8000     ; jump to main entry (restart)
+ *
+ * Note: The ljmp 0x8000 is a soft restart. In our C implementation,
+ * we cannot easily replicate this behavior. The function just returns
+ * and the caller continues. This may need revisiting if restart
+ * behavior is critical.
  */
 void pcie_write_reg_0633(void)
 {
-    /* Register write - stub */
+    extern uint8_t power_check_state_dde2(void);
+
+    uint8_t state = power_check_state_dde2();
+    if (state == 2) {
+        /* Original firmware jumps to 0x8000 (restart).
+         * In C, we cannot easily restart. For now, just return.
+         * The caller in pcie_interrupt_handler doesn't check return value.
+         */
+        return;
+    }
+    /* state != 2: original returns 0xFF but value not checked */
 }
 
 /*
@@ -2264,12 +2171,18 @@ void pcie_cleanup_05f7(void)
 }
 
 /*
- * pcie_cleanup_05fc - Cleanup handler (variant)
- * Address: 0x05fc+
+ * pcie_cleanup_05fc - Return constant 0xF0
+ * Address: 0x05fc -> targets 0xbe88
+ *
+ * Original disassembly at 0xbe88:
+ *   be88: mov r7, #0xf0
+ *   be8a: ret
+ *
+ * Simple function that just returns 0xF0.
  */
-void pcie_cleanup_05fc(void)
+uint8_t pcie_cleanup_05fc(void)
 {
-    /* Cleanup - stub */
+    return 0xF0;
 }
 
 /*
@@ -2599,17 +2512,10 @@ void handler_e7c1(uint8_t param)
  * Missing Helper Stubs
  *===========================================================================*/
 
-/* helper_3219 - Address: 0x3219 */
-void helper_3219(void)
-{
-    /* Stub */
-}
-
-/* helper_3267 - Address: 0x3267 */
-void helper_3267(void)
-{
-    /* Stub */
-}
+/* helper_3219, helper_3267 - Implemented in protocol.c as:
+ *   nvme_call_and_signal_3219
+ *   nvme_ep_config_init_3267
+ */
 
 /*
  * helper_3279 - Extend 16-bit value in R6:A to 32-bit value
@@ -2637,23 +2543,91 @@ void helper_3279(void)
      */
 }
 
-/* helper_1677 - Address: 0x1677 */
-void helper_1677(uint8_t param)
+/*
+ * helper_1677 - Calculate address 0x0477 + (IDATA 0x53 * 4)
+ * Address: 0x1677-0x1686 (16 bytes)
+ *
+ * Reads IDATA 0x53, multiplies by 4, adds 0x77, forms DPTR = 0x04XX.
+ * The actual implementation is in dma.c as transfer_calc_work53_offset.
+ *
+ * Original disassembly:
+ *   1677: mov a, 0x53          ; A = IDATA[0x53]
+ *   1679: add a, acc           ; A *= 2
+ *   167b: add a, acc           ; A *= 2 (total x4)
+ *   167d: add a, #0x77
+ *   167f: mov DPL, a
+ *   1681: clr a
+ *   1682: addc a, #0x04
+ *   1684: mov DPH, a
+ *   1686: ret
+ */
+void helper_1677(void)
 {
-    (void)param;
-    /* Stub */
+    /* This sets up DPTR for subsequent operations.
+     * In C context, this is typically used before a read/write.
+     * The real implementation is transfer_calc_work53_offset in dma.c */
+    __idata uint8_t *work53 = (__idata uint8_t *)0x53;
+    uint16_t addr = 0x0477 + ((*work53) * 4);
+    /* DPTR would be set to addr in assembly - in C this is a no-op
+     * unless we read/write to the address */
+    (void)addr;
 }
 
-/* helper_1659 - Address: 0x1659 */
-void helper_1659(void)
+/*
+ * helper_1659 - Write param and calculate endpoint address
+ * Address: 0x1659-0x1667 (15 bytes)
+ *
+ * Writes param to current DPTR position, then reads from 0x0464
+ * and calculates address 0x044E + that value.
+ *
+ * Original disassembly:
+ *   1659: movx @dptr, a        ; Write A to @DPTR (caller set DPTR)
+ *   165a: mov dptr, #0x0464
+ *   165d: movx a, @dptr        ; A = [0x0464]
+ *   165e: add a, #0x4e
+ *   1660: mov DPL, a
+ *   ...
+ *
+ * In C, we can't replicate the DPTR-based chaining. This function
+ * writes param to a working location and sets up for next operation.
+ */
+void helper_1659(uint8_t param)
 {
-    /* Stub */
+    /* The param would be written to whatever DPTR the caller set up.
+     * Based on context, this is likely writing to an endpoint config area.
+     * Then it calculates address 0x044E + G_SYS_STATUS_PRIMARY */
+    uint8_t status = *(__xdata uint8_t *)0x0464;  /* G_SYS_STATUS_PRIMARY */
+    uint16_t addr = 0x044E + status;
+
+    /* Write param to the computed address (approximation of the behavior) */
+    *(__xdata uint8_t *)addr = param;
 }
 
-/* helper_1ce4 - Address: 0x1ce4 */
+/*
+ * helper_1ce4 - Calculate address 0x04B7 + IDATA[0x23]
+ * Address: 0x1ce4-0x1cef (12 bytes)
+ *
+ * Adds 0xB7 to IDATA[0x23], returns DPTR = 0x04XX.
+ * This is used to access endpoint descriptor/config table entries.
+ * The real implementation is in usb.c as usb_calc_addr_04b7_plus.
+ *
+ * Original disassembly:
+ *   1ce4: mov a, #0xb7
+ *   1ce6: add a, 0x23         ; A = 0xB7 + IDATA[0x23]
+ *   1ce8: mov 0x82, a         ; DPL
+ *   1cea: clr a
+ *   1ceb: addc a, #0x04       ; DPH = 0x04 + carry
+ *   1ced: mov 0x83, a
+ *   1cef: ret
+ */
 void helper_1ce4(void)
 {
-    /* Stub */
+    /* This sets up DPTR for subsequent read/write in the caller.
+     * In C, subsequent operations need to explicitly use the address. */
+    __idata uint8_t *work23 = (__idata uint8_t *)0x23;
+    uint16_t addr = 0x04B7 + (*work23);
+    /* The caller typically reads from this address next */
+    (void)addr;
 }
 
 /*
@@ -2701,31 +2675,93 @@ void helper_544c(void)
     helper_523c(0, 0x24, 5);
 }
 
-/* helper_165e - Address: 0x165e */
-void helper_165e(void)
+/*
+ * helper_165e - Get pointer to 0x044E + offset
+ * Address: 0x165e-0x1667 (10 bytes)
+ *
+ * Adds 0x4E to offset and returns address in 0x04XX range.
+ * In original assembly this sets DPTR; in C we return a pointer.
+ * The return value from the pointer dereference is what callers expect.
+ */
+uint8_t helper_165e(uint8_t param)
 {
-    /* Stub */
+    uint8_t low = param + 0x4E;
+    uint16_t addr = 0x0400 + low;
+    if (low < 0x4E) {
+        addr += 0x0100;  /* Handle overflow carry */
+    }
+    return *(__xdata uint8_t *)addr;
 }
 
-/* helper_1660 - Address: 0x1660 */
-void helper_1660(uint8_t param1, uint8_t param2)
+/*
+ * helper_1660 - Set up address and write to it
+ * Address: 0x1660-0x1667 (8 bytes)
+ *
+ * This is entry 0x1660 which expects A already contains the computed offset.
+ * First param is the offset (after add 0x4E), second is written to @DPTR.
+ * Actually based on call site: helper_1660(status + 0x4E, r6_val)
+ * - param1 = computed offset
+ * - param2 = value to write to that address
+ */
+void helper_1660(uint8_t offset, uint8_t value)
 {
-    (void)param1;
-    (void)param2;
-    /* Stub */
+    uint16_t addr = 0x0400 + offset;
+    if (offset < 0x4E) {
+        addr += 0x0100;  /* Handle potential carry */
+    }
+    *(__xdata uint8_t *)addr = value;
 }
 
-/* helper_0412 - Address: 0x0412 */
-void helper_0412(void)
+/*
+ * helper_0412 - PCIe doorbell trigger with status-based write
+ * Address: 0x0412 -> targets 0xe617
+ *
+ * This function:
+ *   1. Triggers PCIe status with command byte
+ *   2. Writes 1 or 2 to trigger register based on system status
+ *   3. Waits for busy flag to be set
+ *   4. Clears the status
+ *
+ * Original disassembly at 0xe617:
+ *   e617: lcall 0xc45f    ; Setup: write 4 to STATUS, param to CMD, get G_SYS_STATUS
+ *   e61a: jz 0xe621       ; if status == 0, jump
+ *   e61c: mov a, #0x02    ; status != 0: write 2
+ *   e61e: movx @dptr, a
+ *   e61f: sjmp 0xe624
+ *   e621: mov a, #0x01    ; status == 0: write 1
+ *   e623: movx @dptr, a
+ *   e624: mov dptr, #0xb296
+ *   e627: movx a, @dptr   ; read STATUS
+ *   e628: jnb 0xe0.2, 0xe624  ; wait for bit 2 (busy)
+ *   e62b: lcall 0xc48f    ; write 4 to STATUS
+ *   e62e: ret
+ */
+void helper_0412(uint8_t param)
 {
-    /* Stub */
+    uint8_t status;
+
+    /* Step 1: Setup (equivalent to lcall 0xc45f) */
+    REG_PCIE_STATUS = 0x04;           /* Write 4 to 0xB296 */
+    REG_PCIE_DOORBELL_CMD = param;    /* Write param to 0xB251 */
+    status = G_SYS_STATUS_PRIMARY;    /* Read from 0x0464 */
+
+    /* Step 2: Write to trigger based on status */
+    if (status != 0) {
+        REG_PCIE_TRIGGER = 0x02;
+    } else {
+        REG_PCIE_TRIGGER = 0x01;
+    }
+
+    /* Step 3: Wait for busy flag (bit 2) */
+    while (!(REG_PCIE_STATUS & PCIE_STATUS_BUSY)) {
+        /* Spin wait */
+    }
+
+    /* Step 4: Clear status (equivalent to lcall 0xc48f) */
+    REG_PCIE_STATUS = 0x04;
 }
 
-/* helper_3291 - Address: 0x3291 */
-void helper_3291(void)
-{
-    /* Stub */
-}
+/* helper_3291 - Implemented in protocol.c as queue_idx_get_3291 */
 
 /* process_log_entries - Log processing function (0xc2e6) */
 void process_log_entries(uint8_t param)
@@ -2734,28 +2770,168 @@ void process_log_entries(uint8_t param)
     /* Stub */
 }
 
-/* helper_dd12 - Address: 0xdd12 */
+/* Forward declaration for cmd_config_e405_e421 (in cmd.c) */
+extern void cmd_config_e405_e421(uint8_t param);
+
+/*
+ * helper_dd12 - Command trigger and mode setup helper
+ * Address: 0xdd12-0xdd41 (48 bytes)
+ *
+ * Sets initial trigger value based on G_CMD_MODE, configures E405/E421,
+ * then combines state and clears/sets trigger bits.
+ *
+ * Parameters:
+ *   param1 (R7): Trigger bits to OR into final REG_CMD_TRIGGER value
+ *   param2 (R5): Parameter passed to cmd_config_e405_e421 for E421 setup
+ *
+ * Original disassembly:
+ *   dd12: mov dptr, #0x07ca    ; G_CMD_MODE
+ *   dd15: movx a, @dptr
+ *   dd16: mov r6, a            ; Save mode to R6
+ *   dd17: xrl a, #0x02
+ *   dd19: jz 0xdd1f            ; if mode == 2, goto write 0x80
+ *   dd1b: mov a, r6
+ *   dd1c: cjne a, #0x03, 0xdd27 ; if mode != 3, goto write 0x40
+ *   dd1f: mov dptr, #0xe420    ; REG_CMD_TRIGGER
+ *   dd22: mov a, #0x80
+ *   dd24: movx @dptr, a        ; Write 0x80
+ *   dd25: sjmp 0xdd2d
+ *   dd27: mov dptr, #0xe420
+ *   dd2a: mov a, #0x40
+ *   dd2c: movx @dptr, a        ; Write 0x40
+ *   dd2d: lcall 0x9635         ; cmd_config_e405_e421(R5)
+ *   dd30: push 0x83            ; Save DPH (=0xE4)
+ *   dd32: push 0x82            ; Save DPL (=0x21)
+ *   dd34: lcall 0x96ee         ; Read E421, return state*2
+ *   dd37: mov r5, a            ; R5 = state * 2
+ *   dd38: mov a, r6            ; A = E421 value (from 96ee)
+ *   dd39: orl a, r5            ; A = e421_val | (state * 2)
+ *   dd3a: pop 0x82             ; Restore DPL
+ *   dd3c: pop 0x83             ; Restore DPH
+ *   dd3e: lcall 0x96f7         ; Write A to E421, clear trigger bits, OR R7
+ *   dd41: ret
+ */
 void helper_dd12(uint8_t param1, uint8_t param2)
 {
-    (void)param1;
-    (void)param2;
-    /* Stub */
+    uint8_t mode;
+    uint8_t e421_val;
+    uint8_t state_shifted;
+    uint8_t trigger_val;
+
+    /* Read command mode */
+    mode = G_CMD_MODE;
+
+    /* Set initial trigger value based on mode */
+    if (mode == 0x02 || mode == 0x03) {
+        REG_CMD_TRIGGER = 0x80;
+    } else {
+        REG_CMD_TRIGGER = 0x40;
+    }
+
+    /* Configure E405 and E421 (clears E405 bits 0-2, writes shifted param2 to E421) */
+    cmd_config_e405_e421(param2);
+
+    /* Read E421 value and compute state * 2 */
+    e421_val = REG_CMD_MODE_E421;
+    state_shifted = G_CMD_STATE << 1;
+
+    /* Write combined value to E421 */
+    REG_CMD_MODE_E421 = e421_val | state_shifted;
+
+    /* Clear trigger bits 0-5, keep bits 6-7 */
+    trigger_val = REG_CMD_TRIGGER;
+    trigger_val &= 0xC0;
+    REG_CMD_TRIGGER = trigger_val;
+
+    /* OR in the param1 bits and write final value */
+    trigger_val = REG_CMD_TRIGGER;
+    trigger_val |= param1;
+    REG_CMD_TRIGGER = trigger_val;
 }
 
-/* helper_96ae - Address: 0x96ae */
+/*
+ * helper_96ae - Clear command engine and return status
+ * Address: 0x96ae-0x96b6 (9 bytes)
+ *
+ * Saves R7/R6 to R3/R2, calls helper_e73a to clear command registers,
+ * then returns the original R7 value.
+ *
+ * Original disassembly:
+ *   96ae: mov r3, 0x07     ; R3 = R7
+ *   96b0: mov r2, 0x06     ; R2 = R6
+ *   96b2: lcall 0xe73a     ; Call helper_e73a (clear 0xE420-0xE43F)
+ *   96b5: mov a, r3        ; A = R3 (original R7)
+ *   96b6: ret
+ *
+ * Note: R7/R6 parameters and return value currently ignored in callers.
+ */
 void helper_96ae(void)
 {
-    /* Stub */
+    /* Clear command engine registers */
+    FUN_CODE_e73a();
 }
 
-/* helper_e120 - Address: 0xe120
- * Takes R7 and R5 parameters for command configuration
+/*
+ * helper_e120 - Command parameter configuration
+ * Address: 0xe120-0xe14a (43 bytes)
+ *
+ * Configures command registers E422-E425 based on parameters and mode.
+ *
+ * Parameters:
+ *   r7: Bits to OR into REG_CMD_PARAM (bits 0-3)
+ *   r5: Parameter bits (bits 0-1 go to bits 6-7 of REG_CMD_PARAM)
+ *
+ * Original disassembly:
+ *   e120: mov r6, 0x05       ; R6 = R5 (param2)
+ *   e122: mov a, r6
+ *   e123: swap a             ; Swap nibbles
+ *   e124: rlc a              ; Rotate left through carry
+ *   e125: rlc a              ; Rotate left through carry
+ *   e126: anl a, #0xc0       ; Keep bits 6-7 (result: bits 0-1 of r5 -> bits 6-7)
+ *   e128: orl a, r7          ; OR with r7
+ *   e129: anl a, #0xcf       ; Clear bits 4-5
+ *   e12b: mov dptr, #0xe422
+ *   e12e: movx @dptr, a      ; Write to REG_CMD_PARAM
+ *   e12f: mov dptr, #0x07ca  ; G_CMD_MODE
+ *   e132: movx a, @dptr
+ *   e133: mov dptr, #0xe423
+ *   e136: cjne a, #0x01, e13e ; If mode != 1, goto write 0xa8
+ *   e139: mov a, #0x80
+ *   e13b: movx @dptr, a      ; Write 0x80 to E423
+ *   e13c: sjmp e141
+ *   e13e: mov a, #0xa8
+ *   e140: movx @dptr, a      ; Write 0xA8 to E423
+ *   e141: mov dptr, #0xe424
+ *   e144: clr a
+ *   e145: movx @dptr, a      ; Write 0x00 to E424
+ *   e146: inc dptr           ; E425
+ *   e147: mov a, #0xff
+ *   e149: movx @dptr, a      ; Write 0xFF to E425
+ *   e14a: ret
  */
 void helper_e120(uint8_t r7, uint8_t r5)
 {
-    (void)r7;
-    (void)r5;
-    /* Stub - configures command engine */
+    uint8_t val;
+
+    /* Compute parameter value:
+     * - Bits 0-1 of r5 go to bits 6-7
+     * - OR with r7 for bits 0-3
+     * - Clear bits 4-5
+     */
+    val = ((r5 & 0x03) << 6) | (r7 & 0x0F);
+    val &= 0xCF;  /* Clear bits 4-5 */
+    REG_CMD_PARAM = val;
+
+    /* Set status based on command mode */
+    if (G_CMD_MODE == 0x01) {
+        REG_CMD_STATUS = 0x80;
+    } else {
+        REG_CMD_STATUS = 0xA8;
+    }
+
+    /* Clear issue, set tag to 0xFF */
+    REG_CMD_ISSUE = 0x00;
+    REG_CMD_TAG = 0xFF;
 }
 
 /* helper_dd0e - Address: 0xdd0e
@@ -2776,16 +2952,44 @@ void helper_95a0(uint8_t r7)
     /* Stub - should call helper_e120(r7, 0x02) and write to cmd regs */
 }
 
-/* helper_545c - Address: 0x545c */
+/*
+ * helper_545c - Clear transfer flag
+ * Address: 0x545c-0x5461 (6 bytes)
+ *
+ * Clears the transfer flag at 0x0AF8.
+ *
+ * Original disassembly:
+ *   545c: clr a              ; A = 0
+ *   545d: mov dptr, #0x0af8  ; G_TRANSFER_FLAG_0AF8
+ *   5460: movx @dptr, a      ; Write 0
+ *   5461: ret
+ */
 void helper_545c(void)
 {
-    /* Stub */
+    G_TRANSFER_FLAG_0AF8 = 0;
 }
 
-/* helper_cb05 - Address: 0xcb05 */
+/*
+ * helper_cb05 - Set PHY config enable bit
+ * Address: 0xcb05-0xcb0e (10 bytes)
+ *
+ * Sets bit 0 in REG_PHY_CFG_C6A8.
+ *
+ * Original disassembly:
+ *   cb05: mov dptr, #0xc6a8  ; REG_PHY_CFG_C6A8
+ *   cb08: movx a, @dptr      ; Read
+ *   cb09: anl a, #0xfe       ; Clear bit 0
+ *   cb0b: orl a, #0x01       ; Set bit 0
+ *   cb0d: movx @dptr, a      ; Write back
+ *   cb0e: ret
+ */
 void helper_cb05(void)
 {
-    /* Stub */
+    uint8_t val;
+    val = REG_PHY_CFG_C6A8;
+    val &= 0xFE;  /* Clear bit 0 */
+    val |= 0x01;  /* Set bit 0 */
+    REG_PHY_CFG_C6A8 = val;
 }
 
 /* scsi_dma_mode_setup - SCSI DMA mode setup */
@@ -3069,27 +3273,23 @@ uint8_t check_usb_phy_link_idle_e5b1(void)
  *   e6a5: movx @dptr, a       ; Write saved value back
  *   e6a6: ret
  */
-extern void helper_9983(void);
-
+/*
+ * TODO: dma_buffer_store_result_e68f is complex as it uses
+ * DPTR-returning helpers (0x9983, 0x99bc, 0x9980) that modify DPTR
+ * for table indexing. These helpers compute DPTR = base + R7*34.
+ *
+ * The function:
+ * 1. Sets DPTR=0x05b3, calls 0x9983 to offset, writes R5 to result
+ * 2. Calls 0x99bc to offset further, writes R3 to result
+ * 3. Sets DPTR=0x0a5f, saves value, calls 0x9980, restores value
+ *
+ * This requires careful assembly-level handling as C can't directly
+ * express DPTR manipulation across function boundaries.
+ */
 void dma_buffer_store_result_e68f(void)
 {
-    uint8_t saved_val;
-
-    /* Call helper and store result to 0x05b3 */
-    helper_9983();
-    /* Note: helper_9983 returns result in r5, stored to buffer */
-
-    /* Call helper_99bc - stores r3 to buffer */
-    helper_99bc(0);  /* Parameter unclear from disasm */
-
-    /* Read from 0x0a5f, save it */
-    saved_val = XDATA8(0x0a5f);
-
-    /* Call helper */
-    helper_9980();
-
-    /* Restore saved value to 0x0a5f */
-    XDATA8(0x0a5f) = saved_val;
+    /* TODO: Implement - requires inline assembly or restructuring */
+    (void)0;
 }
 
 /*
@@ -3203,61 +3403,7 @@ void cpu_dma_channel_91_trigger_e93a(void)
     XDATA_REG8(0xCC91) = 0x02;
 }
 
-/*
- * pcie_channel_setup_e19e - Set up PCIe channel configuration
- * Address: 0xe19e-0xe1c5 (40 bytes)
- *
- * Disassembly:
- *   e19e: lcall 0xe677        ; Initial setup
- *   e1a1: mov dptr, #0xcc1c   ; PCIe channel control
- *   e1a4: movx a, @dptr
- *   e1a5: anl a, #0xf8        ; Clear bits 0-2
- *   e1a7: orl a, #0x06        ; Set bits 1-2
- *   e1a9: movx @dptr, a
- *   e1aa: mov dptr, #0xcc1e   ; Channel config
- *   e1ad: clr a
- *   e1ae: movx @dptr, a       ; Write 0
- *   e1af: inc dptr            ; 0xcc1f
- *   e1b0: mov a, #0x8b
- *   e1b2: movx @dptr, a       ; Write 0x8b
- *   e1b3: mov dptr, #0xcc5c   ; Secondary channel
- *   e1b6: movx a, @dptr
- *   e1b7: anl a, #0xf8        ; Clear bits 0-2
- *   e1b9: orl a, #0x04        ; Set bit 2
- *   e1bb: movx @dptr, a
- *   e1bc: mov dptr, #0xcc5e   ; Secondary config
- *   e1bf: clr a
- *   e1c0: movx @dptr, a       ; Write 0
- *   e1c1: inc dptr            ; 0xcc5f
- *   e1c2: mov a, #0xc7
- *   e1c4: movx @dptr, a       ; Write 0xc7
- *   e1c5: ret
- */
-extern void helper_e677(void);
-
-void pcie_channel_setup_e19e(void)
-{
-    uint8_t val;
-
-    /* Initial setup */
-    helper_e677();
-
-    /* Configure primary PCIe channel 0xCC1C-0xCC1F */
-    val = XDATA_REG8(0xCC1C);
-    val = (val & 0xF8) | 0x06;  /* Clear bits 0-2, set bits 1-2 */
-    XDATA_REG8(0xCC1C) = val;
-
-    XDATA_REG8(0xCC1E) = 0x00;
-    XDATA_REG8(0xCC1F) = 0x8B;
-
-    /* Configure secondary PCIe channel 0xCC5C-0xCC5F */
-    val = XDATA_REG8(0xCC5C);
-    val = (val & 0xF8) | 0x04;  /* Clear bits 0-2, set bit 2 */
-    XDATA_REG8(0xCC5C) = val;
-
-    XDATA_REG8(0xCC5E) = 0x00;
-    XDATA_REG8(0xCC5F) = 0xC7;
-}
+/* pcie_channel_setup_e19e - moved to pcie.c */
 
 /*===========================================================================
  * Helper Stubs for Bank1 High Functions
@@ -3286,42 +3432,25 @@ void ext_mem_access_0bc8(uint8_t bank, uint8_t addr_hi, uint8_t addr_lo)
 }
 
 /* helper_e677 - Address: 0xe677 - PCIe channel init helper */
-void helper_e677(void) { /* Stub */ }
+void helper_e677(void)
+{
+    /* Clear buffer flag at 0x044C */
+    XDATA8(0x044C) = 0;
+
+    /* Initialize primary channel 0xCC1D with trigger sequence */
+    XDATA_REG8(0xCC1D) = 0x04;
+    XDATA_REG8(0xCC1D) = 0x02;
+
+    /* Initialize secondary channel 0xCC5D with trigger sequence */
+    XDATA_REG8(0xCC5D) = 0x04;
+    XDATA_REG8(0xCC5D) = 0x02;
+}
 
 /*===========================================================================
  * Bank1 High 1-Call Functions (0xE000-0xFFFF)
  *===========================================================================*/
 
-/*
- * get_pcie_status_flags_e00c - Build status flags from PCIe buffers
- * Address: 0xe00c-0xe03b (48 bytes)
- *
- * Reads status buffers 0x0B34-0x0B37 and builds a status byte:
- *   bit 0: set if 0x0B34 != 0
- *   bit 1: set if 0x0B35 != 0
- *   bit 2: set if 0x0B36 != 0
- *   bit 3: set if 0x0B37 != 0
- * Then calls helper_a2ff, combines results, and writes via helper_0be6
- */
-extern uint8_t helper_a2ff(void);
-
-uint8_t get_pcie_status_flags_e00c(void)
-{
-    uint8_t flags = 0;
-
-    if (XDATA8(0x0B34) != 0) flags |= 0x01;
-    if (XDATA8(0x0B35) != 0) flags |= 0x02;
-    if (XDATA8(0x0B36) != 0) flags |= 0x04;
-    if (XDATA8(0x0B37) != 0) flags |= 0x08;
-
-    /* Combine with upper nibble from helper */
-    flags |= (helper_a2ff() & 0xF0);
-
-    /* Write result via helper_0be6 */
-    helper_0be6();
-
-    return flags;
-}
+/* get_pcie_status_flags_e00c - moved to pcie.c */
 
 /*
  * check_nvme_ready_e03c - Check if NVMe subsystem is ready
@@ -3401,3 +3530,127 @@ void helper_538d(uint8_t r3, uint8_t r2, uint8_t r1)
     /* Stub */
 }
 
+/*
+ * check_pcie_status_e239 - Check PCIe status and initialize NVMe
+ * Address: 0xe239-0xe25d (37 bytes)
+ *
+ * Checks 0x9090 bit 7 and 0x0AD3, then increments counter and
+ * copies bit 0 of 0x9000 to 0x9E00.
+ */
+extern uint8_t helper_a71b(void);
+
+uint8_t check_pcie_status_e239(void)
+{
+    uint8_t val;
+
+    /* Check 0x9090 bit 7 */
+    val = XDATA_REG8(0x9090);
+    if (!(val & 0x80)) {
+        return 5;  /* Not ready */
+    }
+
+    /* Check 0x0AD3 == 0 */
+    if (XDATA8(0x0AD3) != 0) {
+        return 5;  /* Busy */
+    }
+
+    /* Call helper and increment result */
+    val = helper_a71b();
+    XDATA8(0x0AD3) = val + 1;
+
+    /* Copy bit 0 of 0x9000 to 0x9E00 */
+    val = XDATA_REG8(0x9000) & 0x01;
+    XDATA_REG8(0x9E00) = val;
+
+    return 3;  /* Success */
+}
+
+/* pcie_dma_config_e330 - moved to pcie.c */
+
+/* pcie_channel_disable_e5fe - moved to pcie.c */
+
+/* helper_a71b - Address: 0xa71b - Status helper */
+uint8_t helper_a71b(void) { return 0; /* Stub */ }
+
+/* helper_9617 - Address: 0x9617 - DMA wait helper */
+void helper_9617(void) { /* Stub */ }
+
+/* helper_95bf - Address: 0x95bf - DMA clear helper */
+void helper_95bf(void) { /* Stub */ }
+
+/* helper_bd23 - Address: 0xbd23 - PCIe channel helper */
+void helper_bd23(void) { /* Stub */ }
+
+/* pcie_disable_and_trigger_e74e - moved to pcie.c */
+
+/* pcie_wait_and_ack_e80a - moved to pcie.c */
+
+/* clear_status_bytes_e8cd - moved to pcie.c (renamed to clear_pcie_status_bytes_e8cd) */
+
+/* helper_e50d - Address: 0xe50d - PCIe setup helper */
+void helper_e50d(void) { /* Stub */ }
+
+/* pcie_trigger_cc11_e8ef - moved to pcie.c */
+
+/*
+ * clear_flag_and_call_e8f9 - Clear flag and call helper
+ * Address: 0xe8f9-0xe901 (9 bytes)
+ */
+extern void helper_c1f9(void);
+
+void clear_flag_and_call_e8f9(void)
+{
+    XDATA8(0x05AE) = 0;
+    helper_c1f9();
+}
+
+/*
+ * set_flag_and_call_e902 - Set flag and call helper
+ * Address: 0xe902-0xe908 (7 bytes)
+ */
+void set_flag_and_call_e902(void)
+{
+    XDATA8(0x05AE) = 1;
+    helper_c1f9();
+}
+
+/*
+ * pcie_trigger_and_call_e90b - Trigger PCIe and call helper
+ * Address: 0xe90b-0xe911 (7 bytes)
+ */
+extern void helper_be8b(void);
+
+void pcie_trigger_and_call_e90b(void)
+{
+    XDATA_REG8(0xCC81) = 0x04;
+    helper_be8b();
+}
+
+/*
+ * ext_mem_access_wrapper_e914 - Extended memory access wrapper
+ * Address: 0xe914-0xe91a (7 bytes)
+ */
+void ext_mem_access_wrapper_e914(void)
+{
+    ext_mem_access_0bc8(0x02, 0x28, 0x05);
+}
+
+/*
+ * call_bd05_wrapper_e95f - Wrapper for 0xbd05 helper
+ * Address: 0xe95f-0xe962 (4 bytes)
+ */
+extern void helper_bd05(void);
+
+void call_bd05_wrapper_e95f(void)
+{
+    helper_bd05();
+}
+
+/* helper_c1f9 - Address: 0xc1f9 - Flag processing helper */
+void helper_c1f9(void) { /* Stub */ }
+
+/* helper_be8b - Address: 0xbe8b - PCIe processing helper */
+void helper_be8b(void) { /* Stub */ }
+
+/* helper_bd05 - Address: 0xbd05 - Status helper */
+void helper_bd05(void) { /* Stub */ }

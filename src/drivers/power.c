@@ -83,6 +83,7 @@ extern void usb_mode_config_d07f(uint8_t param);     /* state_helpers.c */
 extern void nvme_queue_config_e214(void);            /* nvme.c */
 extern void delay_short_e89d(void);                  /* utils.c */
 extern void pcie_clear_address_regs(void);           /* pcie.c - 0x9a9c */
+extern void helper_e3b7(uint8_t param);              /* stubs.c - 0xe3b7 */
 
 /*
  * power_set_suspended - Set power status suspended bit (bit 6)
@@ -906,4 +907,197 @@ void power_clear_interface_flags_cb2d(void)
 {
     G_INTERFACE_READY_0B2F = 0;
     G_SYS_FLAGS_07EB = 0;
+}
+
+/*
+ * power_phy_init_config_cb37 - Initialize power and PHY configuration
+ * Address: 0xcb37-0xcb97 (97 bytes)
+ *
+ * Configures power management and PHY registers for power state transition.
+ * This is a comprehensive initialization function that sets up:
+ * - Power control registers (92C6, 92C7)
+ * - USB control registers (9201, 920C)
+ * - Clock enable register (92C1)
+ * - Link/PHY control registers (C208, C20C)
+ * - Power enable/clock (92C0, 92C1)
+ * - PHY power and USB PHY config (92C5, 9241)
+ *
+ * Original disassembly:
+ *   cb37: mov dptr, #0x92c6   ; Power control 1
+ *   cb3a: mov a, #0x05
+ *   cb3c: movx @dptr, a       ; Write 0x05
+ *   cb3d: inc dptr            ; 0x92c7
+ *   cb3e: clr a
+ *   cb3f: movx @dptr, a       ; Write 0x00
+ *   cb40: mov dptr, #0x9201   ; USB control
+ *   cb43: movx a, @dptr
+ *   cb44: anl a, #0xfe        ; Clear bit 0
+ *   cb46: movx @dptr, a
+ *   cb47: movx a, @dptr
+ *   cb48: anl a, #0xfd        ; Clear bit 1
+ *   cb4a: movx @dptr, a
+ *   cb4b: mov dptr, #0x92c1   ; Clock enable
+ *   cb4e: movx a, @dptr
+ *   cb4f: anl a, #0xfd        ; Clear bit 1
+ *   cb51: orl a, #0x02        ; Set bit 1
+ *   cb53: movx @dptr, a
+ *   cb54: mov dptr, #0x920c   ; USB control 2
+ *   cb57: movx a, @dptr
+ *   cb58: anl a, #0xfd        ; Clear bit 1
+ *   cb5a: movx @dptr, a
+ *   cb5b: movx a, @dptr
+ *   cb5c: anl a, #0xfe        ; Clear bit 0
+ *   cb5e: movx @dptr, a
+ *   cb5f: mov dptr, #0xc20c   ; PHY link config
+ *   cb62: movx a, @dptr
+ *   cb63: anl a, #0xbf        ; Clear bit 6
+ *   cb65: orl a, #0x40        ; Set bit 6
+ *   cb67: movx @dptr, a
+ *   cb68: mov dptr, #0xc208   ; PHY link ctrl
+ *   cb6b: movx a, @dptr
+ *   cb6c: anl a, #0xef        ; Clear bit 4
+ *   cb6e: movx @dptr, a
+ *   cb6f: mov dptr, #0x92c0   ; Power enable
+ *   cb72: movx a, @dptr
+ *   cb73: anl a, #0xfe        ; Clear bit 0
+ *   cb75: orl a, #0x01        ; Set bit 0
+ *   cb77: movx @dptr, a
+ *   cb78: inc dptr            ; 0x92c1 (clock enable)
+ *   cb79: movx a, @dptr
+ *   cb7a: anl a, #0xfe        ; Clear bit 0
+ *   cb7c: orl a, #0x01        ; Set bit 0
+ *   cb7e: movx @dptr, a
+ *   cb7f: mov dptr, #0x92c5   ; PHY power
+ *   cb82: movx a, @dptr
+ *   cb83: anl a, #0xfb        ; Clear bit 2
+ *   cb85: orl a, #0x04        ; Set bit 2
+ *   cb87: movx @dptr, a
+ *   cb88: mov dptr, #0x9241   ; USB PHY config
+ *   cb8b: movx a, @dptr
+ *   cb8c: anl a, #0xef        ; Clear bit 4
+ *   cb8e: orl a, #0x10        ; Set bit 4
+ *   cb90: movx @dptr, a
+ *   cb91: movx a, @dptr
+ *   cb92: anl a, #0x3f        ; Clear bits 6-7
+ *   cb94: orl a, #0xc0        ; Set bits 6-7
+ *   cb96: movx @dptr, a
+ *   cb97: ret
+ */
+void power_phy_init_config_cb37(void)
+{
+    uint8_t val;
+
+    /* Power control registers: 92C6 = 0x05, 92C7 = 0x00 */
+    REG_POWER_CTRL_92C6 = 0x05;
+    REG_POWER_CTRL_92C7 = 0x00;
+
+    /* USB control 9201: Clear bits 0 and 1 */
+    val = REG_USB_CTRL_9201;
+    val &= 0xFE;  /* Clear bit 0 */
+    REG_USB_CTRL_9201 = val;
+
+    val = REG_USB_CTRL_9201;
+    val &= 0xFD;  /* Clear bit 1 */
+    REG_USB_CTRL_9201 = val;
+
+    /* Clock enable 92C1: Clear bit 1, set bit 1 */
+    val = REG_CLOCK_ENABLE;
+    val = (val & 0xFD) | 0x02;
+    REG_CLOCK_ENABLE = val;
+
+    /* USB control 920C: Clear bits 0 and 1 */
+    val = REG_USB_CTRL_920C;
+    val &= 0xFD;  /* Clear bit 1 */
+    REG_USB_CTRL_920C = val;
+
+    val = REG_USB_CTRL_920C;
+    val &= 0xFE;  /* Clear bit 0 */
+    REG_USB_CTRL_920C = val;
+
+    /* PHY link config C20C: Clear bit 6, set bit 6 */
+    val = REG_PHY_LINK_CONFIG_C20C;
+    val = (val & 0xBF) | 0x40;
+    REG_PHY_LINK_CONFIG_C20C = val;
+
+    /* PHY link ctrl C208: Clear bit 4 */
+    val = REG_PHY_LINK_CTRL_C208;
+    val &= 0xEF;
+    REG_PHY_LINK_CTRL_C208 = val;
+
+    /* Power enable 92C0: Clear bit 0, set bit 0 */
+    val = REG_POWER_ENABLE;
+    val = (val & 0xFE) | 0x01;
+    REG_POWER_ENABLE = val;
+
+    /* Clock enable 92C1: Clear bit 0, set bit 0 */
+    val = REG_CLOCK_ENABLE;
+    val = (val & 0xFE) | 0x01;
+    REG_CLOCK_ENABLE = val;
+
+    /* PHY power 92C5: Clear bit 2, set bit 2 */
+    val = REG_PHY_POWER;
+    val = (val & 0xFB) | 0x04;
+    REG_PHY_POWER = val;
+
+    /* USB PHY config 9241: Clear bit 4, set bit 4 */
+    val = REG_USB_PHY_CONFIG_9241;
+    val = (val & 0xEF) | 0x10;
+    REG_USB_PHY_CONFIG_9241 = val;
+
+    /* USB PHY config 9241: Clear bits 6-7, set bits 6-7 */
+    val = REG_USB_PHY_CONFIG_9241;
+    val = (val & 0x3F) | 0xC0;
+    REG_USB_PHY_CONFIG_9241 = val;
+}
+
+/*
+ * power_check_event_ctrl_c9fa - Check event control and USB state
+ * Address: 0xc9fa-0xca0c (19 bytes)
+ *
+ * Checks bit 1 of event control (0x09FA), and if set, checks USB state
+ * (0x0B41). If both conditions are met, calls helper_e3b7 with param 1.
+ *
+ * Original disassembly:
+ *   c9fa: mov dptr, #0x09fa   ; Event control
+ *   c9fd: movx a, @dptr       ; Read event control
+ *   c9fe: jnb 0xe0.1, 0xca0c  ; If bit 1 clear, skip to ret
+ *   ca01: mov dptr, #0x0b41   ; USB state
+ *   ca04: movx a, @dptr       ; Read USB state
+ *   ca05: jz 0xca0c           ; If zero, skip to ret
+ *   ca07: mov r7, #0x01       ; Param = 1
+ *   ca09: lcall 0xe3b7        ; Call helper
+ *   ca0c: ret
+ */
+void power_check_event_ctrl_c9fa(void)
+{
+    uint8_t event_ctrl = G_EVENT_CTRL_09FA;
+
+    /* Check if bit 1 of event control is set */
+    if (event_ctrl & 0x02) {
+        /* Check if USB state is non-zero */
+        if (G_USB_STATE_0B41 != 0) {
+            helper_e3b7(1);
+        }
+    }
+}
+
+/*
+ * power_reset_sys_state_c9ef - Reset system state flags
+ * Address: 0xc9ef-0xc9f9 (11 bytes)
+ *
+ * Clears system flags and sets interface ready flag.
+ *
+ * Original disassembly:
+ *   c9ef: clr a               ; a = 0
+ *   c9f0: mov dptr, #0x07e8   ; G_SYS_FLAGS_07E8
+ *   c9f3: movx @dptr, a       ; Write 0
+ *   c9f4: mov dptr, #0x0b2f   ; G_INTERFACE_READY_0B2F
+ *   c9f7: inc a               ; a = 1
+ *   c9f8: movx @dptr, a       ; Write 1
+ *   c9f9: ret
+ */
+void power_reset_sys_state_c9ef(void)
+{
+    G_SYS_FLAGS_07E8 = 0;
+    G_INTERFACE_READY_0B2F = 1;
 }
