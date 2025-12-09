@@ -412,6 +412,8 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_LINK_STATE_0AD1       XDATA_VAR8(0x0AD1)  /* Link state counter */
 #define G_USB_DESC_FLAG_0ACD    XDATA_VAR8(0x0ACD)  /* USB descriptor flag */
 #define G_USB_DESC_MODE_0ACE    XDATA_VAR8(0x0ACE)  /* USB descriptor mode */
+#define G_USB_DESC_STATE_0AD7   XDATA_VAR8(0x0AD7)  /* USB descriptor state (shares with TLP) */
+#define G_USB_DESC_INDEX_0ADE   XDATA_VAR8(0x0ADE)  /* USB descriptor index (shares with TLP) */
 #define G_LINK_STATE_0AD2       XDATA_VAR8(0x0AD2)  /* Link state flag */
 #define G_TLP_MODE_0AD3         XDATA_VAR8(0x0AD3)  /* TLP mode flag */
 #define G_TLP_ADDR_OFFSET_HI    XDATA_VAR8(0x0AD5)  /* TLP address offset high */

@@ -79,6 +79,7 @@
 #include "types.h"
 #include "sfr.h"
 #include "registers.h"
+#include "globals.h"
 
 /*
  * uart_putc - Print a single character
@@ -427,4 +428,83 @@ void delay_function(void)
 
     /* Acknowledge timer completion */
     REG_TIMER0_DIV = 0x02;
+}
+
+/*===========================================================================
+ * UART Log Buffer Functions (moved from stubs.c)
+ *===========================================================================*/
+
+/*
+ * uart_read_byte_dace - Read byte from log buffer
+ * Address: 0xdace-0xdad8 (11 bytes)
+ *
+ * Disassembly:
+ *   dace: add a, 0x21        ; A = A + I_LOG_INDEX
+ *   dad0: mov 0x82, a        ; DPL = result
+ *   dad2: clr a
+ *   dad3: addc a, #0x70      ; DPH = 0x70 + carry
+ *   dad5: mov 0x83, a        ; (gives DPTR = 0x7000 + offset)
+ *   dad7: movx a, @dptr      ; Read byte
+ *   dad8: ret
+ *
+ * Reads from the log buffer at 0x7000 + I_LOG_INDEX.
+ * Returns: XDATA[0x7000 + I_LOG_INDEX]
+ */
+uint8_t uart_read_byte_dace(void)
+{
+    /* Read from log buffer at base 0x7000 + I_LOG_INDEX */
+    uint16_t addr = 0x7000 + I_LOG_INDEX;
+    return XDATA8(addr);
+}
+
+/*
+ * uart_write_byte_daeb - Calculate log buffer write address
+ * Address: 0xdaeb-0xdaf4 (10 bytes)
+ *
+ * Disassembly:
+ *   daeb: mov a, #0xfc       ; Base offset
+ *   daed: add a, 0x21        ; A = 0xFC + I_LOG_INDEX
+ *   daef: mov 0x82, a        ; DPL = result
+ *   daf1: clr a
+ *   daf2: addc a, #0x09      ; DPH = 0x09 + carry
+ *   daf4: ret
+ *
+ * Calculates address 0x09FC + I_LOG_INDEX for writing.
+ * Returns: DPH (0x09 possibly + carry)
+ */
+uint8_t uart_write_byte_daeb(uint8_t b)
+{
+    /* Calculate DPTR = 0x09FC + I_LOG_INDEX
+     * Original returns with DPTR set up for caller to use
+     * The param b is the byte to write (in R7) */
+    (void)b;
+    /* In original, DPH is returned in A */
+    uint8_t low = 0xFC + I_LOG_INDEX;
+    uint8_t high = 0x09;
+    if (low < 0xFC) high++;  /* Handle carry */
+    return high;
+}
+
+/*
+ * uart_write_daff - Calculate alternate log buffer address
+ * Address: 0xdaff-0xdb08 (10 bytes)
+ *
+ * Disassembly:
+ *   daff: mov a, #0x1c       ; Base offset
+ *   db01: add a, 0x21        ; A = 0x1C + I_LOG_INDEX
+ *   db03: mov 0x82, a        ; DPL = result
+ *   db05: clr a
+ *   db06: addc a, #0x0a      ; DPH = 0x0A + carry
+ *   db08: ret
+ *
+ * Calculates address 0x0A1C + I_LOG_INDEX.
+ * Returns: DPH (0x0A possibly + carry)
+ */
+uint8_t uart_write_daff(void)
+{
+    /* Calculate DPTR = 0x0A1C + I_LOG_INDEX */
+    uint8_t low = 0x1C + I_LOG_INDEX;
+    uint8_t high = 0x0A;
+    if (low < 0x1C) high++;  /* Handle carry */
+    return high;
 }

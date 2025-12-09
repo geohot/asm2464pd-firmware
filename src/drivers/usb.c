@@ -4541,3 +4541,164 @@ uint8_t usb_check_phy_status(void)
 
     return 0;
 }
+
+/*===========================================================================
+ * USB Descriptor and Endpoint Functions (moved from stubs.c)
+ *===========================================================================*/
+
+/*
+ * usb_descriptor_helper_a637 - Initialize USB descriptor state
+ * Address: 0xa637-0xa643 (13 bytes)
+ *
+ * Disassembly:
+ *   a637: mov dptr, #0x0ad7   ; G_USB_DESC_STATE
+ *   a63a: mov a, #0x01
+ *   a63c: movx @dptr, a       ; Write 1
+ *   a63d: mov dptr, #0x0ade   ; G_USB_DESC_INDEX
+ *   a640: clr a
+ *   a641: movx @dptr, a       ; Write 0
+ *   a642: inc dptr            ; 0x0adf
+ *   a643: ret
+ *
+ * Sets G_USB_DESC_STATE = 1, G_USB_DESC_INDEX = 0
+ */
+void usb_descriptor_helper_a637(void)
+{
+    G_USB_DESC_STATE_0AD7 = 0x01;
+    G_USB_DESC_INDEX_0ADE = 0x00;
+}
+
+/*
+ * usb_ep_loop_180d - USB endpoint processing loop with parameter
+ * Address: 0x180d-0x19f9 (~500 bytes)
+ *
+ * Called from main_loop when REG_USB_STATUS bit 0 is set.
+ * The param is passed in R7 in the original firmware.
+ *
+ * Algorithm:
+ *   1. Store param to G_USB_EP_MODE (0x0A7D)
+ *   2. If param XOR 1 == 0 (i.e., param == 1):
+ *      - USB mode 1 path (main processing)
+ *   3. Else: Jump to 0x19FA (alternate USB mode path)
+ *   4. Read G_USB_CTRL_000A, if zero:
+ *      - Increment G_SYS_FLAGS_07E8
+ *      - If G_USB_STATE_0B41 != 0, call nvme_func_04da(1)
+ *   5. Read REG_NVME_CMD_STATUS_C47A to I_WORK_38
+ *   6. Write to REG_SCSI_DMA_CTRL_CE88
+ *   7. Poll REG_SCSI_DMA_STATUS_CE89 bit 0 until set
+ *   8. Increment and check G_USB_CTRL_000A
+ *   9. Modify REG_USB_CTRL_924C based on count
+ *   10. Read G_ENDPOINT_STATE_0051 and call helper_31e0
+ *   11. Process state machine with multiple register ops
+ *
+ * This is part of the USB endpoint data transfer handling.
+ */
+extern void nvme_func_04da(uint8_t param);
+
+void usb_ep_loop_180d(uint8_t param)
+{
+    uint8_t val;
+    uint8_t ctrl_count;
+
+    /* Store param to USB EP mode flag (0x0A7D) */
+    G_EP_DISPATCH_VAL3 = param;
+
+    /* Check if param == 1 (USB mode 1) */
+    if (param != 0x01) {
+        /* Jump to alternate path at 0x19FA - not implemented here */
+        /* This handles USB mode 0 (different processing) */
+        return;
+    }
+
+    /* USB Mode 1 processing path */
+
+    /* Read USB control flag (0x000A) */
+    val = G_EP_CHECK_FLAG;
+    if (val == 0) {
+        /* First-time setup */
+        G_SYS_FLAGS_07E8 = 1;  /* Increment (was 0, now 1) */
+
+        /* Check USB state and call event handler if needed */
+        if (G_USB_STATE_0B41 != 0) {
+            nvme_func_04da(0x01);
+        }
+    }
+
+    /* Read NVMe command status (0xC47A) and store to I_WORK_38 */
+    I_WORK_38 = REG_NVME_CMD_STATUS_C47A;
+
+    /* Write to transfer control register (0xCE88) */
+    REG_XFER_CTRL_CE88 = I_WORK_38;
+
+    /* Poll transfer ready (0xCE89) until bit 0 is set */
+    while ((REG_XFER_READY & 0x01) == 0) {
+        /* Spin wait for DMA ready */
+    }
+
+    /* Increment USB control counter */
+    ctrl_count = G_EP_CHECK_FLAG;
+    ctrl_count++;
+    G_EP_CHECK_FLAG = ctrl_count;
+
+    /* Read back and check if count >= 2 */
+    ctrl_count = G_EP_CHECK_FLAG;
+    val = REG_USB_CTRL_924C;
+
+    if (ctrl_count >= 2) {
+        /* Count >= 2: clear bit 0 */
+        val = val & 0xFE;
+    } else {
+        /* Count < 2: clear bit 0, set bit 0 */
+        val = (val & 0xFE) | 0x01;
+    }
+    REG_USB_CTRL_924C = val;
+
+    /* Read endpoint state and call helper */
+    val = G_ENDPOINT_STATE_0051;
+    /* helper_31e0(val) would be called here - processes endpoint state */
+
+    /* Write I_WORK_38 to endpoint register */
+    G_ENDPOINT_STATE_0051 = I_WORK_38;
+
+    /* Add 0x2F and call helper_325f for register address calculation */
+    /* This accesses registers at 0x00 + (I_WORK_38 + 0x2F) area */
+
+    /* Write 0x22 to calculated address */
+    /* This sets up endpoint command mode */
+
+    /* Write I_WORK_38 to G_ENDPOINT_STATE_0051 again */
+    G_ENDPOINT_STATE_0051 = I_WORK_38;
+
+    /* Check IDATA[0x0D] against 0x22 */
+    if (*(__idata uint8_t *)0x0D != 0x22) {
+        /* State mismatch - skip to end */
+        return;
+    }
+
+    /* Check transfer status (0xCE6C) bit 7 */
+    val = REG_XFER_STATUS_CE6C;
+    if ((val & 0x80) == 0) {
+        /* Bit 7 not set - skip */
+        return;
+    }
+
+    /* Check power init flag (0x0AF8) */
+    if (G_POWER_INIT_FLAG == 0) {
+        return;
+    }
+
+    /* Check transfer ready (0xCE89) bit 1 */
+    val = REG_XFER_READY;
+    if (val & 0x02) {
+        /* Bit 1 set - skip */
+        return;
+    }
+
+    /* Read from USB descriptor (0xCEB2) */
+    val = REG_USB_DESC_VAL_CEB2;
+    /* Exchange and write to NVMe param (0xC4EA) */
+    REG_NVME_PARAM_C4EA = val;
+
+    /* Additional processing continues... */
+    /* The full function has more state machine logic */
+}

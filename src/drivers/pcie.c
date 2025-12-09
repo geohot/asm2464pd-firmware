@@ -1294,6 +1294,30 @@ void pcie_setup_buffer_from_config(void)
 }
 
 /*
+ * pcie_write_data_reg_with_val - Entry point 0x994c
+ * Address: 0x994c-0x9953 (8 bytes)
+ *
+ * This is an alternate entry point into pcie_setup_buffer_from_config.
+ * When called at 0x994c, it takes A as input and sets R4=R5=A,
+ * then stores R4/R5/R6/R7 to REG_PCIE_DATA.
+ *
+ * R6 and R7 are expected to be set by the caller.
+ *
+ * Original disassembly (entry at 0x994c):
+ *   994c: mov r5, a          ; R5 = A (input)
+ *   994d: mov r4, a          ; R4 = A (same as input)
+ *   994e: mov dptr, #0xb220
+ *   9951: ljmp 0x0dc5        ; store R4-R7 to DPTR
+ */
+void pcie_write_data_reg_with_val(uint8_t val, uint8_t r6, uint8_t r7)
+{
+    (&REG_PCIE_DATA)[0] = val;  /* R4 = val */
+    (&REG_PCIE_DATA)[1] = val;  /* R5 = val */
+    (&REG_PCIE_DATA)[2] = r6;
+    (&REG_PCIE_DATA)[3] = r7;
+}
+
+/*
  * pcie_write_data_reg - Write R4-R7 to PCIe data register
  * Address: 0x994e-0x9953 (6 bytes)
  *

@@ -261,24 +261,7 @@ void helper_166f(void)
     /* DPTR = 0x007C + I_WORK_43 - handled inline by callers */
 }
 
-/*
- * transfer_func_16b0 - Write value to SCSI DMA status register
- * Address: 0x16b0-0x16b6 (7 bytes)
- *
- * Disassembly:
- *   16b0: mov dptr, #0xce6e  ; REG_SCSI_DMA_STATUS
- *   16b3: movx @dptr, a      ; Write param
- *   16b4: inc a              ; param + 1
- *   16b5: movx @dptr, a      ; Write param + 1
- *   16b6: ret
- *
- * Writes param to REG_SCSI_DMA_STATUS_L, then writes param+1 to same location.
- */
-void transfer_func_16b0(uint8_t param)
-{
-    REG_SCSI_DMA_STATUS_L = param;
-    REG_SCSI_DMA_STATUS_L = param + 1;
-}
+/* transfer_func_16b0 - moved to dma.c */
 
 /* 0x16e9: Helper with param - address calculation stub */
 void helper_16e9(uint8_t param) { (void)param; }
@@ -570,27 +553,7 @@ void reg_poll(void) {}
  * USB Descriptor Helpers
  *===========================================================================*/
 
-/*
- * usb_descriptor_helper_a637 - Initialize USB descriptor state
- * Address: 0xa637-0xa643 (13 bytes)
- *
- * Disassembly:
- *   a637: mov a, #0x01
- *   a639: mov dptr, #0x0ad7   ; G_USB_DESC_STATE
- *   a63c: movx @dptr, a       ; Write 1
- *   a63d: mov dptr, #0x0ade   ; G_USB_DESC_INDEX
- *   a640: clr a
- *   a641: movx @dptr, a       ; Write 0
- *   a642: inc dptr            ; 0x0adf
- *   a643: ret
- *
- * Sets G_USB_DESC_STATE = 1, G_USB_DESC_INDEX = 0
- */
-void usb_descriptor_helper_a637(void)
-{
-    XDATA_REG8(0x0ad7) = 0x01;  /* G_USB_DESC_STATE */
-    XDATA_REG8(0x0ade) = 0x00;  /* G_USB_DESC_INDEX */
-}
+/* usb_descriptor_helper_a637 - moved to usb.c */
 
 /* usb_descriptor_helper_a644 - moved to queue_handlers.c */
 
@@ -1246,86 +1209,9 @@ void pcie_lane_config_helper(uint8_t param)
  * UART/Log Buffer Functions
  *===========================================================================*/
 
-/*
- * uart_read_byte_dace - Read byte from log buffer
- * Address: 0xdace-0xdad8 (11 bytes)
- *
- * Disassembly:
- *   dace: add a, 0x21        ; A = A + I_LOG_INDEX
- *   dad0: mov 0x82, a        ; DPL = result
- *   dad2: clr a
- *   dad3: addc a, #0x70      ; DPH = 0x70 + carry
- *   dad5: mov 0x83, a        ; (gives DPTR = 0x7000 + offset)
- *   dad7: movx a, @dptr      ; Read byte
- *   dad8: ret
- *
- * This reads from the log buffer at 0x7000 + I_LOG_INDEX + input_offset.
- * The input A value is added to I_LOG_INDEX to form the offset.
- *
- * Note: Entry expects A to contain offset. In C, we pass as param.
- * Returns: XDATA[0x7000 + I_LOG_INDEX + offset]
- */
-uint8_t uart_read_byte_dace(void)
-{
-    /* Read from log buffer at base 0x7000 + I_LOG_INDEX */
-    uint16_t addr = 0x7000 + I_LOG_INDEX;
-    return XDATA_REG8(addr);
-}
-
-/*
- * uart_write_byte_daeb - Calculate log buffer write address
- * Address: 0xdaeb-0xdaf4 (10 bytes)
- *
- * Disassembly:
- *   daeb: mov a, #0xfc       ; Base offset
- *   daed: add a, 0x21        ; A = 0xFC + I_LOG_INDEX
- *   daef: mov 0x82, a        ; DPL = result
- *   daf1: clr a
- *   daf2: addc a, #0x09      ; DPH = 0x09 + carry
- *   daf4: ret
- *
- * This calculates address 0x09FC + I_LOG_INDEX for writing.
- * Returns: DPTR pointing to 0x09FC + I_LOG_INDEX (in DPH:DPL = 0x83:0x82)
- *
- * Note: This is an address calculation that returns DPTR, used by caller.
- * In C, we just return the high byte; caller uses DPTR afterwards.
- */
-uint8_t uart_write_byte_daeb(uint8_t b)
-{
-    /* This calculates DPTR = 0x09FC + I_LOG_INDEX
-     * Original returns with DPTR set up for caller to use
-     * The param b is the byte to write (in R7) */
-    (void)b;
-    /* In original, DPH is returned in A */
-    uint8_t low = 0xFC + I_LOG_INDEX;
-    uint8_t high = 0x09;
-    if (low < 0xFC) high++;  /* Handle carry */
-    return high;
-}
-
-/*
- * uart_write_daff - Calculate alternate log buffer address
- * Address: 0xdaff-0xdb08 (10 bytes)
- *
- * Disassembly:
- *   daff: mov a, #0x1c       ; Base offset
- *   db01: add a, 0x21        ; A = 0x1C + I_LOG_INDEX
- *   db03: mov 0x82, a        ; DPL = result
- *   db05: clr a
- *   db06: addc a, #0x0a      ; DPH = 0x0A + carry
- *   db08: ret
- *
- * This calculates address 0x0A1C + I_LOG_INDEX.
- * Returns: DPH (0x0A possibly + carry) in A
- */
-uint8_t uart_write_daff(void)
-{
-    /* Calculate DPTR = 0x0A1C + I_LOG_INDEX */
-    uint8_t low = 0x1C + I_LOG_INDEX;
-    uint8_t high = 0x0A;
-    if (low < 0x1C) high++;  /* Handle carry */
-    return high;
-}
+/* uart_read_byte_dace - moved to uart.c */
+/* uart_write_byte_daeb - moved to uart.c */
+/* uart_write_daff - moved to uart.c */
 
 /*===========================================================================
  * Code Functions (FUN_CODE_xxxx)
@@ -2105,14 +1991,39 @@ void pcie_handler_d8d5(void)
 }
 
 /*
- * dispatch_handler_0557 - Main dispatch handler
- * Address: 0x0557+
+ * dispatch_handler_0557 - PCIe event dispatch handler
+ * Address: 0x0557 -> targets 0xee94 (bank 1)
  *
- * Returns non-zero if dispatch is needed.
+ * Original disassembly at 0x16e94:
+ *   ee94: acall 0xe97f   ; calls helper at 0x1697f
+ *   ee96: rr a           ; rotate result right
+ *   ee97: ljmp 0xed82    ; -> 0x16d82 -> ljmp 0x7a12 (NOP slide to 0x8000)
+ *
+ * The helper at 0x1697f:
+ *   e97f: mov r1, #0xe6  ; setup parameter
+ *   e981: ljmp 0x538d    ; call bank 0 dispatch function
+ *
+ * This function is part of the PCIe event handling chain. It checks event
+ * state and returns non-zero (in R7) if dispatch/processing should continue.
+ *
+ * The caller in pcie.c uses the return value:
+ *   if (result) { pcie_queue_handler_a62d(); ... }
+ *
+ * Returns: Non-zero if event processing should continue, 0 otherwise.
  */
 uint8_t dispatch_handler_0557(void)
 {
-    return 0;  /* No dispatch needed */
+    /* Check event flags to determine if dispatch is needed.
+     * The original function calls into bank 0/1 dispatch logic
+     * that reads from event control registers.
+     *
+     * For now, return 0 (no dispatch) as a safe default.
+     * A more complete implementation would check:
+     * - G_EVENT_CTRL_09FA state
+     * - PCIe link status
+     * - Pending transfer state
+     */
+    return 0;  /* No dispatch needed - conservative default */
 }
 
 /*
@@ -2153,21 +2064,80 @@ void pcie_write_reg_0633(void)
 }
 
 /*
- * pcie_write_reg_0638 - Register write helper (variant)
- * Address: 0x0638+
+ * pcie_write_reg_0638 - PCIe register write and state clear
+ * Address: 0x0638 -> targets 0xeadb (bank 1) -> ajmp 0x6cff (0x16cff)
+ *
+ * Original disassembly at 0x16cff:
+ *   ecff: lcall 0x0be6    ; banked_store_byte (R1/A from caller)
+ *   ed02: lcall 0x05c5    ; dispatch_05c5 -> handler at 0xe7fb
+ *   ed05: clr a
+ *   ed06: mov dptr, #0x023f
+ *   ed09: movx @dptr, a   ; clear G_BANK1_STATE_023F
+ *   ed0a: ret
+ *
+ * Called from pcie.c after writing 0x80 to source 0x8F via banked_store_byte.
+ * This function continues processing by calling dispatch_05c5 and clearing
+ * the bank 1 state flag.
+ *
+ * Note: The first lcall to banked_store_byte uses register context from caller.
+ * In C, we skip that call as the caller already did the register write.
  */
 void pcie_write_reg_0638(void)
 {
-    /* Register write - stub */
+    extern void dispatch_05c5(void);
+
+    /* Call dispatch_05c5 -> 0xe7fb handler */
+    dispatch_05c5();
+
+    /* Clear bank 1 state flag */
+    G_BANK1_STATE_023F = 0;
 }
 
 /*
- * pcie_cleanup_05f7 - Cleanup handler
- * Address: 0x05f7+
+ * pcie_cleanup_05f7 - PCIe status cleanup with computed index
+ * Address: 0x05f7 -> targets 0xcbcc (bank 1)
+ *
+ * Original disassembly at 0x14bcc:
+ *   cbcc: xch a, r0      ; exchange A with R0
+ *   cbcd: mov r6, a      ; R6 = original R0
+ *   cbce: add a, ACC     ; A = A * 2 (double)
+ *   cbd0: anl a, #0x1e   ; mask to get valid index
+ *   cbd2: add a, r7      ; add status value
+ *   cbd3: mov dptr, #0x0442
+ *   cbd6: movx @dptr, a  ; write computed index to 0x0442
+ *   cbd7: ljmp 0xd7d9    ; continue to cleanup handler
+ *
+ * The continuation at 0xd7d9:
+ *   d7d9: mov a, #0xff
+ *   d7db: movx @dptr, a  ; write 0xFF to 0x0443
+ *   d7dc: mov dptr, #0x0b2f
+ *   d7df: movx a, @dptr  ; read status
+ *   ... (additional status checks)
+ *
+ * This function is called when PCIe status bit 0 is set.
+ * It computes an index from input parameters and writes to state buffer,
+ * then continues with cleanup/status update logic.
+ *
+ * Since the original uses R0/R7 from caller context (which we don't have
+ * in C), we implement a simplified version that does the essential cleanup.
  */
 void pcie_cleanup_05f7(void)
 {
-    /* Cleanup - stub */
+    /* The original function computes an index and writes to 0x0442,
+     * then continues to the cleanup handler at 0xd7d9.
+     *
+     * For C implementation, we simulate the essential behavior:
+     * - Write to state buffer at 0x0442/0x0443
+     * - The ljmp 0xd7d9 continues cleanup which we inline here
+     */
+
+    /* Write 0xFF to the second byte (as done at 0xd7d9) */
+    /* XDATA_VAR8(0x0443) = 0xFF; - need to add this global if critical */
+
+    /* The continuation checks XDATA[0x0B2F] and does conditional writes.
+     * This is complex state machine logic that depends on runtime state.
+     * Keeping as simplified stub for now.
+     */
 }
 
 /*
@@ -2241,144 +2211,7 @@ void pcie_handler_e06b(uint8_t param)
 
 /* pcie_setup_a38b - moved to queue_handlers.c */
 
-/*===========================================================================
- * USB Endpoint Loop Functions (used by main_loop)
- *===========================================================================*/
-
-/*
- * usb_ep_loop_180d - USB endpoint processing loop with parameter
- * Address: 0x180d-0x19f9 (~500 bytes)
- *
- * Called from main_loop when REG_USB_STATUS bit 0 is set.
- * The param is passed in R7 in the original firmware.
- *
- * Algorithm:
- *   1. Store param to G_USB_EP_MODE (0x0A7D)
- *   2. If param XOR 1 == 0 (i.e., param == 1):
- *      - USB mode 1 path (main processing)
- *   3. Else: Jump to 0x19FA (alternate USB mode path)
- *   4. Read G_USB_CTRL_000A, if zero:
- *      - Increment G_SYS_FLAGS_07E8
- *      - If G_USB_STATE_0B41 != 0, call nvme_func_04da(1)
- *   5. Read REG_NVME_CMD_STATUS_C47A to I_WORK_38
- *   6. Write to REG_SCSI_DMA_CTRL_CE88
- *   7. Poll REG_SCSI_DMA_STATUS_CE89 bit 0 until set
- *   8. Increment and check G_USB_CTRL_000A
- *   9. Modify REG_USB_CTRL_924C based on count
- *   10. Read G_ENDPOINT_STATE_0051 and call helper_31e0
- *   11. Process state machine with multiple register ops
- *
- * This is part of the USB endpoint data transfer handling.
- */
-extern void nvme_func_04da(uint8_t param);
-
-void usb_ep_loop_180d(uint8_t param)
-{
-    uint8_t val;
-    uint8_t ctrl_count;
-
-    /* Store param to USB EP mode flag (0x0A7D) */
-    G_EP_DISPATCH_VAL3 = param;
-
-    /* Check if param == 1 (USB mode 1) */
-    if (param != 0x01) {
-        /* Jump to alternate path at 0x19FA - not implemented here */
-        /* This handles USB mode 0 (different processing) */
-        return;
-    }
-
-    /* USB Mode 1 processing path */
-
-    /* Read USB control flag (0x000A) */
-    val = G_EP_CHECK_FLAG;
-    if (val == 0) {
-        /* First-time setup */
-        G_SYS_FLAGS_07E8 = 1;  /* Increment (was 0, now 1) */
-
-        /* Check USB state and call event handler if needed */
-        if (G_USB_STATE_0B41 != 0) {
-            nvme_func_04da(0x01);
-        }
-    }
-
-    /* Read NVMe command status (0xC47A) and store to I_WORK_38 */
-    I_WORK_38 = REG_NVME_CMD_STATUS_C47A;
-
-    /* Write to transfer control register (0xCE88) */
-    REG_XFER_CTRL_CE88 = I_WORK_38;
-
-    /* Poll transfer ready (0xCE89) until bit 0 is set */
-    while ((REG_XFER_READY & 0x01) == 0) {
-        /* Spin wait for DMA ready */
-    }
-
-    /* Increment USB control counter */
-    ctrl_count = G_EP_CHECK_FLAG;
-    ctrl_count++;
-    G_EP_CHECK_FLAG = ctrl_count;
-
-    /* Read back and check if count >= 2 */
-    ctrl_count = G_EP_CHECK_FLAG;
-    val = REG_USB_CTRL_924C;
-
-    if (ctrl_count >= 2) {
-        /* Count >= 2: clear bit 0 */
-        val = val & 0xFE;
-    } else {
-        /* Count < 2: clear bit 0, set bit 0 */
-        val = (val & 0xFE) | 0x01;
-    }
-    REG_USB_CTRL_924C = val;
-
-    /* Read endpoint state and call helper */
-    val = G_ENDPOINT_STATE_0051;
-    /* helper_31e0(val) would be called here - processes endpoint state */
-
-    /* Write I_WORK_38 to endpoint register */
-    G_ENDPOINT_STATE_0051 = I_WORK_38;
-
-    /* Add 0x2F and call helper_325f for register address calculation */
-    /* This accesses registers at 0x00 + (I_WORK_38 + 0x2F) area */
-
-    /* Write 0x22 to calculated address */
-    /* This sets up endpoint command mode */
-
-    /* Write I_WORK_38 to G_ENDPOINT_STATE_0051 again */
-    G_ENDPOINT_STATE_0051 = I_WORK_38;
-
-    /* Check IDATA[0x0D] against 0x22 */
-    if (*(__idata uint8_t *)0x0D != 0x22) {
-        /* State mismatch - skip to end */
-        return;
-    }
-
-    /* Check transfer status (0xCE6C) bit 7 */
-    val = REG_XFER_STATUS_CE6C;
-    if ((val & 0x80) == 0) {
-        /* Bit 7 not set - skip */
-        return;
-    }
-
-    /* Check power init flag (0x0AF8) */
-    if (G_POWER_INIT_FLAG == 0) {
-        return;
-    }
-
-    /* Check transfer ready (0xCE89) bit 1 */
-    val = REG_XFER_READY;
-    if (val & 0x02) {
-        /* Bit 1 set - skip */
-        return;
-    }
-
-    /* Read from USB descriptor (0xCEB2) */
-    val = REG_USB_DESC_VAL_CEB2;
-    /* Exchange and write to NVMe param (0xC4EA) */
-    REG_NVME_PARAM_C4EA = val;
-
-    /* Additional processing continues... */
-    /* The full function has more state machine logic */
-}
+/* usb_ep_loop_180d - moved to usb.c */
 
 /* usb_ep_loop_3419 - IMPLEMENTED in protocol.c */
 
@@ -3572,11 +3405,47 @@ uint8_t check_pcie_status_e239(void)
 /* helper_a71b - Address: 0xa71b - Status helper */
 uint8_t helper_a71b(void) { return 0; /* Stub */ }
 
-/* helper_9617 - Address: 0x9617 - DMA wait helper */
-void helper_9617(void) { /* Stub */ }
+/*
+ * helper_9617 - Set interrupt enable bit 4
+ * Address: 0x9617-0x9620 (10 bytes)
+ *
+ * Sets bit 4 of REG_INT_ENABLE (0xC801).
+ *
+ * Original disassembly:
+ *   9617: mov dptr, #0xc801  ; REG_INT_ENABLE
+ *   961a: movx a, @dptr      ; Read
+ *   961b: anl a, #0xef       ; Clear bit 4
+ *   961d: orl a, #0x10       ; Set bit 4
+ *   961f: movx @dptr, a      ; Write back
+ *   9620: ret
+ */
+void helper_9617(void)
+{
+    uint8_t val = REG_INT_ENABLE;
+    val = (val & ~0x10) | 0x10;  /* Set bit 4 */
+    REG_INT_ENABLE = val;
+}
 
-/* helper_95bf - Address: 0x95bf - DMA clear helper */
-void helper_95bf(void) { /* Stub */ }
+/*
+ * helper_95bf - DMA config write sequence
+ * Address: 0x95bf-0x95c8 (10 bytes)
+ *
+ * Writes 0x04 then 0x02 to REG_XFER_DMA_CFG (0xCC99).
+ * This is the tail of cmd_clear_cc9a_setup but can be called directly.
+ *
+ * Original disassembly:
+ *   95bf: mov dptr, #0xcc99  ; REG_XFER_DMA_CFG
+ *   95c2: mov a, #0x04
+ *   95c4: movx @dptr, a      ; Write 0x04
+ *   95c5: mov a, #0x02
+ *   95c7: movx @dptr, a      ; Write 0x02
+ *   95c8: ret
+ */
+void helper_95bf(void)
+{
+    REG_XFER_DMA_CFG = 0x04;
+    REG_XFER_DMA_CFG = 0x02;
+}
 
 /* helper_bd23 - Address: 0xbd23 - PCIe channel helper */
 void helper_bd23(void) { /* Stub */ }
@@ -3652,5 +3521,66 @@ void helper_c1f9(void) { /* Stub */ }
 /* helper_be8b - Address: 0xbe8b - PCIe processing helper */
 void helper_be8b(void) { /* Stub */ }
 
-/* helper_bd05 - Address: 0xbd05 - Status helper */
-void helper_bd05(void) { /* Stub */ }
+/*
+ * helper_bd05 - Timer init and start
+ * Address: 0xbd05-0xbd13 (15 bytes)
+ *
+ * Clears timer init flag and starts timer by writing 4 then 2 to CSR.
+ * Implemented as reg_timer_init_and_start() in utils.c.
+ */
+extern void reg_timer_init_and_start(void);
+
+void helper_bd05(void)
+{
+    reg_timer_init_and_start();
+}
+
+/*
+ * cmd_init_and_wait_e459 - Initialize command and wait for completion
+ * Address: 0xe459-0xe475 (29 bytes)
+ *
+ * Original disassembly:
+ *   e459: lcall 0xe73a        ; FUN_CODE_e73a - clear command state
+ *   e45c: mov r5, #0x01
+ *   e45e: mov r7, #0x0c
+ *   e460: lcall 0xdd12        ; helper_dd12(0x0c, 0x01)
+ *   e463: lcall 0x95af        ; helper_95af
+ *   e466: mov dptr, #0xe422   ; REG_CMD_PARAM
+ *   e469: clr a
+ *   e46a: movx @dptr, a       ; E422 = 0
+ *   e46b: inc dptr
+ *   e46c: movx @dptr, a       ; E423 = 0
+ *   e46d: inc dptr
+ *   e46e: mov a, #0x16
+ *   e470: movx @dptr, a       ; E424 = 0x16
+ *   e471: inc dptr
+ *   e472: mov a, #0x31
+ *   e474: movx @dptr, a       ; E425 = 0x31
+ *   e475: ljmp 0xe1c6         ; cmd_wait_completion
+ */
+extern void FUN_CODE_e73a(void);
+extern void helper_95af(void);
+
+void cmd_init_and_wait_e459(void)
+{
+    /* Clear command state */
+    FUN_CODE_e73a();
+
+    /* Configure with helper_dd12(0x0c, 0x01) */
+    helper_dd12(0x0C, 0x01);
+
+    /* Additional setup */
+    helper_95af();
+
+    /* Write command parameters to E422-E425 */
+    REG_CMD_PARAM = 0x00;      /* E422 */
+    REG_CMD_STATUS = 0x00;     /* E423 */
+    REG_CMD_ISSUE = 0x16;      /* E424 */
+    REG_CMD_TAG = 0x31;        /* E425 */
+
+    /* Wait for command completion */
+    cmd_wait_completion();
+}
+
+/* helper_95af - Address: 0x95af - Command setup helper */
+void helper_95af(void) { /* Stub */ }

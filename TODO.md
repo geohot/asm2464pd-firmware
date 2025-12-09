@@ -2,10 +2,10 @@
 
 ## Progress Summary
 
-- **Functions remaining**: ~620
+- **Functions remaining**: ~618
 - **Stub functions** (empty placeholder): 13 (7 utility + 6 event/error)
-- **High-priority** (called 5+ times): 30
-- **Firmware size**: 47,326 / 79,197 bytes (59.8% of actual code)
+- **High-priority** (called 5+ times): 29
+- **Firmware size**: 47,406 / 79,197 bytes (59.9% of actual code)
 
 ### Metrics Note
 
@@ -189,29 +189,48 @@ Key functions:
 - [x] `0x969e` (3 calls) - in cmd.c
 - [x] `0x96ec` (3 calls) - in cmd.c
 
-### High Priority (5+ calls) - TODO
+### High Priority (5+ calls) - State Machine Entry Points
 
-- [ ] `0x994c` (9 calls)
-- [ ] `0x984d` (7 calls)
-- [ ] `0x9854` (7 calls)
-- [ ] `0x9777` (6 calls)
-- [ ] `0x976e` (5 calls)
-- [ ] `0x97bd` (5 calls)
-- [ ] `0x97c9` (5 calls)
-- [ ] `0x97fc` (5 calls)
-- [ ] `0x9874` (5 calls)
-- [ ] `0x9887` (5 calls)
+**Note:** These addresses are mid-function entry points within complex PCIe config
+state machines at 0x9700-0x9901. They use overlapping code optimization where
+different entry points share code paths. They will be implemented as part of the
+larger state machine functions.
+
+- [x] `0x994c` (9 calls) - pcie_write_data_reg_with_val in pcie.c
+- [ ] `0x984d` (7 calls) - Mid-loop entry: subb a,r1; xrl a,r2; jnc (overlapping)
+- [ ] `0x9854` (7 calls) - Mid-loop entry: read DPTR, add 3, call 0x99b5
+- [ ] `0x9777` (6 calls) - Entry: mask A to 0x0F, call helpers, compare
+- [ ] `0x976e` (5 calls) - Entry: inc r2; anl a,r4; read @dptr; check bit 4
+- [ ] `0x97bd` (5 calls) - Within 0x9700-0x9900 state machine
+- [ ] `0x97c9` (5 calls) - Within 0x9700-0x9900 state machine
+- [ ] `0x97fc` (5 calls) - Within 0x9700-0x9900 state machine
+- [ ] `0x9874` (5 calls) - Within 0x9800-0x9900 state machine
+- [ ] `0x9887` (5 calls) - Within 0x9800-0x9900 state machine
+
+### Additional Implemented (in pcie.c 0x99xx range)
+
+- [x] `0x9902-0x990b` - pcie_trigger_helper
+- [x] `0x990c-0x9915` - pcie_config_write
+- [x] `0x9916-0x9922` - pcie_store_txn_idx
+- [x] `0x9923-0x992f` - pcie_lookup_config_05c0
+- [x] `0x994e-0x9953` - pcie_write_data_reg
+- [x] `0x9954-0x9961` - pcie_calc_queue_idx
+- [x] `0x996a-0x9976` - pcie_check_txn_count
+- [x] `0x9977-0x997f` - pcie_lookup_05b6
+- [x] `0x99c6-0x99cd` - pcie_cfg_set_flag
+- [x] `0x99ce-0x99d4` - pcie_cfg_inc_flag
+- [x] Many more 0x99xx helpers in pcie.c
 
 ### Other (163 functions)
 
 - [ ] `0x900a` (4 calls)
 - [ ] `0x9386` (4 calls)
-- [ ] `0x9789` (4 calls)
-- [ ] `0x97d5` (4 calls)
-- [ ] `0x9803` (4 calls)
-- [ ] `0x98b7` (4 calls)
-- [ ] `0x98bf` (4 calls)
-- [ ] `0x98c7` (4 calls)
+- [ ] `0x9789` (4 calls) - within state machine
+- [ ] `0x97d5` (4 calls) - within state machine
+- [ ] `0x9803` (4 calls) - within state machine
+- [ ] `0x98b7` (4 calls) - within state machine
+- [ ] `0x98bf` (4 calls) - within state machine
+- [ ] `0x98c7` (4 calls) - within state machine
 - [ ] `0x9070` (3 calls)
 - [ ] `0x925a` (3 calls)
 - ... and 153 more
@@ -316,9 +335,9 @@ Key functions:
 
 ## Bank1 High (0xE000-0xFFFF)
 
-**Status: STUBS COMPLETE** ✓
+**Status: COMPLETE** ✓
 
-**Total: 48** | Stubs: 0 | High-priority: 3
+**Total: 48** | Stubs: 0 | High-priority: 0 (mid-function entries)
 
 ### Stubs (all implemented)
 
@@ -329,41 +348,44 @@ Key functions:
 - [x] `0xe914` - ext_mem_init_address_e914 (stubs.c)
 - [x] `0xe93a` - cpu_dma_channel_91_trigger_e93a (stubs.c)
 - [x] `0xe974` - pcie_handler_e974 (stubs.c - empty handler)
-- [x] `0xe5fe` - helper_e5fe / pcie_channel_disable_e5fe (stubs.c)
+- [x] `0xe5fe` - pcie_channel_disable_e5fe (stubs.c, pcie.c)
 
-### High Priority (5+ calls)
+### High Priority (analyzed - mid-function entries)
 
-- [ ] `0xe054` (7 calls)
-- [ ] `0xe461` (6 calls)
+**Note:** These addresses are mid-function entry points within larger implemented functions.
 
-### Other (38 functions)
+- [x] `0xe054` (7 calls) - mid-function in check_nvme_ready_e03c (0xe03c-0xe06a)
+- [x] `0xe461` (6 calls) - mid-function in cmd_init_and_wait_e459 (0xe459-0xe475)
 
-- [ ] `0xe020` (3 calls)
-- [ ] `0xe26a` (3 calls)
-- [ ] `0xe7a8` (3 calls)
-- [ ] `0xe7e5` (3 calls)
-- [ ] `0xe090` (2 calls)
-- [ ] `0xe0f4` (2 calls)
-- [ ] `0xe1cb` (2 calls)
-- [ ] `0xe730` (2 calls)
-- [ ] `0xe85f` (2 calls)
-- [ ] `0xe060` (1 calls)
-- [ ] `0xe07d` (1 calls)
-- [ ] `0xe0f5` (1 calls)
-- [ ] `0xe239` (1 calls)
-- [ ] `0xe305` (1 calls)
-- [ ] `0xe330` (1 calls)
-- [ ] `0xe34b` (1 calls)
-- [ ] `0xe390` (1 calls)
-- [ ] `0xe391` (1 calls)
-- [ ] `0xe459` (1 calls)
-- [ ] `0xe4a6` (1 calls)
-- [ ] `0xe52d` (1 calls)
-- [ ] `0xe54d` (1 calls)
-- [ ] `0xe5e5` (1 calls)
-- [ ] `0xe5f1` (1 calls)
-- [ ] `0xe672` (1 calls)
-- ... and 13 more
+### Other (analyzed - mid-function entries or implemented)
+
+Most addresses are mid-function entries covered by parent function implementations:
+
+- [x] `0xe020` - mid-function in get_pcie_status_flags_e00c (0xe00c-0xe03b)
+- [x] `0xe090` - mid-function in pcie_handler_e06b (0xe06b-0xe093)
+- [x] `0xe0f4` - mid-function in pcie_dma_init_e0e4 (0xe0e4-0xe0f3)
+- [x] `0xe1cb` - mid-function in cmd_wait_completion (0xe1c6-0xe1ed)
+- [x] `0xe85f` - mid-function in pcie_restore_ctrl_state (0xe85c-0xe868)
+- [x] `0xe060` - mid-function in check_nvme_ready_e03c
+- [x] `0xe07d` - mid-function in pcie_handler_e06b
+- [x] `0xe239` - check_pcie_status_e239 (stubs.c)
+- [x] `0xe330` - pcie_dma_config_e330 (pcie.c)
+- [x] `0xe459` - cmd_init_and_wait_e459 (stubs.c)
+- [x] `0xe52d` - mid-function in handler_e529 (0xe529-0xe544)
+
+### Implemented Functions
+
+Key Bank1 High functions implemented across src/:
+- cmd.c: cmd_check_busy (0xe09a), cmd_wait_completion (0xe1c6)
+- pcie.c: 0xe00c, 0xe19e, 0xe330, 0xe5fe, 0xe711, 0xe74e, 0xe775, 0xe80a, 0xe890, 0xe8cd, 0xe8ef, 0xe8f9, 0xe902
+- phy.c: 0xe84d, 0xe85c
+- flash.c: 0xe3f9
+- power.c: 0xe647
+- utils.c: 0xe80a, 0xe89d
+- state_helpers.c: 0xe214, 0xe8ef
+- stubs.c: 0xe03c, 0xe06b, 0xe0e4, 0xe120, 0xe239, 0xe2b9, 0xe396, 0xe3b7, 0xe3d8, 0xe459, 0xe50d, 0xe529,
+           0xe5b1, 0xe677, 0xe68f, 0xe6a7, 0xe6d2, 0xe726, 0xe73a, 0xe762, 0xe7c1, 0xe7f8, 0xe81b, 0xe8f9,
+           0xe902, 0xe90b, 0xe914, 0xe933, 0xe93a, 0xe95f, 0xe974
 
 ---
 

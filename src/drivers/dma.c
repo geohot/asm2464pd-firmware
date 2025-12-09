@@ -1457,3 +1457,23 @@ void dma_wait_complete(void)
  */
 /* This is an internal calculation helper, handled inline */
 
+/*
+ * transfer_func_16b0 - Write value to SCSI DMA status register
+ * Address: 0x16b0-0x16b6 (7 bytes)
+ *
+ * Disassembly:
+ *   16b0: mov dptr, #0xce6e  ; REG_SCSI_DMA_STATUS
+ *   16b3: movx @dptr, a      ; Write param
+ *   16b4: inc a              ; param + 1
+ *   16b5: movx @dptr, a      ; Write param + 1
+ *   16b6: ret
+ *
+ * Writes param to REG_SCSI_DMA_STATUS_L, then writes param+1 to same location.
+ * Moved from stubs.c.
+ */
+void transfer_func_16b0(uint8_t param)
+{
+    REG_SCSI_DMA_STATUS_L = param;
+    REG_SCSI_DMA_STATUS_L = param + 1;
+}
+
