@@ -1477,3 +1477,256 @@ void transfer_func_16b0(uint8_t param)
     REG_SCSI_DMA_STATUS_L = param + 1;
 }
 
+/* External helper functions for handler_2608 */
+extern void transfer_func_1633(uint16_t addr);
+extern __xdata uint8_t *usb_calc_indexed_addr(void);
+extern void scsi_decrement_pending(void);
+extern void scsi_csw_write_residue(void);
+extern void scsi_buffer_threshold_config(uint8_t slot);
+extern void helper_0421(uint8_t slot);
+
+/*
+ * handler_2608 - DMA/Queue endpoint handler
+ * Address: 0x2608-0x2809 (514 bytes)
+ *
+ * Complex state machine that handles DMA transfers between PCIe queues
+ * and USB endpoints. Manages queue indices, buffer states, and transfer
+ * completion.
+ */
+void handler_2608(void)
+{
+    __xdata uint8_t *ptr;
+    uint8_t buf_state, flags_lo, queue_flags;
+    uint8_t work51, work52, work53, work54, work56;
+    uint8_t val, r6, r7, temp;
+
+    /* 0x2608: Call transfer_get_ep_queue_addr, read endpoint index */
+    ptr = (__xdata uint8_t *)transfer_get_ep_queue_addr();
+    work53 = *ptr;
+    I_WORK_53 = work53;
+
+    /* 0x260e: Call dma_calc_addr_0466 with index, read result */
+    ptr = dma_calc_addr_0466(G_SYS_STATUS_PRIMARY);
+    buf_state = *ptr;
+    G_BUFFER_STATE_0AA7 = buf_state;
+
+loop_start:
+    /* 0x2616: Check G_SYS_STATUS_PRIMARY */
+    if (G_SYS_STATUS_PRIMARY != 0) {
+        work56 = I_WORK_53 + 0x20;
+    } else {
+        work56 = I_WORK_53;
+    }
+    I_WORK_56 = work56;
+
+    /* 0x2627: Set bit 0 of REG_DMA_STATUS */
+    transfer_func_1633(0xC8D6);
+
+    /* 0x262d: Write slot index to REG_DMA_QUEUE_IDX */
+    REG_DMA_QUEUE_IDX = I_WORK_56;
+
+    /* 0x2633: Read queue flags, mask bit 0 */
+    flags_lo = REG_PCIE_QUEUE_FLAGS_LO & 0x01;
+    r7 = flags_lo;
+
+    /* 0x263e: Compare with buffer state */
+    if (G_BUFFER_STATE_0AA7 == r7) {
+        REG_DMA_STATUS &= 0xFE;
+        goto handle_match_end;
+    }
+
+    /* 0x264b: Read queue index low/high */
+    work51 = REG_PCIE_QUEUE_INDEX_LO;
+    I_WORK_51 = work51;
+    work52 = REG_PCIE_QUEUE_INDEX_HI;
+    I_WORK_52 = work52;
+
+    /* 0x2655: Clear G_BUFFER_STATE_0AA6 */
+    G_BUFFER_STATE_0AA6 = 0;
+
+    /* 0x265a: Check combined flags */
+    queue_flags = (REG_PCIE_QUEUE_FLAGS_LO & 0xFE) | REG_PCIE_QUEUE_FLAGS_HI;
+    if (queue_flags == 0) {
+        goto check_state;
+    }
+
+    /* 0x2666: Process queue flags */
+    val = REG_PCIE_QUEUE_FLAGS_HI;
+    val = (val >> 1) & 0x07;
+    r7 = val;
+
+    /* 0x266c: Calculate address = 0x04D7 + work51 */
+    ptr = (__xdata uint8_t *)(0x04D7 + work51);
+    *ptr = r7;
+
+    /* 0x2679: Read B80F, process bits */
+    val = REG_PCIE_QUEUE_FLAGS_HI;
+    val = (val << 4) | (val >> 4);
+    val = (val << 3);
+    val &= 0x80;
+    r7 = val;
+
+    /* 0x2684: Read B80E, shift right, OR with r7 */
+    val = REG_PCIE_QUEUE_FLAGS_LO;
+    r6 = val;
+    val = (val >> 1) | r7;
+    r7 = val;
+
+    /* 0x268d: Calculate address = 0x04F7 + work51 */
+    ptr = (__xdata uint8_t *)(0x04F7 + work51);
+    *ptr = r7;
+    G_BUFFER_STATE_0AA6 = r7;
+
+check_state:
+    /* 0x269e: Check G_STATE_CTRL_0B3E */
+    if (G_STATE_CTRL_0B3E == 0x01) {
+        G_STATE_CTRL_0B3F++;
+    }
+
+    /* 0x26ab: Calculate address = 0x0108 + work52 */
+    ptr = (__xdata uint8_t *)(0x0108 + work52);
+    work54 = *ptr;
+    I_WORK_54 = work54;
+
+    r7 = 0;
+
+    /* 0x26bb: Read from 0x009F + work52 */
+    ptr = (__xdata uint8_t *)(0x009F + I_WORK_52);
+    val = *ptr;
+
+    if (val == 0x01) {
+        if (I_WORK_54 & 0x10) {
+            r7 = 1;
+            goto process_transfer;
+        }
+        ptr = usb_calc_indexed_addr();
+        *ptr = 0x01;
+        goto process_transfer;
+    }
+
+    /* 0x26d3: Increment value at usb_calc_indexed_addr */
+    ptr = usb_calc_indexed_addr();
+    (*ptr)++;
+
+    /* 0x26d9: Calculate address 0x00E5 + work52 */
+    ptr = (__xdata uint8_t *)(0x00E5 + work52);
+    r6 = *ptr;
+    temp = G_BUFFER_STATE_0AA6;
+    *ptr = r6 | temp;
+    G_BUFFER_STATE_0AA6 = r6 | temp;
+
+    if (!(I_WORK_54 & 0x10)) {
+        goto process_transfer;
+    }
+
+    if (!(I_WORK_54 & 0x40)) {
+        if (G_SCSI_CTRL > 0) {
+            I_WORK_55 = 0;
+            do {
+                ptr = (__xdata uint8_t *)transfer_calc_work55_offset();
+                val = *ptr;
+                if (val == 0xFF) {
+                    I_WORK_55++;
+                    if (I_WORK_55 == 0x20) {
+                        goto process_transfer;
+                    }
+                    continue;
+                }
+                ptr = (__xdata uint8_t *)transfer_calc_work55_offset();
+                *ptr = I_WORK_51;
+                r6 = G_NVME_STATE_053B;
+                if (I_WORK_55 < r6) {
+                    G_NVME_STATE_053B = I_WORK_55;
+                }
+                goto process_transfer;
+            } while (1);
+        }
+        ptr = (__xdata uint8_t *)(0x00C2 + I_WORK_52);
+        r6 = *ptr;
+    } else {
+        G_DMA_ENDPOINT_0578 = I_WORK_51;
+        ptr = (__xdata uint8_t *)(0x009F + I_WORK_52);
+        val = *ptr;
+        if (val != r6) {
+            goto process_transfer;
+        }
+        r7 = 1;
+        goto process_transfer;
+    }
+
+    if (*ptr == r6) {
+        r7 = 1;
+    }
+
+process_transfer:
+    if (r7 == 0) {
+        goto check_completion;
+    }
+
+    if (!(I_WORK_54 & 0x40)) {
+        if (*(__idata uint8_t *)0x6A != 0x04) {
+            goto check_completion;
+        }
+        if (G_BUFFER_STATE_0AA6 != 0) {
+            dma_setup_transfer(0x03, 0x47, 0x0B);
+        }
+        scsi_csw_write_residue();
+        REG_USB_SIGNAL_90A1 = 0x01;
+        *(__idata uint8_t *)0x6A = 0x05;
+        I_WORK_55 = 0;
+        while (I_WORK_55 < G_NVME_STATE_053B) {
+            ptr = (__xdata uint8_t *)transfer_calc_work55_offset();
+            *ptr = 0xFF;
+            I_WORK_55++;
+        }
+        goto check_completion;
+    }
+
+    if (G_BUFFER_STATE_0AA6 == 0) {
+        val = REG_NVME_BUF_CFG;
+        val = (val & 0xC0) | work52;
+        REG_NVME_BUF_CFG = val;
+        G_EP_DISPATCH_OFFSET = work52;
+        scsi_decrement_pending();
+    } else {
+        dma_setup_transfer(0x03, 0x47, 0x0B);
+    }
+
+    ptr = (__xdata uint8_t *)(0x0071 + work52);
+    *ptr = 0xFF;
+    ptr = (__xdata uint8_t *)(0x0517 + work52);
+    *ptr = 0;
+
+check_completion:
+    if (I_WORK_54 & 0x04) {
+        scsi_buffer_threshold_config(I_WORK_52);
+    }
+
+    work53 = I_WORK_53;
+    work53 = (work53 + 1) & 0x1F;
+    I_WORK_53 = work53;
+
+    if (work53 != 0) {
+        goto loop_start;
+    }
+
+    G_BUFFER_STATE_0AA7 ^= 0x01;
+    goto loop_start;
+
+handle_match_end:
+    val = G_SYS_STATUS_PRIMARY;
+    ptr = (__xdata uint8_t *)(0x045A + val);
+    val = *ptr;
+
+    if (val == I_WORK_53) {
+        return;
+    }
+
+    helper_0421(I_WORK_53);
+    ptr = (__xdata uint8_t *)transfer_get_ep_queue_addr();
+    *ptr = I_WORK_53;
+    r6 = G_BUFFER_STATE_0AA7;
+    ptr = dma_calc_addr_0466(G_SYS_STATUS_PRIMARY);
+    *ptr = r6;
+}
+

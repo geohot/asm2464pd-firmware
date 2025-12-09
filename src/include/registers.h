@@ -308,6 +308,7 @@
 #define REG_UART_MCR            XDATA_REG8(0xC008)
 #define REG_UART_LSR            XDATA_REG8(0xC009)
 #define REG_UART_MSR            XDATA_REG8(0xC00A)
+#define REG_UART_STATUS         XDATA_REG8(0xC00E)  // UART status (bits 0-2 = busy flags)
 
 //=============================================================================
 // Link/PHY Control Registers (0xC200-0xC2FF)

@@ -65,12 +65,15 @@ __idata __at(0x44) uint8_t I_WORK_44;         /* Work variable 0x44 - multiplier
 __idata __at(0x45) uint8_t I_WORK_45;         /* Work variable 0x45 - chain index */
 __idata __at(0x46) uint8_t I_WORK_46;         /* Work variable 0x46 - chain flag */
 __idata __at(0x47) uint8_t I_WORK_47;         /* Work variable 0x47 - product cap */
+__idata __at(0x4D) uint8_t I_FLASH_STATE_4D;  /* Flash state dispatch value */
 __idata __at(0x51) uint8_t I_WORK_51;         /* Work variable 0x51 */
 __idata __at(0x61) uint8_t I_WORK_61;         /* Work variable 0x61 - PCIe txn data byte 0 */
 __idata __at(0x62) uint8_t I_WORK_62;         /* Work variable 0x62 - PCIe txn data byte 1 */
 __idata __at(0x52) uint8_t I_WORK_52;         /* Work variable 0x52 */
 __idata __at(0x53) uint8_t I_WORK_53;         /* Work variable 0x53 */
+__idata __at(0x54) uint8_t I_WORK_54;         /* Work variable 0x54 */
 __idata __at(0x55) uint8_t I_WORK_55;         /* Work variable 0x55 */
+__idata __at(0x56) uint8_t I_WORK_56;         /* Work variable 0x56 */
 __idata __at(0x63) uint8_t I_WORK_63;         /* Work variable 0x63 - EP config high byte */
 __idata __at(0x64) uint8_t I_WORK_64;         /* Work variable 0x64 - EP config low byte */
 __idata __at(0x65) uint8_t I_WORK_65;         /* Work variable 0x65 - EP mode */
@@ -485,6 +488,7 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_PCIE_STATUS_0B18      XDATA_VAR8(0x0B18)  /* PCIe status work */
 #define G_PCIE_STATUS_0B19      XDATA_VAR8(0x0B19)  /* PCIe status flag */
 #define G_PCIE_STATUS_0B1A      XDATA_VAR8(0x0B1A)  /* PCIe status work */
+#define G_STATE_0B1B            XDATA_VAR8(0x0B1B)  /* State variable for protocol dispatch */
 #define G_DMA_WORK_0B1D         XDATA_VAR8(0x0B1D)  /* DMA work byte (r4) */
 #define G_DMA_WORK_0B1E         XDATA_VAR8(0x0B1E)  /* DMA work byte (r5) */
 #define G_DMA_WORK_0B1F         XDATA_VAR8(0x0B1F)  /* DMA work byte (r6) */
