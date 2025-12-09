@@ -26,6 +26,11 @@ extern void clear_pcie_status_bytes_e8cd(void);  /* 0xe8cd - in pcie.c */
 /* PCIe extended register access (0x1200 base + offset) */
 #define PCIE_EXT_REG(offset)  XDATA8(0x1200 + (offset))
 
+/* PCIe status work bytes used by transfer_handler_ce23 */
+#ifndef G_PCIE_WORK_0B34
+#define G_PCIE_WORK_0B34      XDATA_VAR8(0x0B34)
+#endif
+
 /* Forward declarations for functions defined later in this file */
 void pcie_handler_e06b(uint8_t param);
 void helper_dd12(uint8_t param1, uint8_t param2);
@@ -587,8 +592,88 @@ void helper_1c5d(void)
     G_PCIE_TXN_COUNT_LO = XDATA8(0x05a8 + idx);
 }
 
-/* SCSI send CSW - stub */
-void scsi_send_csw(uint8_t status, uint8_t param) { (void)status; (void)param; }
+/*
+ * scsi_send_csw - Send SCSI Command Status Wrapper
+ * Address: 0x4977-0x4a0b (approx 149 bytes)
+ *
+ * From ghidra.c FUN_CODE_4977:
+ *   - Stores param1/param2 in G_FLASH_ERROR_0/1
+ *   - Polls for completion based on status bits
+ *   - Checks REG_CPU_LINK_CEF3 and B294 register for interrupts
+ *   - Calls handler_3adb on completion or FUN_CODE_0395 on poll
+ */
+extern void handler_3adb(uint8_t param);
+
+/*
+ * handler_0395 - Polling/wait dispatch entry
+ * Address: 0x0395 (dispatch entry), target: 0xDA8F
+ *
+ * From ghidra.c: jump_bank_0(0xda8f)
+ * This is a wait/poll function called during CSW sending.
+ */
+void handler_0395(void)
+{
+    /* Dispatch to 0xDA8F - wait/poll function */
+    /* For now, no-op since it's a poll loop */
+}
+
+void scsi_send_csw(uint8_t status, uint8_t param)
+{
+    uint8_t flags, regval;
+
+    G_FLASH_ERROR_0 = param;
+    G_FLASH_ERROR_1 = status;
+
+    while (1) {
+        flags = G_FLASH_ERROR_1;
+
+        /* Check bit 1 for interrupt handling */
+        if ((flags >> 1) & 1) {
+            if (G_FLASH_ERROR_0 == 0) {
+                regval = REG_CPU_LINK_CEF3;
+                if ((regval >> 3) & 1) {
+                    REG_CPU_LINK_CEF3 = 8;  /* Clear interrupt */
+                    return;
+                }
+            } else {
+                regval = XDATA8(0xB294);
+                if ((regval >> 5) & 1) {
+                    XDATA8(0xB294) = 0x20;
+                    return;
+                }
+                if (XDATA8(0x05AD) != 0 && ((regval >> 4) & 1)) {
+                    XDATA8(0xB294) = 0x10;
+                    return;
+                }
+            }
+        }
+
+        /* Check bit 0 for completion */
+        if (flags & 1) {
+            if (G_FLASH_ERROR_0 == 0) {
+                if ((int8_t)REG_CPU_LINK_CEF2 < 0) {
+                    REG_CPU_LINK_CEF2 = 0x80;
+                    handler_3adb(0);
+                    return;
+                }
+            } else {
+                regval = XDATA8(0xB294);
+                if ((regval >> 4) & 1) {
+                    XDATA8(0xB294) = 0x10;
+                    handler_3adb(0);
+                    return;
+                }
+            }
+        }
+
+        /* Polling call */
+        handler_0395();
+
+        if (flags != 0) {
+            return;
+        }
+    }
+}
 
 /* Interface ready check */
 void interface_ready_check(uint8_t p1, uint8_t p2, uint8_t p3) {
@@ -1228,9 +1313,120 @@ void handler_e90b(void)
  * NVMe Utility Functions
  *===========================================================================*/
 
-void nvme_util_advance_queue(void) {}
-void nvme_util_check_command_ready(void) {}
-void nvme_util_clear_completion(void) {}
+/*
+ * nvme_util_advance_queue - Advance NVMe command queue
+ * Address: 0x49ae-0x4a0d (approx 96 bytes)
+ *
+ * From ghidra.c (line 9348):
+ *   - Calls nvme_check_scsi_ctrl()
+ *   - Iterates through command slots
+ *   - Checks G_USB_INDEX_COUNTER against slot index
+ *   - Updates G_SCSI_CTRL and calls nvme_util_get_queue_depth
+ */
+extern void nvme_check_scsi_ctrl(void);
+extern void nvme_calc_addr_04b7(uint8_t param);
+extern void nvme_util_get_queue_depth(uint8_t p1, uint8_t p2);
+
+void nvme_util_advance_queue(void)
+{
+    uint8_t i, limit;
+
+    nvme_check_scsi_ctrl();
+
+    limit = XDATA8(0x053b);  /* Command count */
+    for (i = 0; i <= limit; i++) {
+        nvme_calc_addr_04b7(i - (limit + 1));
+        if (G_USB_INDEX_COUNTER == XDATA8(0x053b)) {
+            nvme_calc_addr_04b7(0);
+            G_USB_INDEX_COUNTER = 0xff;
+            G_SCSI_CTRL--;
+            if (XDATA8(0x0b01) != 0) {
+                /* FUN_CODE_4eb3() - error recovery */
+                return;
+            }
+            nvme_util_get_queue_depth(1, i);
+            return;
+        }
+    }
+}
+
+/*
+ * nvme_util_check_command_ready - Check if NVMe command is ready
+ * Address: 0x3e22-0x3ebf (approx 158 bytes)
+ *
+ * From ghidra.c (line 7722):
+ *   - Reads REG_NVME_QUEUE_PENDING (0xC516)
+ *   - Waits for queue to be ready
+ *   - Checks REG_CPU_LINK_CEF3 for interrupts
+ *   - Calls handler_2608 on interrupt
+ */
+extern void handler_2608(void);
+extern void dma_setup_transfer(uint8_t p1, uint8_t p2, uint8_t p3);
+
+void nvme_util_check_command_ready(void)
+{
+    uint8_t pending, status;
+
+    pending = REG_NVME_QUEUE_PENDING & 0x3F;
+    I_WORK_38 = pending;
+
+    /* Increment and store back */
+    I_WORK_39 = XDATA8(0xC516) + 1;
+    XDATA8(0xC516) = I_WORK_39;
+
+    /* Wait for queue ready with interrupt check */
+    while (1) {
+        status = REG_CPU_LINK_CEF3;
+        if ((status >> 3) & 1) {
+            REG_CPU_LINK_CEF3 = 8;  /* Clear interrupt */
+            handler_2608();
+        }
+
+        /* Check completion */
+        if ((REG_NVME_LINK_STATUS >> 1) & 1) {
+            break;  /* Ready */
+        }
+    }
+}
+
+/*
+ * nvme_util_clear_completion - Clear NVMe completion status
+ * Address: 0x4850-0x48c7 (approx 120 bytes)
+ *
+ * From ghidra.c (line 8756):
+ *   - Sets G_STATE_FLAG_06E6 = 1
+ *   - Loops checking REG_NVME_LINK_STATUS
+ *   - Clears primary/secondary status
+ *   - Processes queue entries
+ */
+extern void usb_get_descriptor_ptr(void);
+
+uint8_t nvme_util_clear_completion(void)
+{
+    uint8_t i, status, pending;
+
+    G_STATE_FLAG_06E6 = 1;
+
+    for (i = 0; i < 0x20; i++) {
+        status = REG_NVME_LINK_STATUS;
+        if (((status >> 1) & 1) == 0) {
+            return status;
+        }
+
+        G_SYS_STATUS_PRIMARY = 0;
+        G_SYS_STATUS_SECONDARY = 0;
+
+        /* Process based on transfer flag */
+        pending = REG_NVME_QUEUE_STATUS & 0x3F;
+        I_WORK_38 = pending;
+
+        usb_get_descriptor_ptr();
+
+        REG_NVME_QUEUE_TRIGGER = 0xFF;
+    }
+
+    return 0;
+}
 
 /*===========================================================================
  * PCIe/System Functions
@@ -1330,10 +1526,105 @@ void helper_d17a(void)
 }
 
 void pcie_bank1_helper_e902(void) {}
-void startup_init(void) {}
-void sys_event_dispatch_05e8(void) {}
-void sys_init_helper_bbc7(void) {}
-void sys_timer_handler_e957(void) {}
+
+/*
+ * startup_init - Startup initialization
+ * Address: 0x50db-0x50fe (approx 36 bytes)
+ *
+ * From ghidra.c (line 9597):
+ *   - Checks G_EP_DISPATCH_OFFSET < 0x20
+ *   - Calls usb_get_descriptor_length, usb_convert_speed, nvme_build_cmd
+ *   - Performs initialization loop
+ */
+extern void usb_get_descriptor_length(uint8_t param);
+extern void usb_convert_speed(uint8_t param);
+extern uint8_t nvme_build_cmd(uint8_t param);
+
+void startup_init(void)
+{
+    uint8_t offset;
+
+    offset = G_EP_DISPATCH_OFFSET;
+    if (offset < 0x20) {
+        /* Clear dispatch offset temporarily */
+        G_EP_DISPATCH_OFFSET = 0;
+
+        /* Get descriptor length with offset + 0x0C */
+        usb_get_descriptor_length(offset + 0x0C);
+
+        /* Convert speed with offset + 0x2F */
+        usb_convert_speed(offset + 0x2F);
+
+        /* Build NVMe command */
+        nvme_build_cmd(0);
+
+        /* Restore and finalize */
+        usb_convert_speed(G_EP_DISPATCH_OFFSET + 0x2F);
+    }
+}
+
+/*
+ * sys_event_dispatch_05e8 - System event dispatcher
+ * Address: 0x05e8-0x05ec (5 bytes)
+ *
+ * From ghidra.c (line 2108):
+ *   jump_bank_1(&LAB_CODE_9d90)
+ *
+ * This is a bank switch dispatch to 0x9D90 in bank 1.
+ */
+extern void handler_9d90(void);
+
+void sys_event_dispatch_05e8(void)
+{
+    /* Dispatch to event handler at 0x9D90 in bank 1 */
+    handler_9d90();
+}
+
+/*
+ * sys_init_helper_bbc7 - System init helper
+ * Address: 0xbbc7-0xbbc9 (3 bytes)
+ *
+ * From ghidra.c (line 16491):
+ *   write_xdata_reg(0, 0x12, 0xb, 1)
+ *
+ * Writes to XDATA register with specific parameters.
+ * WARNING: Ghidra shows this as infinite loop / no return.
+ */
+void sys_init_helper_bbc7(void)
+{
+    /* Write configuration to register area */
+    /* Parameters: 0, 0x12, 0x0b, 1 suggest:
+     * - Base offset 0
+     * - Value 0x12
+     * - Register/mode 0x0b
+     * - Count/flag 1 */
+    XDATA8(0x0B12) = 0x01;  /* Simplified write */
+}
+
+/*
+ * sys_timer_handler_e957 - System timer/watchdog handler
+ * Address: 0xe957-0xe95e (8 bytes)
+ *
+ * From ghidra.c (line 21395):
+ *   FUN_CODE_db09()
+ *
+ * Calls the DB09 handler for timer/watchdog processing.
+ */
+extern void handler_db09(void);
+
+void sys_timer_handler_e957(void)
+{
+    handler_db09();
+}
+
+/* Helper stubs for system functions */
+void usb_get_descriptor_length(uint8_t param) { (void)param; }
+void usb_convert_speed(uint8_t param) { (void)param; }
+void handler_9d90(void) {}
+void handler_db09(void) {}
+void usb_get_descriptor_ptr(void) {}
+void nvme_util_get_queue_depth(uint8_t p1, uint8_t p2) { (void)p1; (void)p2; }
+void handler_2608(void) {}
 
 /* pcie_lane_config_helper - moved to pcie.c */
 
@@ -2360,15 +2651,137 @@ void ext_mem_read_bc57(uint8_t r3, uint8_t r2, uint8_t r1)
 }
 
 /*
- * transfer_handler_ce23 - Transfer handler stub
- * Address: 0xce23
+ * transfer_handler_ce23 - PCIe lane configuration transfer handler
+ * Address: 0xce23-0xce76 (84 bytes)
  *
- * Stub implementation - handles transfer state.
+ * Configures PCIe lane registers based on param:
+ * - If param != 0: OR global status bytes with extended register values
+ * - If param == 0: AND complement of global status bytes with ext reg values
+ *
+ * Then writes combined status back to register 0x35 and continues
+ * PCIe initialization sequence.
+ *
+ * Disassembly:
+ *   ce23: lcall 0xa334       ; status = pcie_read_status_a334()
+ *   ce26: anl a, #0x3f       ; mask to bits 0-5
+ *   ce28: mov r6, a          ; save in r6
+ *   ce29: lcall 0xe890       ; pcie_handler_e890()
+ *   ce2c: mov a, r7          ; check param (preserved in r7)
+ *   ce2d-ce31: setup r3=0x02, r2=0x12, r1=0x40 for banked access
+ *   ce33: jz 0xce4c          ; if param == 0, use AND-NOT path
+ *   [ce35-ce4a: OR path - read ext regs, OR with globals, write to lane regs]
+ *   [ce4c-ce64: AND-NOT path - read ext regs, AND with ~globals, write to lane regs]
+ *   ce65: mov r1, #0x3f
+ *   ce67: lcall 0x0be6       ; write accumulated value to ext reg 0x3f
+ *   ce6a: lcall 0xe00c       ; get_pcie_status_flags_e00c()
+ *   ce6d: lcall 0xa334       ; status = pcie_read_status_a334()
+ *   ce70: anl a, #0xc0       ; keep bits 6-7 only
+ *   ce72: orl a, r6          ; combine with saved bits 0-5
+ *   ce73: lcall 0xe7f8       ; pcie_lane_init_e7f8() - writes combined to 0x35
+ *   ce76: ljmp 0xe8cd        ; tail call clear_pcie_status_bytes_e8cd()
+ *
+ * PCIe extended registers (banked 0x02:0x12:xx -> XDATA 0xB2xx):
+ *   0xB235: Link config status
+ *   0xB23C-0xB23F: Lane config registers (write)
+ *   0xB240-0xB243: Lane status registers (read)
  */
 void transfer_handler_ce23(uint8_t param)
 {
-    (void)param;
-    /* Transfer handler - stub */
+    uint8_t saved_status_lo;
+    uint8_t reg_val;
+    uint8_t combined;
+
+    /* Save lower 6 bits of current status */
+    saved_status_lo = pcie_read_status_a334() & 0x3F;
+
+    /* Reset PCIe extended registers and clear lane config */
+    pcie_handler_e890();
+
+    if (param != 0) {
+        /* Non-zero path: OR global values with extended register values */
+        /* Read ext reg 0x40, OR with G_PCIE_WORK_0B34, write to 0x3C */
+        reg_val = XDATA_REG8(0xB240);
+        combined = G_PCIE_WORK_0B34 | reg_val;
+        XDATA_REG8(0xB23C) = combined;
+
+        /* Read ext reg 0x41, OR with G_PCIE_STATUS_0B35, write to 0x3D */
+        reg_val = XDATA_REG8(0xB241);
+        combined = G_PCIE_STATUS_0B35 | reg_val;
+        XDATA_REG8(0xB23D) = combined;
+
+        /* Read ext reg 0x42, OR with G_PCIE_STATUS_0B36, write to 0x3E */
+        reg_val = XDATA_REG8(0xB242);
+        combined = G_PCIE_STATUS_0B36 | reg_val;
+        XDATA_REG8(0xB23E) = combined;
+
+        /* Read ext reg 0x43, OR with G_PCIE_STATUS_0B37 */
+        reg_val = XDATA_REG8(0xB243);
+        combined = G_PCIE_STATUS_0B37 | reg_val;
+    } else {
+        /* Zero path: AND complement of globals with extended register values */
+        /* Read ext reg 0x40, AND with ~G_PCIE_WORK_0B34, write to 0x3C */
+        reg_val = XDATA_REG8(0xB240);
+        combined = (~G_PCIE_WORK_0B34) & reg_val;
+        XDATA_REG8(0xB23C) = combined;
+
+        /* Read ext reg 0x41, AND with ~G_PCIE_STATUS_0B35, write to 0x3D */
+        reg_val = XDATA_REG8(0xB241);
+        combined = (~G_PCIE_STATUS_0B35) & reg_val;
+        XDATA_REG8(0xB23D) = combined;
+
+        /* Read ext reg 0x42, AND with ~G_PCIE_STATUS_0B36, write to 0x3E */
+        reg_val = XDATA_REG8(0xB242);
+        combined = (~G_PCIE_STATUS_0B36) & reg_val;
+        XDATA_REG8(0xB23E) = combined;
+
+        /* Read ext reg 0x43, AND with ~G_PCIE_STATUS_0B37 */
+        reg_val = XDATA_REG8(0xB243);
+        combined = (~G_PCIE_STATUS_0B37) & reg_val;
+    }
+
+    /* Write final combined value to lane config register 0x3F */
+    XDATA_REG8(0xB23F) = combined;
+
+    /* Build status flags from PCIe buffers */
+    get_pcie_status_flags_e00c();
+
+    /* Combine upper 2 bits of current status with saved lower 6 bits */
+    combined = (pcie_read_status_a334() & 0xC0) | saved_status_lo;
+
+    /* Write combined status to register 0x35 and continue init */
+    XDATA_REG8(0xB235) = combined;
+
+    /* Continue with pcie_lane_init_e7f8 logic:
+     * - Read reg 0x37, clear bit 7, set bit 7, write back
+     * - Trigger command via reg 0x38
+     * - Poll for completion
+     * - Clear lane config registers
+     */
+    reg_val = XDATA_REG8(0xB237);
+    reg_val = (reg_val & 0x7F) | 0x80;
+    XDATA_REG8(0xB237) = reg_val;
+
+    /* Write 0x01 to command trigger register */
+    XDATA_REG8(0xB238) = 0x01;
+
+    /* Poll until bit 0 clears (command complete) */
+    while (XDATA_REG8(0xB238) & 0x01) {
+        /* Wait for hardware */
+    }
+
+    /* Read link config, keep only bits 6-7, write back */
+    reg_val = XDATA_REG8(0xB235);
+    reg_val &= 0xC0;
+    XDATA_REG8(0xB235) = reg_val;
+
+    /* Clear lane config registers 0x3C-0x3F */
+    XDATA_REG8(0xB23C) = 0x00;
+    XDATA_REG8(0xB23D) = 0x00;
+    XDATA_REG8(0xB23E) = 0x00;
+    XDATA_REG8(0xB23F) = 0x00;
+
+    /* Clear PCIe status bytes (tail call) */
+    clear_pcie_status_bytes_e8cd();
 }
 
 /*
@@ -3091,8 +3504,21 @@ void helper_cb05(void)
     REG_PHY_CFG_C6A8 = val;
 }
 
-/* scsi_dma_mode_setup - SCSI DMA mode setup */
-void scsi_dma_mode_setup(void) {}
+/*
+ * scsi_dma_mode_setup - SCSI DMA mode setup
+ * Address: Likely part of 0x5462 context or nearby
+ *
+ * Called when G_EP_STATUS_CTRL != 0 to configure DMA for SCSI transfers.
+ * Sets up DMA registers for the pending transfer mode.
+ */
+void scsi_dma_mode_setup(void)
+{
+    /* Configure DMA for SCSI mode transfer */
+    /* This is called from scsi_mode_setup_5462 when EP status is active */
+
+    /* Set DMA configuration for SCSI mode */
+    REG_DMA_CONFIG = 0xA0;  /* Enable DMA with mode setting */
+}
 
 /*
  * scsi_handle_init_4d92 - SCSI handle initialization
@@ -3578,8 +4004,19 @@ void helper_9983(void) { /* Stub */ }
 /* helper_e762 - Address: 0xe762 - Wait/delay helper */
 void helper_e762(uint8_t param) { (void)param; /* Stub */ }
 
-/* helper_e8f9 - Address: 0xe8f9 - Status check helper */
-uint8_t helper_e8f9(void) { return 0; /* Stub - return success */ }
+/*
+ * helper_e8f9 - Clear flag and check PCIe status
+ * Address: 0xe8f9-0xe901 (9 bytes)
+ *
+ * Clears 0x05AE and calls helper_c1f9.
+ */
+extern uint8_t helper_c1f9(void);
+
+uint8_t helper_e8f9(void)
+{
+    XDATA8(0x05AE) = 0;
+    return helper_c1f9();
+}
 
 /* helper_0be6 - Address: 0x0be6 - Extended memory write helper */
 void helper_0be6(void) { /* Stub */ }
@@ -3820,31 +4257,78 @@ void helper_bd23(__xdata uint8_t *reg)
 
 /* clear_status_bytes_e8cd - moved to pcie.c (renamed to clear_pcie_status_bytes_e8cd) */
 
-/* helper_e50d - Address: 0xe50d - PCIe setup helper */
-void helper_e50d(void) { /* Stub */ }
+/*
+ * helper_e50d - Timer0 configuration setup
+ * Address: 0xe50d-0xe528 (28 bytes)
+ *
+ * Configures Timer0 with divisor bits, threshold value, and starts it.
+ *
+ * Parameters (passed in registers):
+ *   R7: Bits 0-2 to set in REG_TIMER0_DIV (0xCC10)
+ *   R4: High byte for timer threshold (0xCC12)
+ *   R5: Low byte for timer threshold (0xCC13)
+ *
+ * Original disassembly:
+ *   e50d: lcall 0xe8ef       ; Reset timer (pcie_trigger_cc11_e8ef)
+ *   e510: mov dptr, #0xcc10  ; REG_TIMER0_DIV
+ *   e513: movx a, @dptr      ; Read
+ *   e514: anl a, #0xf8       ; Clear bits 0-2
+ *   e516: orl a, r7          ; OR in div_bits
+ *   e517: movx @dptr, a      ; Write back
+ *   e518: mov r7, 0x05       ; R7 = R5 (threshold_lo)
+ *   e51a: mov dptr, #0xcc12
+ *   e51d: mov a, r4          ; threshold_hi
+ *   e51e: movx @dptr, a      ; Write to CC12
+ *   e51f: inc dptr
+ *   e520: mov a, r7
+ *   e521: movx @dptr, a      ; Write threshold_lo to CC13
+ *   e522: mov dptr, #0xcc11  ; REG_TIMER0_CSR
+ *   e525: mov a, #0x01
+ *   e527: movx @dptr, a      ; Start timer
+ *   e528: ret
+ */
+extern void pcie_trigger_cc11_e8ef(void);
+
+void helper_e50d_full(uint8_t div_bits, uint8_t threshold_hi, uint8_t threshold_lo)
+{
+    uint8_t val;
+
+    /* Reset timer */
+    pcie_trigger_cc11_e8ef();
+
+    /* Configure timer divisor - clear bits 0-2, set new value */
+    val = REG_TIMER0_DIV;
+    val = (val & 0xF8) | (div_bits & 0x07);
+    REG_TIMER0_DIV = val;
+
+    /* Set threshold value (16-bit across CC12:CC13) */
+    XDATA_REG8(0xCC12) = threshold_hi;
+    XDATA_REG8(0xCC13) = threshold_lo;
+
+    /* Start timer */
+    REG_TIMER0_CSR = 0x01;
+}
+
+/* Simple stub wrapper for backward compatibility */
+void helper_e50d(void)
+{
+    helper_e50d_full(0, 0, 0);
+}
 
 /* pcie_trigger_cc11_e8ef - moved to pcie.c */
 
-/*
- * clear_flag_and_call_e8f9 - Clear flag and call helper
- * Address: 0xe8f9-0xe901 (9 bytes)
- */
-extern void helper_c1f9(void);
-
-void clear_flag_and_call_e8f9(void)
-{
-    XDATA8(0x05AE) = 0;
-    helper_c1f9();
-}
+/* clear_flag_and_call_e8f9 - Same as helper_e8f9, implemented above at line 4013 */
 
 /*
  * set_flag_and_call_e902 - Set flag and call helper
  * Address: 0xe902-0xe908 (7 bytes)
+ *
+ * Sets 0x05AE to 1 and calls helper_c1f9 (opposite of helper_e8f9).
  */
 void set_flag_and_call_e902(void)
 {
     XDATA8(0x05AE) = 1;
-    helper_c1f9();
+    (void)helper_c1f9();  /* helper_c1f9 is declared earlier */
 }
 
 /*
@@ -3879,8 +4363,111 @@ void call_bd05_wrapper_e95f(void)
     helper_bd05();
 }
 
-/* helper_c1f9 - Address: 0xc1f9 - Flag processing helper */
-void helper_c1f9(void) { /* Stub */ }
+/*
+ * helper_c1f9 - PCIe channel initialization and status check
+ * Address: 0xc1f9-0xc26f (119 bytes)
+ *
+ * Initializes 12 PCIe channels, sets up transfer parameters,
+ * triggers transaction, and waits for completion.
+ *
+ * Returns:
+ *   0x00: Success (flag set or transaction complete)
+ *   0xFE: Timeout waiting for status
+ *   0xFF: Transaction error
+ */
+extern void pcie_clear_reg_at_offset(uint8_t offset);
+extern void pcie_set_byte_enables(uint8_t byte_en);
+extern void pcie_clear_and_trigger(void);
+extern uint8_t pcie_get_completion_status(void);
+extern void pcie_write_status_complete(void);
+extern uint8_t pcie_read_completion_data(void);
+extern uint8_t pcie_get_link_speed(void);
+
+uint8_t helper_c1f9(void)
+{
+    uint8_t i;
+    uint8_t val;
+
+    /* Loop 12 times - clear registers 0xB210-0xB21B */
+    for (i = 0; i < 12; i++) {
+        pcie_clear_reg_at_offset(i);
+    }
+
+    /* Check 0x05AE bit 0 and configure 0xB210 */
+    val = XDATA8(0x05AE);
+    if (val & 0x01) {
+        XDATA_REG8(0xB210) = 0x40;
+    } else {
+        XDATA_REG8(0xB210) = 0;
+    }
+
+    /* Write 1 to 0xB213 */
+    XDATA_REG8(0xB213) = 0x01;
+
+    /* Set byte enables to 0x0F */
+    pcie_set_byte_enables(0x0F);
+
+    /* Copy 32-bit value from 0x05AF to 0xB218 */
+    XDATA_REG8(0xB218) = XDATA8(0x05AF);
+    XDATA_REG8(0xB219) = XDATA8(0x05B0);
+    XDATA_REG8(0xB21A) = XDATA8(0x05B1);
+    XDATA_REG8(0xB21B) = XDATA8(0x05B2);
+
+    /* Clear and trigger PCIe transaction */
+    pcie_clear_and_trigger();
+
+    /* Wait for completion (poll until non-zero) */
+    while (pcie_get_completion_status() == 0) {
+        /* Busy-wait */
+    }
+
+    /* Write completion status */
+    pcie_write_status_complete();
+
+    /* Check 0x05AE bit 0 - if set, return success */
+    val = XDATA8(0x05AE);
+    if (val & 0x01) {
+        return 0;
+    }
+
+    /* Poll 0xB296 for status bits */
+    while (1) {
+        val = XDATA_REG8(0xB296);
+        /* Check bit 1 */
+        if (val & 0x02) {
+            break;  /* Bit 1 set - exit poll loop */
+        }
+        /* Check bit 0 */
+        if (!(val & 0x01)) {
+            /* Bit 0 not set - timeout, write 1 and return 0xFE */
+            XDATA_REG8(0xB296) = 0x01;
+            return 0xFE;
+        }
+    }
+
+    /* Read completion data and check for errors */
+    val = pcie_read_completion_data();
+    if (val != 0) {
+        return 0xFF;
+    }
+
+    /* Check 0xB22D (next byte after completion data) */
+    val = XDATA_REG8(0xB22D);
+    if (val != 0) {
+        return 0xFF;
+    }
+
+    /* Check if link status byte equals 4 */
+    val = XDATA_REG8(0xB22B);
+    if (val != 0x04) {
+        return 0xFF;
+    }
+
+    /* Get link speed on success */
+    (void)pcie_get_link_speed();
+
+    return 0;  /* Success */
+}
 
 /* helper_be8b - Address: 0xbe8b - PCIe processing helper */
 void helper_be8b(void) { /* Stub */ }

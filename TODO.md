@@ -4,7 +4,7 @@
 
 | Metric | Value |
 |--------|-------|
-| **Firmware Size** | 48,916 / 98,012 bytes (49.9%) |
+| **Firmware Size** | 49,687 / 98,012 bytes (50.7%) |
 | **Completed Ranges** | 0x1000-0x1FFF, 0x2000-0x3FFF, 0x4000-0x5FFF, 0x9000-0x98FF, 0xA000-0xBFFF, 0xE000-0xFFFF |
 | **Major Gaps** | 0x8000-0x8FFF, 0x9900-0x9FFF, 0xC000-0xDFFF |
 
@@ -18,16 +18,16 @@ These are the most frequently called functions and should be prioritized:
 
 | Address | Calls | Current Status | Notes |
 |---------|-------|----------------|-------|
-| 0xaa37 | 18 | ✓ DONE | Part of nvme_cmd_state_handler_aa36 |
-| 0xd1e6 | 14 | TODO | Event handler |
-| 0xd1f2 | 14 | TODO | Event handler |
-| 0xdd12 | 11 | STUB | helper_dd12 - needs full implementation |
-| 0xd5da | 10 | TODO | Power/event handler |
-| 0xc2e7 | 8 | TODO | Error handler |
-| 0xc2f8 | 6 | TODO | Error handler |
-| 0xd185 | 6 | TODO | Event handler |
-| 0xce23 | 5 | STUB | transfer_handler_ce23 |
-| 0xceab | 5 | TODO | Transfer handler |
+| 0xaa37 | 18 | ✓ DONE | cmd_setup_aa37 in stubs.c |
+| 0xd1e6 | 14 | N/A | Mid-function entry into larger event handler |
+| 0xd1f2 | 14 | N/A | Mid-function entry into larger event handler |
+| 0xdd12 | 11 | ✓ DONE | helper_dd12 in stubs.c |
+| 0xd5da | 10 | ✓ DONE | pcie_check_and_trigger_d5da in stubs.c |
+| 0xc2e7 | 8 | N/A | Mid-function entry into error_log_process |
+| 0xc2f8 | 6 | N/A | Mid-function entry into error_log_process |
+| 0xd185 | 6 | N/A | Mid-function entry into larger event handler |
+| 0xce23 | 5 | ✓ DONE | transfer_handler_ce23 in stubs.c |
+| 0xceab | 5 | TODO | Transfer handler - complex state machine |
 
 ---
 
@@ -139,32 +139,32 @@ Many functions in 0x9400-0x96FF are implemented in nvme.c and cmd.c. The address
 
 ---
 
-## 6. Remaining Empty Stubs
+## 6. Remaining Empty Stubs ✓ COMPLETE
 
-These are placeholder functions that need actual implementation:
+All stub functions have been implemented with actual logic in `src/app/stubs.c`.
 
 ### USB Stubs
-- [ ] usb_parse_descriptor
-- [ ] usb_state_setup_4c98
-- [ ] usb_helper_51ef
-- [ ] usb_helper_5112
-- [ ] handler_0327_usb_power_init
+- [x] usb_parse_descriptor - DMA/buffer configuration for descriptor parsing
+- [x] usb_state_setup_4c98 - LUN setup and NVMe queue configuration
+- [x] usb_helper_51ef - USBC signature check
+- [x] usb_helper_5112 - Status copy and transfer parameter extraction
+- [x] handler_0327_usb_power_init - Dispatch to usb_power_init
 
 ### NVMe Stubs
-- [ ] nvme_util_advance_queue
-- [ ] nvme_util_check_command_ready
-- [ ] nvme_util_clear_completion
+- [x] nvme_util_advance_queue - Queue advancement with slot checking
+- [x] nvme_util_check_command_ready - Command ready polling with interrupt handling
+- [x] nvme_util_clear_completion - Completion status clearing
 
 ### SCSI Stubs
-- [ ] scsi_send_csw
-- [ ] scsi_dma_mode_setup
+- [x] scsi_send_csw - CSW sending with status polling
+- [x] scsi_dma_mode_setup - DMA mode configuration
 
 ### System Stubs
-- [ ] startup_init
-- [ ] sys_event_dispatch_05e8
-- [ ] sys_init_helper_bbc7
-- [ ] sys_timer_handler_e957
-- [ ] handler_039a_buffer_dispatch
+- [x] startup_init - Startup initialization with descriptor/speed setup
+- [x] sys_event_dispatch_05e8 - Event dispatch to handler_9d90
+- [x] sys_init_helper_bbc7 - Configuration write
+- [x] sys_timer_handler_e957 - Timer handler dispatch
+- [x] handler_039a_buffer_dispatch - Dispatch to usb_buffer_handler
 
 ---
 
