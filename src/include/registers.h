@@ -239,6 +239,7 @@
 #define REG_PCIE_TRIGGER        XDATA_REG8(0xB254)
 #define REG_PCIE_PM_ENTER       XDATA_REG8(0xB255)
 #define REG_PCIE_COMPL_STATUS   XDATA_REG8(0xB284)
+#define REG_PCIE_POWER_B294     XDATA_REG8(0xB294)  /* PCIe power control */
 // PCIe status registers (0xB296-0xB298)
 #define REG_PCIE_STATUS         XDATA_REG8(0xB296)
 #define   PCIE_STATUS_ERROR       0x01  // Bit 0: Error flag
@@ -246,6 +247,7 @@
 #define   PCIE_STATUS_BUSY        0x04  // Bit 2: Busy flag
 #define REG_PCIE_TUNNEL_CFG     XDATA_REG8(0xB298)  // TLP control (bit 4 = tunnel enable)
 #define   PCIE_TLP_CTRL_TUNNEL    0x10  // Bit 4: Tunnel enable
+#define REG_PCIE_CTRL_B2D5      XDATA_REG8(0xB2D5)  /* PCIe control */
 
 // PCIe Tunnel Control (0xB401-0xB404)
 #define REG_PCIE_TUNNEL_CTRL    XDATA_REG8(0xB401)  // PCIe tunnel control
@@ -287,6 +289,7 @@
 #define REG_TUNNEL_LINK_STATE   XDATA_REG8(0xB430)  // Tunnel link state (bit 0 = up)
 #define REG_POWER_CTRL_B432     XDATA_REG8(0xB432)  // Power control for lanes
 #define REG_PCIE_LINK_STATE     XDATA_REG8(0xB434)  // PCIe link state (low nibble = lane mask)
+#define REG_POWER_CTRL_B455     XDATA_REG8(0xB455)  /* Power control */
 #define REG_POWER_LANE_B404     REG_PCIE_LINK_PARAM_B404  // Alias for power lane config
 #define   PCIE_LINK_STATE_MASK    0x0F  // Bits 0-3: PCIe link state/lane mask
 #define REG_PCIE_LANE_CONFIG    XDATA_REG8(0xB436)  // PCIe lane configuration

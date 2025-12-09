@@ -1023,16 +1023,16 @@ void system_init_from_flash(void)
                     G_FLASH_CONFIG_VALID = 1;
 
                     /* Parse vendor strings from 0x7004 if valid */
-                    if (XDATA8(0x7004) != 0xFF) {
+                    if (G_FLASH_BUF_7004 != 0xFF) {
                         /* Copy vendor string data */
-                        for (i = 0; XDATA8(0x7004 + i) != 0xFF && i < 0x28; i++) {
+                        for (i = 0; (&G_FLASH_BUF_7004)[i] != 0xFF && i < 0x28; i++) {
                             uart_write_byte_daeb();
                         }
                     }
 
                     /* Parse serial strings from 0x702C if valid */
-                    if (XDATA8(0x702C) != 0xFF) {
-                        for (i = 0; XDATA8(0x702C + i) != 0xFF && i < 0x28; i++) {
+                    if (G_FLASH_BUF_702C != 0xFF) {
+                        for (i = 0; (&G_FLASH_BUF_702C)[i] != 0xFF && i < 0x28; i++) {
                             uart_write_daff();
                         }
                     }
@@ -1041,41 +1041,41 @@ void system_init_from_flash(void)
                     for (i = 0; i < 6; i++) {
                         tmp = uart_read_byte_dace(0x54);
                         if (tmp == 0xFF) break;
-                        XDATA8(0x0A3C + i) = uart_read_byte_dace(0x54);
+                        (&G_FLASH_CFG_0A41)[-5 + i] = uart_read_byte_dace(0x54);
                         if (i == 5) {
                             /* Mask lower nibble of 0x0A41 */
-                            XDATA8(0x0A41) = XDATA8(0x0A41) & 0x0F;
+                            G_FLASH_CFG_0A41 = G_FLASH_CFG_0A41 & 0x0F;
                         }
                     }
 
                     /* Parse device IDs from 0x705C-0x705D */
-                    if (XDATA8(0x705C) != 0xFF || XDATA8(0x705D) != 0xFF) {
-                        XDATA8(0x0A42) = XDATA8(0x705C);
-                        XDATA8(0x0A43) = XDATA8(0x705D);
+                    if (G_FLASH_BUF_705C != 0xFF || G_FLASH_BUF_705D != 0xFF) {
+                        G_FLASH_CFG_0A42 = G_FLASH_BUF_705C;
+                        G_FLASH_CFG_0A43 = G_FLASH_BUF_705D;
                     }
 
                     /* Parse additional device info from 0x705E-0x705F */
-                    if (XDATA8(0x705E) == 0xFF && XDATA8(0x705F) == 0xFF) {
+                    if (G_FLASH_BUF_705E == 0xFF && G_FLASH_BUF_705F == 0xFF) {
                         /* Use defaults from 0x0A57-0x0A58 */
-                        XDATA8(0x0A44) = XDATA8(0x0A57);
-                        XDATA8(0x0A45) = XDATA8(0x0A58);
+                        G_FLASH_CFG_0A44 = G_CMD_CTRL_PARAM;
+                        G_FLASH_CFG_0A45 = G_CMD_TIMEOUT_PARAM;
                     } else {
-                        XDATA8(0x0A44) = XDATA8(0x705E);
-                        XDATA8(0x0A45) = XDATA8(0x705F);
+                        G_FLASH_CFG_0A44 = G_FLASH_BUF_705E;
+                        G_FLASH_CFG_0A45 = G_FLASH_BUF_705F;
                     }
 
                     /* Parse mode configuration from 0x7059-0x705A */
-                    tmp = XDATA8(0x7059);
+                    tmp = G_FLASH_BUF_7059;
                     G_FLASH_MODE_1 = (tmp >> 4) & 0x03;  /* Bits 5:4 */
                     G_FLASH_MODE_2 = (tmp >> 6) & 0x01;  /* Bit 6 */
                     G_FLASH_MODE_3 = tmp >> 7;          /* Bit 7 */
 
-                    tmp = XDATA8(0x705A);
+                    tmp = G_FLASH_BUF_705A;
                     G_FLASH_MODE_4 = tmp & 0x03;        /* Bits 1:0 */
                     G_FLASH_MODE_5 = (tmp >> 2) & 0x01; /* Bit 2 */
 
                     /* Set initialization flag */
-                    XDATA8(0x07F7) = XDATA8(0x07F7) | 0x04;
+                    G_SYS_FLAGS_07F7 = G_SYS_FLAGS_07F7 | 0x04;
 
                     goto set_event_flags;
                 }
@@ -1090,17 +1090,17 @@ set_event_flags:
     mode_val = G_FLASH_MODE_1;
     if (mode_val == 3) {
         G_EVENT_FLAGS = 0x87;
-        XDATA8(0x09FB) = 3;
+        G_FLASH_STATUS_09FB = 3;
     } else if (mode_val == 2) {
         G_EVENT_FLAGS = 0x06;
-        XDATA8(0x09FB) = 1;
+        G_FLASH_STATUS_09FB = 1;
     } else {
         if (mode_val == 1) {
             G_EVENT_FLAGS = 0x85;
         } else {
             G_EVENT_FLAGS = 0xC1;
         }
-        XDATA8(0x09FB) = 2;
+        G_FLASH_STATUS_09FB = 2;
     }
 
     /* Check flash ready status bit 5 */

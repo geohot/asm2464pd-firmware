@@ -2336,7 +2336,7 @@ uint8_t scsi_xdata_read_5046(uint8_t low_addr)
 uint8_t scsi_xdata_setup_504f(void)
 {
     /* mov dptr, #0x0a84; movx a, @dptr; add a, #0x0c */
-    uint8_t val = XDATA8(0x0a84);
+    uint8_t val = G_ACTION_PARAM_0A84;
     uint8_t sum = val + 0x0c;
     /* Returns 0xFF if overflow, 0x00 if no overflow */
     return (sum < val) ? 0xFF : 0x00;
@@ -2438,9 +2438,9 @@ void scsi_init_slot_53d4(void)
     REG_NVME_LINK_STATUS = 0xFF;
 
     /* Read, increment, mask and write back */
-    val = XDATA8(0x012B);
+    val = G_WORK_012B;
     val = (val + 1) & 0x1F;
-    XDATA8(0x012B) = val;
+    G_WORK_012B = val;
 
     /* Jump to dispatch_041c - represented as call */
     dispatch_041c(val);
@@ -2566,13 +2566,13 @@ void scsi_send_csw(uint8_t status, uint8_t param)
                     return;
                 }
             } else {
-                regval = XDATA8(0xB294);
+                regval = REG_PCIE_POWER_B294;
                 if ((regval >> 5) & 1) {
-                    XDATA8(0xB294) = 0x20;
+                    REG_PCIE_POWER_B294 = 0x20;
                     return;
                 }
-                if (XDATA8(0x05AD) != 0 && ((regval >> 4) & 1)) {
-                    XDATA8(0xB294) = 0x10;
+                if (G_DMA_WORK_05AD != 0 && ((regval >> 4) & 1)) {
+                    REG_PCIE_POWER_B294 = 0x10;
                     return;
                 }
             }
@@ -2587,9 +2587,9 @@ void scsi_send_csw(uint8_t status, uint8_t param)
                     return;
                 }
             } else {
-                regval = XDATA8(0xB294);
+                regval = REG_PCIE_POWER_B294;
                 if ((regval >> 4) & 1) {
-                    XDATA8(0xB294) = 0x10;
+                    REG_PCIE_POWER_B294 = 0x10;
                     handler_3adb(0);
                     return;
                 }
@@ -2904,8 +2904,8 @@ void helper_488f(void)
     if ((status >> 1) & 1) {
         G_SYS_STATUS_PRIMARY = 0;
         G_SYS_STATUS_SECONDARY = 0;
-        if (XDATA8(0x0AF8) != 0) {
-            REG_NVME_QUEUE_TRIGGER = XDATA8(0xC51A);
+        if (G_POWER_INIT_FLAG != 0) {
+            REG_NVME_QUEUE_TRIGGER = REG_NVME_QUEUE_TRIGGER;
         }
     }
 }
@@ -2923,7 +2923,7 @@ void helper_4784(void)
     } else if (state == 4) {
         REG_NVME_QUEUE_CFG = (REG_NVME_QUEUE_CFG & 0xF7) | 0x08;
     } else if (state == 5) {
-        if (XDATA8(0x0001) == 5) {
+        if (G_IO_CMD_TYPE == 5) {
             REG_NVME_QUEUE_CFG = (REG_NVME_QUEUE_CFG & 0xF7) | 0x08;
         }
     }
@@ -2942,14 +2942,14 @@ void helper_49e9(void)
     I_WORK_38 = queue_idx;
     REG_NVME_QUEUE_INDEX = 0xFF;
 
-    expected = XDATA8(0x009F);
-    counter = XDATA8(0x0517);
+    expected = G_USB_WORK_009F;
+    counter = G_EP_INIT_0517;
     counter++;
-    XDATA8(0x0517) = counter;
+    G_EP_INIT_0517 = counter;
 
     if (counter != expected) {
-        uint8_t alt_val = XDATA8(0x00C2);
-        if (XDATA8(0x0517) == alt_val) {
+        uint8_t alt_val = G_INIT_STATE_00C2;
+        if (G_EP_INIT_0517 == alt_val) {
             /* Match */
         }
     }

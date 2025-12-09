@@ -4761,10 +4761,10 @@ void usb_parse_descriptor(uint8_t param1, uint8_t param2)
     } else {
         /* Mode 1: Use fixed configuration */
         XDATA_REG8(0xC4E9) = 0xA0;
-        val = XDATA8(0x0056);
+        val = G_USB_ADDR_HI_0056;
         XDATA_REG8(0x905B) = val;
         XDATA_REG8(0x905B) = val;
-        val = XDATA8(0x0057);
+        val = G_USB_ADDR_LO_0057;
         XDATA_REG8(0x905C) = val;
         XDATA_REG8(0x905C) = val;
     }
@@ -4810,11 +4810,11 @@ void parse_descriptor(uint8_t param)
     uint8_t result;
 
     /* Read descriptor config and get result in param */
-    result = XDATA8(0xCC17);
+    result = REG_TIMER1_CSR;
 
     /* Check bit 0 - if set, clear bit 0 of 0x92c4 */
     if (param & 0x01) {
-        XDATA8(0x92C4) = XDATA8(0x92C4) & 0xFE;
+        REG_POWER_MISC_CTRL = REG_POWER_MISC_CTRL & 0xFE;
     }
 
     /* Check bit 1 - if set, additional handling needed */
@@ -4830,13 +4830,13 @@ void usb_state_setup_4c98(void)
     uint8_t lun;
 
     /* Copy LUN from 0x0af4 to secondary status */
-    lun = XDATA8(0x0af4);
+    lun = G_XFER_LUN_0AF4;
     G_SYS_STATUS_SECONDARY = lun;
 
     /* Store corresponding value to primary status
      * Original: reads from table at 0x047a + lun
      * For LUN 0-15, valid range is 0x047a to 0x0489 */
-    G_SYS_STATUS_PRIMARY = XDATA8(0x047a + lun);
+    G_SYS_STATUS_PRIMARY = (&G_SCSI_CMD_PARAM_0470)[0x0A + lun];
 
     /* Call helper function */
     helper_1c5d();
@@ -4850,9 +4850,9 @@ void usb_state_setup_4c98(void)
 
     /* If USB not connected (bit 0 clear), reset state */
     if ((REG_USB_STATUS & USB_STATUS_ACTIVE) != 0x01) {
-        XDATA8(0x0056) = 0;
-        XDATA8(0x0057) = 0;
-        XDATA8(0x0108) = 1;
+        G_USB_ADDR_HI_0056 = 0;
+        G_USB_ADDR_LO_0057 = 0;
+        G_USB_INIT_STATE_0108 = 1;
     }
 }
 
@@ -4867,15 +4867,15 @@ void usb_state_setup_4c98(void)
 void usb_helper_51ef(void)
 {
     /* Check header bytes */
-    if (XDATA8(0x911a) != 0x1f || XDATA8(0x9119) != 0x00) {
+    if (REG_USB_CBW_LEN_LO != 0x1f || REG_USB_CBW_LEN_HI != 0x00) {
         return;
     }
 
     /* Check for "USBC" signature at 0x911b */
-    if (XDATA8(0x911b) != 'U') return;
-    if (XDATA8(0x911c) != 'S') return;
-    if (XDATA8(0x911d) != 'B') return;
-    if (XDATA8(0x911e) != 'C') return;
+    if (REG_USB_BUFFER_ALT != 'U') return;
+    if (REG_USB_CBW_SIG1 != 'S') return;
+    if (REG_USB_CBW_SIG2 != 'B') return;
+    if (REG_USB_CBW_SIG3 != 'C') return;
 
     /* Signature valid - processing continues in caller */
 }
@@ -4885,16 +4885,16 @@ void usb_helper_5112(void)
     usb_copy_status_to_buffer();
 
     /* Copy residue bytes to IDATA 0x6b-0x6e (transfer length) */
-    I_TRANSFER_6B = XDATA8(0x9126);
-    I_TRANSFER_6C = XDATA8(0x9125);
-    I_TRANSFER_6D = XDATA8(0x9124);
-    I_TRANSFER_6E = XDATA8(0x9123);
+    I_TRANSFER_6B = REG_USB_CBW_XFER_LEN_3;
+    I_TRANSFER_6C = REG_USB_CBW_XFER_LEN_2;
+    I_TRANSFER_6D = REG_USB_CBW_XFER_LEN_1;
+    I_TRANSFER_6E = REG_USB_CBW_XFER_LEN_0;
 
     /* Extract direction bit (bit 7) */
-    XDATA8(0x0af3) = XDATA8(0x9127) & 0x80;
+    G_XFER_STATE_0AF3 = REG_USB_CBW_FLAGS & 0x80;
 
     /* Extract LUN (bits 0-3) */
-    XDATA8(0x0af4) = XDATA8(0x9128) & 0x0f;
+    G_XFER_LUN_0AF4 = REG_USB_CBW_LUN & 0x0f;
 
     /* Continue with transfer setup */
     scsi_handle_init_4d92();

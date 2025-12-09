@@ -113,6 +113,8 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_USB_ADDR_LO_0057      XDATA_VAR8(0x0057)  /* USB address low 0x0057 */
 #define G_USB_WORK_009F         XDATA_VAR8(0x009F)  /* USB work array base */
 #define G_INIT_STATE_00C2       XDATA_VAR8(0x00C2)  /* Initialization state flag */
+#define G_USB_INIT_STATE_0108   XDATA_VAR8(0x0108)  /* USB initialization state */
+#define G_WORK_012B             XDATA_VAR8(0x012B)  /* Work variable 0x012B */
 #define G_INIT_STATE_00E5       XDATA_VAR8(0x00E5)  /* Initialization state flag 2 */
 #define G_USB_INDEX_COUNTER     XDATA_VAR8(0x014E)  /* USB index counter (5-bit) */
 #define G_SCSI_CTRL             XDATA_VAR8(0x0171)  /* SCSI control */
@@ -142,6 +144,7 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_LOG_ACTIVE_044C       XDATA_VAR8(0x044C)  /* Log active flag */
 #define G_LOG_INIT_044D         XDATA_VAR8(0x044D)  /* Log init flag */
 #define G_REG_WAIT_BIT          XDATA_VAR8(0x045E)  /* Register wait bit */
+#define G_WORK_0460             XDATA_VAR8(0x0460)  /* Work variable 0x0460 */
 #define G_SYS_STATUS_PRIMARY    XDATA_VAR8(0x0464)  /* Primary system status */
 #define G_EP_INDEX_ALT          G_SYS_STATUS_PRIMARY  /* Alias for endpoint index */
 #define G_SYS_STATUS_SECONDARY  XDATA_VAR8(0x0465)  /* Secondary system status */
@@ -267,6 +270,16 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define   EVENT_FLAG_ACTIVE       0x80  // Bit 7: Events active
 #define   EVENT_FLAGS_ANY         0x83  // Bits 0,1,7: Any event flag
 #define G_EVENT_CTRL_09FA       XDATA_VAR8(0x09FA)  /* Event control */
+#define G_FLASH_STATUS_09FB     XDATA_VAR8(0x09FB)  /* Flash status mode */
+
+//=============================================================================
+// Flash Config Work Area (0x0A40-0x0A4F)
+//=============================================================================
+#define G_FLASH_CFG_0A41        XDATA_VAR8(0x0A41)  /* Flash config byte */
+#define G_FLASH_CFG_0A42        XDATA_VAR8(0x0A42)  /* Flash config byte */
+#define G_FLASH_CFG_0A43        XDATA_VAR8(0x0A43)  /* Flash config byte */
+#define G_FLASH_CFG_0A44        XDATA_VAR8(0x0A44)  /* Flash config byte */
+#define G_FLASH_CFG_0A45        XDATA_VAR8(0x0A45)  /* Flash config byte */
 
 //=============================================================================
 // PCIe Tunnel Adapter Config (0x0A52-0x0A55)
@@ -350,6 +363,7 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_XFER_RETRY_CNT        XDATA_VAR8(0x0AFE)  /* Transfer retry counter */
 #define G_USB_PARAM_0B00        XDATA_VAR8(0x0B00)  /* USB parameter storage */
 #define G_USB_INIT_0B01         XDATA_VAR8(0x0B01)  /* USB init state flag */
+#define G_PCIE_WORK_0B12        XDATA_VAR8(0x0B12)  /* PCIe work variable */
 #define G_TLP_PENDING_0B21      XDATA_VAR8(0x0B21)  /* TLP pending count / DMA control */
 #define G_USB_TRANSFER_FLAG     XDATA_VAR8(0x0B2E)  /* USB transfer flag */
 #define G_INTERFACE_READY_0B2F  XDATA_VAR8(0x0B2F)  /* Interface ready flag */
@@ -380,6 +394,8 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_FLASH_BUF_BASE        XDATA_VAR8(0x7000)  /* Flash buffer base */
 #define G_FLASH_BUF_7004        XDATA_VAR8(0x7004)  /* Flash buffer config start */
 #define G_FLASH_BUF_702C        XDATA_VAR8(0x702C)  /* Flash buffer serial start */
+#define G_FLASH_BUF_7059        XDATA_VAR8(0x7059)  /* Flash buffer byte */
+#define G_FLASH_BUF_705A        XDATA_VAR8(0x705A)  /* Flash buffer byte */
 #define G_FLASH_BUF_705C        XDATA_VAR8(0x705C)  /* Flash buffer data 1 */
 #define G_FLASH_BUF_705D        XDATA_VAR8(0x705D)  /* Flash buffer data 2 */
 #define G_FLASH_BUF_705E        XDATA_VAR8(0x705E)  /* Flash buffer data 3 */

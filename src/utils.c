@@ -1669,12 +1669,12 @@ uint8_t xdata_write_load_triple_1564(uint8_t value, uint8_t r1_addr, uint8_t r2_
     /* Mode 0xfe (xram) not commonly used here */
 
     /* Read and return byte at 0x0460 (third byte of the triple) */
-    return XDATA8(0x0460);
+    return G_WORK_0460;
 }
 
 uint8_t load_triple_1564_read(void)
 {
-    return XDATA8(0x0460);
+    return G_WORK_0460;
 }
 
 /*
@@ -1815,7 +1815,7 @@ void helper_1c5d(void)
 {
     uint8_t idx = G_SYS_STATUS_PRIMARY;
     /* Table lookup at 0x05A8 + idx */
-    G_PCIE_TXN_COUNT_LO = XDATA8(0x05a8 + idx);
+    G_PCIE_TXN_COUNT_LO = (&G_EP_CONFIG_05A8)[idx];
 }
 
 /*

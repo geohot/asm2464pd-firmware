@@ -1093,7 +1093,7 @@ void sys_init_helper_bbc7(void)
      * - Value 0x12
      * - Register/mode 0x0b
      * - Count/flag 1 */
-    XDATA8(0x0B12) = 0x01;  /* Simplified write */
+    G_PCIE_WORK_0B12 = 0x01;  /* Simplified write */
 }
 
 void sys_timer_handler_e957(void)

@@ -3426,15 +3426,15 @@ void pcie_disable_and_trigger_e74e(void)
     uint8_t val;
 
     /* Clear status at 0x0B1B */
-    XDATA8(0x0B1B) = 0;
+    G_STATE_0B1B = 0;
 
     /* Clear bit 4 of 0xCCF8 */
-    val = XDATA_REG8(0xCCF8);
-    XDATA_REG8(0xCCF8) = val & 0xEF;
+    val = REG_CPU_EXT_CTRL;
+    REG_CPU_EXT_CTRL = val & 0xEF;
 
     /* Trigger sequence on 0xCCF9 */
-    XDATA_REG8(0xCCF9) = 0x04;
-    XDATA_REG8(0xCCF9) = 0x02;
+    REG_CPU_EXT_STATUS = 0x04;
+    REG_CPU_EXT_STATUS = 0x02;
 }
 
 /*
@@ -3475,10 +3475,10 @@ void pcie_trigger_cc11_e8ef(void)
  */
 void clear_pcie_status_bytes_e8cd(void)
 {
-    XDATA8(0x0B34) = 0;
-    XDATA8(0x0B35) = 0;
-    XDATA8(0x0B36) = 0;
-    XDATA8(0x0B37) = 0;
+    G_PCIE_WORK_0B34 = 0;
+    G_PCIE_STATUS_0B35 = 0;
+    G_PCIE_STATUS_0B36 = 0;
+    G_PCIE_STATUS_0B37 = 0;
 }
 
 /*
@@ -3496,10 +3496,10 @@ uint8_t get_pcie_status_flags_e00c(void)
 {
     uint8_t flags = 0;
 
-    if (XDATA8(0x0B34) != 0) flags |= 0x01;
-    if (XDATA8(0x0B35) != 0) flags |= 0x02;
-    if (XDATA8(0x0B36) != 0) flags |= 0x04;
-    if (XDATA8(0x0B37) != 0) flags |= 0x08;
+    if (G_PCIE_WORK_0B34 != 0) flags |= 0x01;
+    if (G_PCIE_STATUS_0B35 != 0) flags |= 0x02;
+    if (G_PCIE_STATUS_0B36 != 0) flags |= 0x04;
+    if (G_PCIE_STATUS_0B37 != 0) flags |= 0x08;
 
     /* Combine with upper nibble from helper */
     flags |= (helper_a2ff() & 0xF0);
@@ -4031,16 +4031,16 @@ void handler_db09(void)
 
     /* Store state to XDATA work area (0x0AAD-0x0AB0) */
     /* Original stores R4:R5:R6:R7 = 0:0:0:I_FLASH_STATE_4D */
-    XDATA8(0x0AAD) = I_FLASH_STATE_4D;
-    XDATA8(0x0AAE) = 0;
-    XDATA8(0x0AAF) = 0;
-    XDATA8(0x0AB0) = 0;
+    G_FLASH_ADDR_0 = I_FLASH_STATE_4D;
+    G_FLASH_ADDR_1 = 0;
+    G_FLASH_ADDR_2 = 0;
+    G_FLASH_ADDR_3 = 0;
 
     /* Clear 0x0AB1 */
-    XDATA8(0x0AB1) = 0;
+    G_FLASH_LEN_LO = 0;
 
     /* Write 0x80 to 0x0AB2 */
-    XDATA8(0x0AB2) = 0x80;
+    G_FLASH_LEN_HI = 0x80;
 
     /* Call DMA handler with R5=3, R7=3 */
     dispatch_04c1();
@@ -4527,7 +4527,7 @@ void helper_e762(uint8_t param)
 
 uint8_t helper_e8f9(void)
 {
-    XDATA8(0x05AE) = 0;
+    G_PCIE_DIRECTION = 0;
     return helper_c1f9();
 }
 
@@ -4557,15 +4557,15 @@ uint8_t helper_a33d(uint8_t reg_offset)
 void helper_e677(void)
 {
     /* Clear buffer flag at 0x044C */
-    XDATA8(0x044C) = 0;
+    G_LOG_ACTIVE_044C = 0;
 
     /* Initialize primary channel 0xCC1D with trigger sequence */
-    XDATA_REG8(0xCC1D) = 0x04;
-    XDATA_REG8(0xCC1D) = 0x02;
+    REG_TIMER2_CSR = 0x04;
+    REG_TIMER2_CSR = 0x02;
 
     /* Initialize secondary channel 0xCC5D with trigger sequence */
-    XDATA_REG8(0xCC5D) = 0x04;
-    XDATA_REG8(0xCC5D) = 0x02;
+    REG_TIMER4_CSR = 0x04;
+    REG_TIMER4_CSR = 0x02;
 }
 
 void pcie_dma_init_e0e4(void)
@@ -4610,13 +4610,13 @@ uint8_t check_pcie_status_e239(void)
     }
 
     /* Check 0x0AD3 == 0 */
-    if (XDATA8(0x0AD3) != 0) {
+    if (G_TLP_MODE_0AD3 != 0) {
         return 5;  /* Busy */
     }
 
     /* Call helper and increment result */
     val = helper_a71b();
-    XDATA8(0x0AD3) = val + 1;
+    G_TLP_MODE_0AD3 = val + 1;
 
     /* Copy bit 0 of 0x9000 to 0x9E00 */
     val = XDATA_REG8(0x9000) & 0x01;
@@ -4677,7 +4677,7 @@ void helper_e50d(void)
  */
 void set_flag_and_call_e902(void)
 {
-    XDATA8(0x05AE) = 1;
+    G_PCIE_DIRECTION = 1;
     (void)helper_c1f9();  /* helper_c1f9 is declared earlier */
 }
 
@@ -4703,7 +4703,7 @@ uint8_t helper_c1f9(void)
     }
 
     /* Check 0x05AE bit 0 and configure 0xB210 */
-    val = XDATA8(0x05AE);
+    val = G_PCIE_DIRECTION;
     if (val & 0x01) {
         XDATA_REG8(0xB210) = 0x40;
     } else {
@@ -4717,10 +4717,10 @@ uint8_t helper_c1f9(void)
     pcie_set_byte_enables(0x0F);
 
     /* Copy 32-bit value from 0x05AF to 0xB218 */
-    XDATA_REG8(0xB218) = XDATA8(0x05AF);
-    XDATA_REG8(0xB219) = XDATA8(0x05B0);
-    XDATA_REG8(0xB21A) = XDATA8(0x05B1);
-    XDATA_REG8(0xB21B) = XDATA8(0x05B2);
+    REG_PCIE_ADDR_0 = G_PCIE_ADDR_0;
+    REG_PCIE_ADDR_1 = G_PCIE_ADDR_1;
+    REG_PCIE_ADDR_2 = G_PCIE_ADDR_2;
+    REG_PCIE_ADDR_3 = G_PCIE_ADDR_3;
 
     /* Clear and trigger PCIe transaction */
     pcie_clear_and_trigger();
@@ -4734,14 +4734,14 @@ uint8_t helper_c1f9(void)
     pcie_write_status_complete();
 
     /* Check 0x05AE bit 0 - if set, return success */
-    val = XDATA8(0x05AE);
+    val = G_PCIE_DIRECTION;
     if (val & 0x01) {
         return 0;
     }
 
     /* Poll 0xB296 for status bits */
     while (1) {
-        val = XDATA_REG8(0xB296);
+        val = REG_PCIE_STATUS;
         /* Check bit 1 */
         if (val & 0x02) {
             break;  /* Bit 1 set - exit poll loop */

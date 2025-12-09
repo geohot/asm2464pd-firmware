@@ -1291,7 +1291,7 @@ void state_clear_all_bfc4(uint8_t val)
  */
 uint8_t queue_buf_addr_high(void)
 {
-    uint8_t idx = XDATA8(0x0A84);
+    uint8_t idx = G_ACTION_PARAM_0A84;
     /* Returns high byte adjustment based on index value */
     if (idx > 0xF3) {
         return 0xFF;  /* Borrow occurred */

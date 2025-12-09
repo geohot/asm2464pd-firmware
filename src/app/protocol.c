@@ -3773,11 +3773,11 @@ void helper_3578(uint8_t param)
         protocol_dispatch();
 
         /* Complex transfer handling - simplified */
-        if (status != 0 && XDATA8(0x05A6) == 0x04) {
+        if (status != 0 && G_PCIE_TXN_COUNT_LO == 0x04) {
             /* Transfer complete path */
-            XDATA8(0xB455) = 2;
-            XDATA8(0xB455) = 4;
-            XDATA8(0xB2D5) = 1;
+            REG_POWER_CTRL_B455 = 2;
+            REG_POWER_CTRL_B455 = 4;
+            REG_PCIE_CTRL_B2D5 = 1;
             REG_PCIE_STATUS = 8;
         }
     }

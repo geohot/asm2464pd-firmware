@@ -3509,14 +3509,14 @@ void nvme_util_advance_queue(void)
 
     nvme_check_scsi_ctrl();
 
-    limit = XDATA8(0x053b);  /* Command count */
+    limit = G_NVME_STATE_053B;  /* Command count */
     for (i = 0; i <= limit; i++) {
         nvme_calc_addr_04b7();  /* Uses G_SCSI_CTRL internally */
-        if (G_USB_INDEX_COUNTER == XDATA8(0x053b)) {
+        if (G_USB_INDEX_COUNTER == G_NVME_STATE_053B) {
             nvme_calc_addr_04b7();
             G_USB_INDEX_COUNTER = 0xff;
             G_SCSI_CTRL--;
-            if (XDATA8(0x0b01) != 0) {
+            if (G_USB_INIT_0B01 != 0) {
                 /* FUN_CODE_4eb3() - error recovery */
                 return;
             }
@@ -3534,8 +3534,8 @@ void nvme_util_check_command_ready(void)
     I_WORK_38 = pending;
 
     /* Increment and store back */
-    I_WORK_39 = XDATA8(0xC516) + 1;
-    XDATA8(0xC516) = I_WORK_39;
+    I_WORK_39 = REG_NVME_QUEUE_PENDING + 1;
+    REG_NVME_QUEUE_PENDING = I_WORK_39;
 
     /* Wait for queue ready with interrupt check */
     while (1) {
@@ -3677,28 +3677,28 @@ void nvme_queue_state_update(uint8_t param)
 uint8_t check_nvme_ready_e03c(void)
 {
     /* Check 0x0ACF == 0xA1 */
-    if (XDATA8(0x0ACF) != 0xA1) {
+    if (G_TLP_STATE_0ACF != 0xA1) {
         return 5;  /* Not ready */
     }
 
     /* Check 0x0AD3 == 0 */
-    if (XDATA8(0x0AD3) != 0) {
+    if (G_TLP_MODE_0AD3 != 0) {
         return 5;
     }
 
     /* Check 0x0AD5 == 1 */
-    if (XDATA8(0x0AD5) != 1) {
+    if (G_TLP_ADDR_OFFSET_HI != 1) {
         return 5;
     }
 
     /* Check 0x0AD1 == 0 */
-    if (XDATA8(0x0AD1) != 0) {
+    if (G_LINK_STATE_0AD1 != 0) {
         return 5;
     }
 
     /* All checks passed - initialize NVMe registers */
-    XDATA_REG8(0x9003) = 0x00;
-    XDATA_REG8(0x9004) = 0x01;
+    REG_USB_EP0_STATUS = 0x00;
+    REG_USB_EP0_LEN_L = 0x01;
     XDATA_REG8(0x9E00) = 0x00;
 
     return 3;  /* Ready */
