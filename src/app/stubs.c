@@ -2785,6 +2785,149 @@ void transfer_handler_ce23(uint8_t param)
 }
 
 /*
+ * transfer_continuation_d996 - PCIe transfer continuation after poll complete
+ * Address: 0xd996-0xd9?? (large function)
+ *
+ * This is the continuation function called as a tail call from transfer_poll_handler_ceab.
+ * It performs PCIe register configuration using banked memory access.
+ *
+ * Original disassembly (first part):
+ *   d996: lcall 0xccac          ; Helper function
+ *   d999: movx @dptr, a         ; Write result
+ *   d99a: mov r7, #0x0f         ; r7 = 15
+ *   d99c: lcall 0xe8a9          ; Another helper
+ *   d99f: lcall 0xe57d          ; Timer/PHY setup
+ *   d9a2: mov r7, #0x01
+ *   d9a4: lcall 0xd630          ; Power helper
+ *   d9a7: mov r7, #0x0f
+ *   d9a9: lcall 0xd436          ; Config helper
+ *   d9ac: lcall 0xe25e          ; State update
+ *   d9af: banked_load_byte(0x02, 0x70, 0x41)  ; Extended memory read
+ *   d9b8: anl a, #0xbf          ; Clear bit 6
+ *   d9ba: banked_store_byte()   ; Write back
+ *   ...continues with more register configuration...
+ */
+/* Forward declarations for functions defined later in this file or other files */
+extern uint8_t banked_load_byte(uint8_t addrlo, uint8_t addrhi, uint8_t memtype);
+extern void banked_store_byte(uint8_t addrlo, uint8_t addrhi, uint8_t memtype, uint8_t val);
+extern void helper_e50d_full(uint8_t div_bits, uint8_t threshold_hi, uint8_t threshold_lo);
+extern void pcie_trigger_cc11_e8ef(void);
+
+/*
+ * transfer_continuation_d996 - PCIe transfer continuation after poll complete
+ * Address: 0xd996-0xd9?? (large function)
+ *
+ * This is the continuation function called as a tail call from transfer_poll_handler_ceab.
+ * It performs extensive PCIe register configuration using banked memory access.
+ *
+ * Called functions:
+ *   - 0xccac: helper_ccac
+ *   - 0xe8a9: helper_e8a9
+ *   - 0xe57d: timer_phy_setup_e57d
+ *   - 0xd630: power_helper_d630
+ *   - 0xd436: config_helper_d436
+ *   - 0xe25e: state_update_e25e
+ *   - 0x0bc8: banked_load_byte
+ *   - 0x0be6: banked_store_byte
+ *
+ * TODO: Implement full logic once helper functions are available.
+ * For now, this is a stub that performs minimal setup.
+ */
+void transfer_continuation_d996(void)
+{
+    uint8_t val;
+
+    /* Extended memory: clear bit 6 of banked register memtype=0x02, addr=0x7041 */
+    val = banked_load_byte(0x41, 0x70, 0x02);
+    val &= 0xBF;  /* Clear bit 6 */
+    banked_store_byte(0x41, 0x70, 0x02, val);
+
+    /* Extended memory: clear bit 2 of banked register memtype=0x00, addr=0x1507 */
+    val = banked_load_byte(0x07, 0x15, 0x00);
+    val &= 0xFB;  /* Clear bit 2 */
+    banked_store_byte(0x07, 0x15, 0x00, val);
+
+    /* Note: Original has extensive register configuration with calls to:
+     * helper_ccac, helper_e8a9(0x0F), timer_phy_setup_e57d,
+     * power_helper_d630(0x01), config_helper_d436(0x0F), state_update_e25e
+     * These will be added once the helper functions are implemented. */
+}
+
+/*
+ * transfer_poll_handler_ceab - Timer poll and transfer handler
+ * Address: 0xceab-0xcece (36 bytes)
+ *
+ * Sets up timer, polls status registers until ready, then calls
+ * continuation handlers for PCIe transfer completion.
+ *
+ * Called from bank1 (5 calls from 0x14xxx addresses).
+ *
+ * Original disassembly:
+ *   ceab: mov r7, #0x03        ; Set timer divisor bits to 3
+ *   cead: lcall 0xe50d         ; Call timer setup helper
+ *   ; Poll loop:
+ *   ceb0: mov dptr, #0xe712    ; REG_LINK_STATUS_E712
+ *   ceb3: movx a, @dptr        ; Read status
+ *   ceb4: jb 0xe0.0, 0xcec6    ; If bit 0 set (done), exit loop
+ *   ceb7: movx a, @dptr        ; Re-read status
+ *   ceb8: anl a, #0x02         ; Isolate bit 1
+ *   ceba: mov r7, a            ; Save in r7
+ *   cebb: clr c
+ *   cebc: rrc a                ; Shift right (bit 1 -> bit 0)
+ *   cebd: jnz 0xcec6           ; If bit 1 was set, exit loop
+ *   cebf: mov dptr, #0xcc11    ; REG_TIMER0_CSR
+ *   cec2: movx a, @dptr        ; Read timer status
+ *   cec3: jnb 0xe0.1, 0xceb0   ; If bit 1 NOT set, continue polling
+ *   ; Exit path:
+ *   cec6: lcall 0xe8ef         ; pcie_trigger_cc11_e8ef
+ *   cec9: clr a
+ *   ceca: mov r7, a            ; r7 = 0
+ *   cecb: lcall 0xdd42         ; helper_dd42(0)
+ *   cece: ljmp 0xd996          ; Tail call to continuation
+ */
+void transfer_poll_handler_ceab(void)
+{
+    uint8_t status;
+
+    /* Set timer divisor bits to 3 and start timer */
+    /* Note: e50d also uses r4/r5 for thresholds inherited from caller context,
+     * but the key part is setting div_bits = 3 */
+    helper_e50d_full(0x03, 0x00, 0x00);
+
+    /* Poll loop: wait for link status or timer timeout */
+    while (1) {
+        /* Check link status register */
+        status = REG_LINK_STATUS_E712;
+
+        /* If bit 0 is set, transfer complete - exit */
+        if (status & 0x01) {
+            break;
+        }
+
+        /* Check bit 1 for error/alternate exit condition */
+        if (status & 0x02) {
+            break;
+        }
+
+        /* Check timer status - bit 1 indicates timeout */
+        status = REG_TIMER0_CSR;
+        if (status & 0x02) {
+            /* Timeout - exit poll loop */
+            break;
+        }
+    }
+
+    /* Reset timer/trigger */
+    pcie_trigger_cc11_e8ef();
+
+    /* Call state handler with param 0 */
+    helper_dd42(0);
+
+    /* Continue with transfer completion (tail call) */
+    transfer_continuation_d996();
+}
+
+/*
  * pcie_handler_e06b - PCIe extended address read and state setup
  * Address: 0xe06b-0xe093 (41 bytes)
  *
@@ -4631,4 +4774,101 @@ uint8_t queue_check_status_c4a9(void)
 
     /* Return true (non-zero) if idx < count, meaning more entries to process */
     return (idx < count) ? 1 : 0;
+}
+
+/*
+ * state_handler_d996 - PCIe state machine handler
+ * Address: 0xd996-0xd9d4 (63 bytes)
+ *
+ * Complex state machine handler that configures PCIe registers
+ * and calls multiple helper functions. Called as tail call from
+ * transfer_handler_ceab.
+ *
+ * TODO: Full implementation requires:
+ *   - helper_ccac, helper_e8a9(0x0F), helper_e57d
+ *   - helper_d630(0x01), helper_d436(0x0F), helper_e25e
+ *   - ext_mem_access_0bc8 calls for register configuration
+ */
+void state_handler_d996(void)
+{
+    /* Stub - complex state machine with many dependencies */
+    /* Full implementation pending */
+}
+
+/*
+ * transfer_handler_ceab - Transfer poll and state handler
+ * Address: 0xceab-0xcece (36 bytes)
+ *
+ * Configures Timer0 with divisor 3, polls E712 for ready status
+ * with Timer0 timeout, then triggers state machine handler.
+ *
+ * Flow:
+ *   1. Configure Timer0 with divisor=3 via helper_e50d_full
+ *   2. Poll loop:
+ *      - Check E712 bit 0 (ready flag)
+ *      - Check E712 bit 1 (alternate ready)
+ *      - Check CC11 bit 1 (timer expired)
+ *   3. Call pcie_trigger_cc11_e8ef to reset timer
+ *   4. Call helper_dd42(0) to update state
+ *   5. Tail call to state_handler_d996
+ *
+ * Disassembly:
+ *   ceab: mov r7, #0x03
+ *   cead: lcall 0xe50d       ; helper_e50d_full(3, 0, 0)
+ *   ceb0: mov dptr, #0xe712  ; Poll loop start
+ *   ceb3: movx a, @dptr
+ *   ceb4: jb 0xe0.0, 0xcec6  ; Exit if bit 0 set
+ *   ceb7: movx a, @dptr
+ *   ceb8: anl a, #0x02
+ *   ceba: mov r7, a
+ *   cebb: clr c
+ *   cebc: rrc a
+ *   cebd: jnz 0xcec6         ; Exit if bit 1 set
+ *   cebf: mov dptr, #0xcc11
+ *   cec2: movx a, @dptr
+ *   cec3: jnb 0xe0.1, 0xceb0 ; Loop if timer not expired
+ *   cec6: lcall 0xe8ef       ; pcie_trigger_cc11_e8ef
+ *   cec9: clr a
+ *   ceca: mov r7, a
+ *   cecb: lcall 0xdd42       ; helper_dd42(0)
+ *   cece: ljmp 0xd996        ; tail call
+ */
+#define REG_POLL_STATUS_E712 XDATA_REG8(0xE712)
+
+void transfer_handler_ceab(void)
+{
+    uint8_t status;
+
+    /* Configure Timer0 with divisor bits = 3 */
+    helper_e50d_full(3, 0, 0);
+
+    /* Poll loop: wait for E712 ready or timer timeout */
+    while (1) {
+        /* Read poll status register */
+        status = REG_POLL_STATUS_E712;
+
+        /* Check if bit 0 is set (ready) */
+        if (status & 0x01) {
+            break;
+        }
+
+        /* Check if bit 1 is set (alternate ready) */
+        if (status & 0x02) {
+            break;
+        }
+
+        /* Check timer status - if bit 1 of CC11 is set, timer expired */
+        if (REG_TIMER0_CSR & 0x02) {
+            break;
+        }
+    }
+
+    /* Reset timer */
+    pcie_trigger_cc11_e8ef();
+
+    /* Update state to 0 */
+    helper_dd42(0);
+
+    /* Tail call to state handler */
+    state_handler_d996();
 }
