@@ -1066,28 +1066,28 @@ void power_state_handler_ca0d(void)
     }
 
     if (sys_state == 0x02) {
-        /* Clear bit 1 on 0x91c0 */
-        val = XDATA8(0x91C0);
+        /* Clear bit 1 on USB PHY control */
+        val = REG_USB_PHY_CTRL_91C0;
         val &= 0xFD;
-        XDATA8(0x91C0) = val;
+        REG_USB_PHY_CTRL_91C0 = val;
         goto write_final;
     }
 
     if (sys_state == 0x04) {
         /* Complex register sequence */
-        val = XDATA8(0xCC30);
+        val = REG_CPU_MODE;
         val &= 0xFE;  /* Clear bit 0 */
-        XDATA8(0xCC30) = val;
+        REG_CPU_MODE = val;
 
-        val = XDATA8(0xE710);
+        val = REG_LINK_WIDTH_E710;
         val = (val & 0xE0) | 0x1F;
-        XDATA8(0xE710) = val;
+        REG_LINK_WIDTH_E710 = val;
 
-        val = XDATA8(0x91C0);
+        val = REG_USB_PHY_CTRL_91C0;
         val &= 0xFD;  /* Clear bit 1 */
-        XDATA8(0x91C0) = val;
+        REG_USB_PHY_CTRL_91C0 = val;
 
-        reg_set_bit1((__xdata uint8_t *)0xCC3B);
+        reg_set_bit1(&REG_TIMER_CTRL_CC3B);
     }
 
 write_final:

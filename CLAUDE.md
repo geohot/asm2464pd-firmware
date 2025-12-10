@@ -37,3 +37,33 @@ All functions should exactly match the functions in the real firmware! It should
 Checking in and making sure it builds every once in a while is good. You can also see how far along you are by comparing the size of our compiled firmware bin to fw.bin
 
 Before reverse engineering, check all the headers to see if the functions are already there.
+
+All functions should be functionally the same as the ones in the real firmware and should be reconstructed from the real firmware. They should have headers like
+```
+/*
+ * pcie_clear_address_regs - Clear address offset registers
+ * Address: 0x9a9c-0x9aa2 (7 bytes)
+ *
+ * Clears IDATA locations 0x63 and 0x64 (address offset).
+ *
+ * Original disassembly:
+ *   9a9c: clr a
+ *   9a9d: mov r0, #0x63
+ ...
+```
+
+For bank 1 it should look like
+```
+/*
+ * pcie_addr_store - Store PCIe address with offset adjustment
+ * Bank 1 Address: 0x839c-0x83b8 (29 bytes) [actual addr: 0x1039c]
+ *
+ * Calls e902 helper, loads current address from 0x05AF,
+```
+Update all functions that don't match this pattern.
+
+Functions in the header file should have addresses
+```
+uint8_t pcie_get_link_speed(void);          /* 0x9a60-0x9a6b */
+uint8_t pcie_get_link_speed_masked(void);   /* 0x9a30-0x9a3a */
+```

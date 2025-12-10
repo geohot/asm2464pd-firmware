@@ -17,7 +17,7 @@
 #include "drivers/uart.h"
 #include "drivers/dma.h"
 
-/* External helper functions not in headers */
+/* External helper functions not yet in headers - TODO: add to proper headers */
 extern void helper_e3b7(uint8_t param);
 extern void helper_3578(uint8_t param);
 extern void helper_e396(void);
@@ -36,11 +36,7 @@ extern uint8_t nvme_clear_ep0_status(void);
 extern void pcie_config_helper(void);
 extern void pcie_status_helper(void);
 extern void ext_mem_read_stub(uint8_t r3, uint8_t r2, uint8_t r1);
-extern void helper_bc9f(uint8_t val);
-extern void helper_bc63(uint8_t val);
-
-/* Power driver functions */
-extern void power_state_handler_ca0d(void);
+extern void power_state_handler_ca0d(void);  /* drivers/power.h */
 
 /* Forward declarations */
 uint8_t pcie_poll_and_read_completion(void);
