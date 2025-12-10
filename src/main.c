@@ -685,8 +685,8 @@ state_ready:
         /* USB state check (0x308a-0x30a1) */
         if (G_USB_STATE_0B41 != 0) {
             EA = 0;
-            if (REG_TIMER1_CSR & 0x02) {  /* 0xCC17 bit 1 */
-                REG_TIMER1_CSR = 0x02;
+            if (REG_TIMER1_CSR & TIMER_CSR_EXPIRED) {  /* 0xCC17 bit 1 */
+                REG_TIMER1_CSR = TIMER_CSR_EXPIRED;
                 dispatch_04d5();  /* 0x04d5 -> handler_d3a2 */
             }
             EA = 1;
@@ -711,11 +711,11 @@ state_ready:
             }
 
             /* Check REG_TIMER2_CSR bits (0x30ca-0x3107) */
-            if (!(REG_TIMER2_CSR & 0x01)) {  /* 0xCC1D bit 0 */
-                if (!(REG_TIMER2_CSR & 0x02)) {  /* bit 1 */
+            if (!(REG_TIMER2_CSR & TIMER_CSR_ENABLE)) {  /* 0xCC1D bit 0 */
+                if (!(REG_TIMER2_CSR & TIMER_CSR_EXPIRED)) {  /* bit 1 */
                     /* Call dispatch_043a and handle log counter (0x30d5-0x30e3) */
                     dispatch_043a();
-                    REG_TIMER2_CSR = 0x01;
+                    REG_TIMER2_CSR = TIMER_CSR_ENABLE;
                     G_STATE_0B39 = 0x00;
                     goto loop_end;
                 } else {
@@ -1074,8 +1074,8 @@ void cpu_int_ctrl_trigger_e933(void)
 void cpu_dma_setup_e81b(uint8_t param_hi, uint8_t param_lo)
 {
     /* Write DMA parameters to 0xCC82-0xCC83 */
-    XDATA_REG8(0xCC82) = param_hi;
-    XDATA_REG8(0xCC83) = param_lo;
+    REG_CPU_CTRL_CC82 = param_hi;
+    REG_CPU_CTRL_CC83 = param_lo;
 
     /* Trigger sequence: 0x04, 0x02, 0x01 to CPU_INT_CTRL */
     REG_CPU_INT_CTRL = 0x04;
@@ -1096,6 +1096,6 @@ void cpu_dma_setup_e81b(uint8_t param_hi, uint8_t param_lo)
  */
 void cpu_dma_channel_91_trigger_e93a(void)
 {
-    XDATA_REG8(0xCC91) = 0x04;
-    XDATA_REG8(0xCC91) = 0x02;
+    REG_CPU_DMA_INT = 0x04;
+    REG_CPU_DMA_INT = 0x02;
 }

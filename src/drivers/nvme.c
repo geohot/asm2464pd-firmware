@@ -3031,16 +3031,8 @@ void nvme_admin_abe9(uint8_t param1, uint8_t param2, uint8_t param3)
  * PCIe TLP/NVMe Handler Functions (0xb100-0xba00)
  *===========================================================================*/
 
-/* Additional registers for PCIe/flash - most now defined in registers.h */
-/* The following are NOT the same as registers.h (different addresses): */
-#define REG_FLASH_CMD_ALT           XDATA_REG8(0xC880)  /* Alternate flash cmd (not 0xC8AA) */
-#define REG_FLASH_CSR_ALT           XDATA_REG8(0xC881)  /* Alternate flash CSR (not 0xC8A9) */
-#define REG_FLASH_ADDR_LO_ALT       XDATA_REG8(0xC882)  /* Alternate flash addr (not 0xC8A1) */
-#define REG_FLASH_ADDR_MD_ALT       XDATA_REG8(0xC883)  /* Alternate flash addr (not 0xC8A2) */
-#define REG_FLASH_ADDR_HI_ALT       XDATA_REG8(0xC884)  /* Alternate flash addr (not 0xC8AB) */
-#define REG_FLASH_DATA_LEN_ALT      XDATA_REG8(0xC885)  /* Alternate flash len (not 0xC8A3) */
-#define REG_FLASH_DATA_LEN_HI_ALT   XDATA_REG8(0xC886)  /* Alternate flash len hi (not 0xC8A4) */
-#define REG_TIMER3_CSR_ALT          XDATA_REG8(0xCCB9)  /* Alternate timer3 CSR (not 0xCC23) */
+/* Additional registers for PCIe/flash - now defined in registers.h */
+/* REG_FLASH_CMD_ALT (0xC880), REG_FLASH_CSR_ALT (0xC881), etc. are in registers.h */
 /* REG_CPU_INT_CTRL (CC81) and REG_CPU_DMA_INT (CC91) are now in registers.h */
 #define G_WORK_CCCF9            XDATA_VAR8(0xCCF9)
 #define G_WORK_CCD9             XDATA_VAR8(0xCCD9)
@@ -3564,7 +3556,7 @@ uint8_t check_nvme_ready_e03c(void)
     /* All checks passed - initialize NVMe registers */
     REG_USB_EP0_STATUS = 0x00;
     REG_USB_EP0_LEN_L = 0x01;
-    XDATA_REG8(0x9E00) = 0x00;
+    REG_USB_CTRL_BUF_9E00 = 0x00;
 
     return 3;  /* Ready */
 }

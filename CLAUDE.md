@@ -22,12 +22,16 @@ Do not write things like `XDATA8(0xnnnn)`, instead define that as a register in 
 
 Do not use XDATA outside registers.h and globals.h! Don't use `*(__idata uint8_t *)0x16`, define that variable in globals. This is important.
 
+Don't use extern void, instead include the correct header file.
+
 Prioritize functions that you have already reversed the caller of.
+
+BANK1 function addresses should be based on their position in the file, so they should be 0x10000-0x18000 while they will be mapped into code ram at 0x8000-0x10000.
 
 Whenever you see a function or register with a name that includes the address in it, think about if you can give it a better name from context.
 
-Registers and variables in general should not have aliases. Adding bit constants to registers.h similar to what's there is encouraged.
+Registers and variables in general should not have aliases. Adding bit constants to registers.h similar to what's there is encouraged. You may not be the only one working in the repo. Don't do git checkout and make sure you read before you write.
 
-You may not be the only one working in the repo. Don't do git checkout and make sure you read before you write.
+All functions should exactly match the functions in the real firmware! It should match them one to one. This is the only way to ensure it is correct.
 
 Checking in and making sure it builds every once in a while is good. You can also see how far along you are by comparing the size of our compiled firmware bin to fw.bin

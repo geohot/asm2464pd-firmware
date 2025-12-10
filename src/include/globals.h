@@ -75,6 +75,10 @@ __idata __at(0x53) uint8_t I_WORK_53;         /* Work variable 0x53 */
 __idata __at(0x54) uint8_t I_WORK_54;         /* Work variable 0x54 */
 __idata __at(0x55) uint8_t I_WORK_55;         /* Work variable 0x55 */
 __idata __at(0x56) uint8_t I_WORK_56;         /* Work variable 0x56 */
+__idata __at(0x57) uint8_t I_WORK_57;         /* Work variable 0x57 - vendor CDB addr low */
+__idata __at(0x58) uint8_t I_WORK_58;         /* Work variable 0x58 - vendor CDB value/addr mid */
+__idata __at(0x59) uint8_t I_WORK_59;         /* Work variable 0x59 - vendor CDB addr high byte 1 */
+__idata __at(0x5A) uint8_t I_WORK_5A;         /* Work variable 0x5A - vendor CDB addr high byte 0 */
 __idata __at(0x63) uint8_t I_WORK_63;         /* Work variable 0x63 - EP config high byte */
 __idata __at(0x64) uint8_t I_WORK_64;         /* Work variable 0x64 - EP config low byte */
 __idata __at(0x65) uint8_t I_WORK_65;         /* Work variable 0x65 - EP mode */
@@ -218,7 +222,23 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_ERROR_CODE_06EA       XDATA_VAR8(0x06EA)  /* Error code */
 #define G_WORK_06EB             XDATA_VAR8(0x06EB)  /* Work variable 0x06EB */
 #define G_MISC_FLAG_06EC        XDATA_VAR8(0x06EC)  /* Miscellaneous flag */
+
+//=============================================================================
+// Vendor Command Work Area (0x0750-0x081F)
+//=============================================================================
+#define G_VENDOR_ACTIVE_0750    XDATA_VAR8(0x0750)  /* Vendor command active flag */
+#define G_VENDOR_STATE_0765     XDATA_VAR8(0x0765)  /* Vendor command state */
+#define G_VENDOR_STATE_0775     XDATA_VAR8(0x0775)  /* Vendor command state 2 */
+#define G_VENDOR_CMD_BUF_0804   XDATA_VAR8(0x0804)  /* Vendor command buffer byte 0 */
+#define G_VENDOR_CMD_BUF_0805   XDATA_VAR8(0x0805)  /* Vendor command buffer byte 1 */
+#define G_VENDOR_CDB_BASE       XDATA_VAR8(0x0810)  /* Vendor CDB buffer base (16 bytes) */
+#define G_VENDOR_RESP_BUF       XDATA_VAR8(0x0816)  /* Vendor response buffer */
+#define G_VENDOR_STATUS_081A    XDATA_VAR8(0x081A)  /* Vendor status register */
+#define G_VENDOR_STATUS_081B    XDATA_VAR8(0x081B)  /* Vendor status register 2 */
 #define G_FLASH_CMD_FLAG        XDATA_VAR8(0x07B8)  /* Flash command flag */
+#define G_VENDOR_CTRL_07B9      XDATA_VAR8(0x07B9)  /* Vendor control 0x07B9 */
+#define G_VENDOR_MODE_07CC      XDATA_VAR8(0x07CC)  /* Vendor mode state */
+#define G_VENDOR_MODE_07CF      XDATA_VAR8(0x07CF)  /* Vendor mode state 2 */
 #define G_FLASH_CMD_TYPE        XDATA_VAR8(0x07BC)  /* Flash command type (1,2,3) */
 #define G_FLASH_OP_COUNTER      XDATA_VAR8(0x07BD)  /* Flash operation counter */
 #define G_SYS_FLAGS_BASE        XDATA_VAR8(0x07E4)  /* Flags base */
@@ -330,7 +350,9 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_FLASH_ADDR_3          XDATA_VAR8(0x0AB0)  /* Flash address byte 3 (high) */
 #define G_FLASH_LEN_LO          XDATA_VAR8(0x0AB1)  /* Flash data length low */
 #define G_FLASH_LEN_HI          XDATA_VAR8(0x0AB2)  /* Flash data length high */
+#define G_VENDOR_DATA_0AB5      XDATA_VAR8(0x0AB5)  /* Vendor data storage */
 #define G_STATE_0AB6            XDATA_VAR8(0x0AB6)  /* State control 0x0AB6 */
+#define G_VENDOR_DATA_0AB7      XDATA_VAR8(0x0AB7)  /* Vendor data storage 2 */
 #define G_SYSTEM_STATE_0AE2     XDATA_VAR8(0x0AE2)  /* System state */
 #define G_STATE_FLAG_0AE3       XDATA_VAR8(0x0AE3)  /* System state flag */
 #define G_PHY_LANE_CFG_0AE4     XDATA_VAR8(0x0AE4)  /* PHY lane configuration */

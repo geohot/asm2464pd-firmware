@@ -78,6 +78,14 @@
 
 #include "../types.h"
 
+/*
+ * DMA Transfer Mode constants for dma_setup_transfer()
+ * Mode is stored in G_DMA_MODE_SELECT (0x0203)
+ */
+#define DMA_MODE_USB_RX         0x00    /* USB bulk OUT: host to device */
+#define DMA_MODE_USB_TX         0x01    /* USB bulk IN: device to host */
+#define DMA_MODE_SCSI_STATUS    0x03    /* SCSI status transfer */
+
 /* DMA control */
 void dma_clear_status(void);                    /* 0x1bcb-0x1bd4 */
 void dma_set_scsi_param3(void);                 /* 0x16f3-0x16fe */
@@ -104,9 +112,6 @@ uint8_t dma_shift_and_check(uint8_t val);       /* 0x4a94-0x4abe */
 /* DMA transfer */
 void dma_start_transfer(uint8_t aux0, uint8_t aux1, uint8_t count_hi, uint8_t count_lo);  /* 0x1787-0x178d */
 void dma_set_error_flag(void);                  /* 0x1743-0x1751 */
-void dma_setup_usb_rx(uint16_t len);            /* 0x1752-0x175c */
-void dma_setup_usb_tx(uint16_t len);            /* 0x175d-0x176a */
-void dma_wait_complete(void);                   /* 0x176b-0x1778 */
 
 /* DMA address calculation */
 uint8_t dma_get_config_offset_05a8(void);       /* 0x1779-0x1786 */

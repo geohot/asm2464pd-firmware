@@ -53,36 +53,28 @@
 #include "registers.h"
 #include "globals.h"
 #include "structs.h"
+#include "app/scsi.h"
+#include "app/dispatch.h"
+#include "drivers/usb.h"
+#include "drivers/nvme.h"
+#include "drivers/dma.h"
+#include "drivers/pcie.h"
+#include "drivers/power.h"
+#include "drivers/cmd.h"
 
-/* Forward declarations */
-extern void dma_clear_status(void);
+/* Forward declarations for functions not yet in headers */
 extern uint8_t usb_event_handler(void);
 extern void usb_reset_interface(uint8_t param);
-extern void power_check_status(uint8_t param);
-
-/* External functions for moved stubs */
-extern uint8_t usb_get_sys_status_offset(void);
-extern void pcie_disable_and_trigger_e74e(void);
-extern void dispatch_062e(void);
-extern void dispatch_059d(void);
-extern void dispatch_055c(void);
-extern void cmd_wait_completion(void);
-extern void cmd_engine_clear(void);
 extern void cmd_trigger_params(uint8_t param1, uint8_t param2);
+extern void dispatch_062e(void);
 
 /* Stub helper functions - these need to be implemented properly */
-static void nvme_calc_addr_01xx(uint8_t param) { (void)param; }
 static void FUN_CODE_1bec(void) { }
-static void nvme_get_config_offset(void) { }
 static void FUN_CODE_1b30(uint8_t param) { (void)param; }
-static void nvme_calc_idata_offset(void) { }
 static uint8_t FUN_CODE_1b8d(uint8_t param) { (void)param; return 0; }
 static uint8_t FUN_CODE_1b0b(uint8_t param) { (void)param; return 0; }
 static void FUN_CODE_1b3f(uint8_t param) { (void)param; }
-static uint8_t usb_get_ep_config_indexed(void) { return 0; }
 static void FUN_CODE_1c43(uint8_t param) { (void)param; }
-static void nvme_add_to_global_053a(void) { }
-static void usb_set_transfer_flag(void) { }
 
 /* Protocol state codes */
 #define STATE_CODE_PAREN_OPEN   0x28    /* '(' */
@@ -1109,20 +1101,16 @@ void helper_16f3(void)
     REG_DMA_STATUS = status;
 }
 
-/* Forward declarations for helper_3f4a dependencies */
+/* Forward declarations for helper_3f4a dependencies (not yet in headers) */
 extern void usb_func_1c5d(__xdata uint8_t *ptr);  /* 0x1c5d */
-extern void usb_set_dma_mode_params(uint8_t val); /* 0x1c4a */
-extern uint8_t nvme_get_pcie_count_config(void);  /* 0x1c90 */
 extern uint8_t helper_466b(void);                 /* 0x466b - check state */
 extern uint8_t helper_043f(void);                 /* 0x043f - check callback */
 extern void helper_36ab(void);                    /* 0x36ab - setup transfer */
 extern void helper_04da(uint8_t param);           /* 0x04da - param setup */
-extern uint8_t usb_read_transfer_params(void);    /* 0x31a5 */
 extern uint8_t helper_322e(void);                 /* 0x322e - compare helper */
 extern uint8_t helper_313f(uint8_t r0_val);       /* 0x313f - count check */
 extern void helper_31ad(__xdata uint8_t *ptr);    /* 0x31ad - transfer helper */
 extern void scsi_completion_handler(void);        /* 0x5216 */
-extern uint8_t nvme_get_dma_status_masked(uint8_t index); /* 0x3298 */
 
 /*
  * helper_3f4a - Initial status check for state_action_dispatch
@@ -2130,145 +2118,240 @@ void dma_transfer_state_dispatch(uint8_t param)
 
 /*
  * dma_queue_action_handler - Queue processing state machine
- * Address: 0x2814-0x29B0 (~412 bytes)
+ * Address: 0x2814-0x2a0f (508 bytes)
  *
  * This function handles queue processing for NVMe commands.
  * It checks action code at 0x0A83 and manages queue state.
+ * Includes tail-call code at 0x29b0-0x2a0f for bit 1 clear case.
  *
  * Parameters:
  *   param_1 (R4): DMA load parameter 1
  *   param_2 (R5): DMA load parameter 2
- *   param_3 (R7): Action code
+ *   action_code (R7): Action code
  *
  * Returns:
- *   R7: Result code (0x05, 0x0B, 0x0C, etc.)
+ *   R7: Result code (0x05, 0x09, 0x0a, 0x0B, 0x0C)
  */
+/* Forward declarations for functions not yet in headers */
 extern uint8_t core_state_check(uint8_t param);
-extern uint8_t scsi_dma_transfer_process(uint8_t param);
-extern void nvme_clear_status_bit1(void);
-extern uint8_t nvme_get_data_ctrl_upper(void);
-extern void scsi_read_ctrl_indexed(void);
-extern uint8_t usb_calc_ep_status_addr(void);
-extern void nvme_calc_addr_012b(uint8_t param);
-extern uint8_t nvme_get_dev_status_upper(void);
-extern uint8_t nvme_get_cmd_param_upper(void);
 extern void nvme_queue_state_update(uint8_t param);
+extern __xdata uint8_t *scsi_get_ctrl_ptr_1b3b(void);
+
+/* Helper function mappings for dma_queue_action_handler tail-call section:
+ *   FUN_CODE_1cb7 -> usb_calc_addr_012b_plus (0x012B + offset)
+ *   FUN_CODE_1c56 -> nvme_get_dev_status_upper (REG_NVME_DEV_STATUS & 0xC0)
+ *   FUN_CODE_1c77 -> usb_get_nvme_cmd_type (REG_NVME_CMD_PARAM & 0xE0)
+ *   FUN_CODE_1b47 -> usb_nvme_dev_status_update (combine G_0475 with C415)
+ *   FUN_CODE_1c88 -> usb_calc_addr_01xx (0x01XX address calc)
+ *   FUN_CODE_1cdc -> usb_add_nvme_param_20 (add 0x20 to G_053A)
+ */
 
 uint8_t dma_queue_action_handler(uint8_t param_1, uint8_t param_2, uint8_t action_code)
 {
     uint8_t result;
     uint8_t temp;
+    uint8_t ctrl_idx;
+    uint8_t ep_status;
+    __xdata uint8_t *ptr;
 
-    /* Store action code to 0x0A83 */
+    (void)param_1;
+    (void)param_2;
+
+    /* 0x2814: Store action code to 0x0A83 */
     G_ACTION_CODE_0A83 = action_code;
 
-    /* Call helper_3f4a to check if we can proceed */
+    /* 0x2819: Call helper_3f4a to check if we can proceed */
     result = helper_3f4a();
     I_WORK_3A = result;
 
+    /* 0x2820: Check result */
     if (result != 0) {
-        /* Non-zero result - check for special cases */
+        /* 0x2822: Non-zero result - check for special case 0x05 */
         if (result == 0x05 && G_TRANSFER_ACTIVE == 0x01) {
-            /* Set bit 6 of flags at 0x0052 */
+            /* 0x282c: Set bit 6 of flags at 0x0052 */
             G_SYS_FLAGS_0052 |= 0x40;
         }
+        /* 0x2833: Return result */
         return result;
     }
 
-    /* Result is 0 - proceed with queue processing */
+    /* 0x2836: Result is 0 - proceed with queue processing */
     temp = G_ACTION_CODE_0A83;
     result = core_state_check(temp);
 
+    /* 0x283e: Check core_state_check result */
     if (result == 0) {
-        /* core_state_check returned 0 - check transfer active */
+        /* 0x285e: Check transfer active */
         if (G_TRANSFER_ACTIVE != 0) {
             G_SYS_FLAGS_0052 |= 0x40;
             return 0x05;
         }
+        /* 0x2868: Return 0x0C */
         return 0x0C;
     }
 
-    /* core_state_check returned non-zero - configure DMA */
-    G_DMA_LOAD_PARAM1 = param_1;
-    G_DMA_LOAD_PARAM2 = param_2;
-
-    /* Set up command parameters at 0x0470 */
-    {
-        __xdata uint8_t *cmd_ptr = (__xdata uint8_t *)0x0470;
-        *cmd_ptr = 0x0A;  /* Command type */
-    }
-
-    /* Call transfer helper */
-    scsi_dma_transfer_process(0);
-
-    if (result == 0) {
-        /* Transfer not ready */
-        if (G_TRANSFER_ACTIVE != 0) {
-            G_SYS_FLAGS_0052 |= 0x40;
-            return 0x05;
-        }
-        return 0x0C;
-    }
-
-    /* Configure NVMe controller based on action code bit 1 */
+    /* 0x286b: core_state_check returned non-zero - configure DMA */
     I_WORK_3E = I_QUEUE_IDX;
-    FUN_CODE_1b3f(0);
-    I_WORK_3C = I_WORK_3E;  /* Store endpoint offset */
 
+    /* 0x2872: Calculate address 0x014E + I_WORK_3E and read */
+    temp = I_WORK_3E + 0x4E;
+    ptr = (__xdata uint8_t *)(0x0100 + temp);
+    ctrl_idx = *ptr;
+    I_WORK_3C = ctrl_idx;
+
+    /* 0x2878: Call nvme_clear_status_bit1 */
     nvme_clear_status_bit1();
 
-    /* Update NVMe control register based on action code bit 1 */
+    /* 0x287b: Read action code and check bit 1 */
     temp = G_ACTION_CODE_0A83;
-    {
-        uint8_t ctrl_val = REG_NVME_CTRL_STATUS;
-        if ((temp & 0x02) == 0) {
-            ctrl_val = (ctrl_val & 0xFE) | 0x01;  /* Set bit 0 */
-        } else {
-            ctrl_val = ctrl_val & 0xFE;  /* Clear bit 0 */
-        }
-        REG_NVME_CTRL_STATUS = ctrl_val;
+
+    /* 0x2882: Set R6 based on bit 1 */
+    if ((temp & 0x02) == 0) {
+        ctrl_idx = 0x01;  /* Bit 1 clear: set bit 0 */
+    } else {
+        ctrl_idx = 0x00;  /* Bit 1 set: clear bit 0 */
     }
 
-    /* Clear queue config bits 0-1 */
-    REG_NVME_QUEUE_CFG &= ~NVME_QUEUE_CFG_MASK_LO;
+    /* 0x2887: Update REG_NVME_CTRL_STATUS (0xC412) */
+    REG_NVME_CTRL_STATUS = (REG_NVME_CTRL_STATUS & 0xFE) | ctrl_idx;
 
-    /* Copy IDATA[0x16:0x17] to NVMe count registers */
+    /* 0x288f: Clear queue config bits 0-1 at 0xC428 */
+    REG_NVME_QUEUE_CFG &= 0xFC;
+
+    /* 0x2896: Copy IDATA[0x16:0x17] to NVMe count registers */
     REG_NVME_COUNT_HIGH = I_CORE_STATE_H;
-    REG_NVME_ERROR = I_CORE_STATE_L;
+    REG_NVME_COUNT_LOW = I_CORE_STATE_L;
 
-    /* Update NVMe config with endpoint offset */
-    {
-        uint8_t cfg_val = REG_NVME_CONFIG;
-        cfg_val = (cfg_val & 0xC0) | (I_WORK_3E & 0x3F);
-        REG_NVME_CONFIG = cfg_val;
-    }
+    /* 0x28a4: Update NVMe config (0xC413) with endpoint offset */
+    REG_NVME_CONFIG = (REG_NVME_CONFIG & 0xC0) | (I_WORK_3E & 0x3F);
 
-    /* Copy USB address to NVMe command registers */
+    /* 0x28ad: Copy USB address to NVMe command registers */
     REG_NVME_CMD = G_USB_ADDR_HI_0056;
     REG_NVME_CMD_OPCODE = G_USB_ADDR_LO_0057;
 
-    /* Combine state helpers */
-    temp = G_STATE_HELPER_41;
-    temp |= nvme_get_data_ctrl_upper();
-    G_STATE_HELPER_41 = temp;
+    /* 0x28bc: Combine state helpers from 0x0474 */
+    temp = XDATA8(0x0474);
+    ep_status = nvme_get_data_ctrl_upper();
+    XDATA8(0x0474) = temp | ep_status;
 
-    /* Clear NVMe control status bit 1 */
-    REG_NVME_CTRL_STATUS &= ~NVME_CTRL_STATUS_READY;
+    /* 0x28c8: Clear bit 1 of REG_NVME_CTRL_STATUS */
+    REG_NVME_CTRL_STATUS &= 0xFD;
 
-    /* Check action code bit 1 for special processing */
-    if ((G_ACTION_CODE_0A83 & 0x02) == 0) {
-        /* Mode without bit 1 - additional DMA setup */
-        scsi_read_ctrl_indexed();
-        temp = usb_calc_ep_status_addr();
-        /* Additional processing... */
+    /* 0x28cf: Check action code bit 1 for branch */
+    temp = G_ACTION_CODE_0A83;
+    if ((temp & 0x02) == 0) {
+        /* 0x28d3: Jump to tail-call at 0x29b0 (action bit 1 clear) */
+        goto tail_call_29b0;
     }
 
-    /* Call queue helper */
+    /* 0x28d6: Bit 1 set path - complex DMA queue processing */
+    /* ... intermediate processing (0x28d6-0x298f) ... */
+    /* TODO: Full implementation of bit 1 set path */
+
+    /* 0x28f5: Call nvme_queue_state_update with param 0x01 */
     nvme_queue_state_update(0x01);
     I_WORK_3B = result;
 
-    /* Continue processing... */
-    return 0x0B;
+    /* 0x28fc-0x298f: Additional queue processing */
+    ctrl_idx = scsi_read_ctrl_indexed();
+    ep_status = usb_calc_ep_status_addr();
+    I_WORK_3D = ctrl_idx - ep_status;
+
+    /* 0x298c-0x29af: Final processing and counter check */
+    temp = usb_dec_indexed_counter();
+
+    if (temp != 0) {
+        /* 0x2994: Counter non-zero - update index */
+        ptr = scsi_get_ctrl_ptr_1b3b();
+        temp = *ptr;
+        ctrl_idx = XDATA8(0x0216);
+        temp += ctrl_idx;
+        usb_calc_idx_counter_ptr(temp);
+        *ptr = temp;
+    } else {
+        /* 0x29a7: Counter zero - clear status */
+        ptr = scsi_get_ctrl_ptr_1b3b();
+        nvme_clear_status_bit1();
+    }
+    /* 0x29ad: Return 0x09 */
+    return 0x09;
+
+tail_call_29b0:
+    /*
+     * Tail-call code for action_code bit 1 clear
+     * Address: 0x29b0-0x2a0f
+     */
+
+    /* 0x29b0: Read SCSI control indexed */
+    ctrl_idx = scsi_read_ctrl_indexed();
+    ep_status = usb_calc_ep_status_addr();
+
+    /* 0x29b6: Compare ctrl_idx with ep_status */
+    if (ctrl_idx == ep_status) {
+        /* 0x29b9: Clear indexed counter if equal */
+        ptr = usb_calc_addr_012b_plus(I_QUEUE_IDX);
+        *ptr = 0;
+    }
+
+    /* 0x29c1: Calculate combined index */
+    temp = G_DMA_WORK_0216;
+    ctrl_idx = (temp + I_WORK_3C) & 0x1F;
+
+    /* 0x29cb: Get upper bits and combine */
+    ep_status = nvme_get_dev_status_upper();
+    /* Store combined value - need target address from previous dptr calc */
+    ptr = usb_calc_addr_012b_plus(I_QUEUE_IDX);
+    *ptr = ep_status | ctrl_idx;
+
+    /* 0x29d0: Check SCSI control state */
+    temp = scsi_read_ctrl_indexed();
+    if (temp == 0x01) {
+        /* 0x29d6: Call helper for state 1 */
+        usb_nvme_dev_status_update();
+    }
+
+    /* 0x29d9: Get combined state and update */
+    temp = usb_get_nvme_cmd_type();
+    ptr = usb_calc_addr_012b_plus(I_QUEUE_IDX);
+    *ptr = temp | I_WORK_3C;
+
+    /* 0x29df: Read from 0x053A and calculate address */
+    temp = G_NVME_PARAM_053A;
+    ptr = usb_calc_addr_01xx(0x94 + I_WORK_3C);
+    *ptr = temp;
+
+    /* 0x29ed: Decrement indexed counter and check */
+    temp = usb_dec_indexed_counter();
+    if (temp != 0) {
+        /* 0x29f2: Counter non-zero - update */
+        ptr = scsi_get_ctrl_ptr_1b3b();
+        ctrl_idx = *ptr;
+        temp = G_DMA_WORK_0216;
+        ctrl_idx += temp;
+        usb_calc_idx_counter_ptr(ctrl_idx);
+        *ptr = ctrl_idx;
+
+        /* 0x29fc: Check final counter */
+        ptr = scsi_get_ctrl_ptr_1b3b();
+        if (*ptr != 0) {
+            /* 0x2a0d: Return 0x0a */
+            goto return_0x0a;
+        }
+        /* 0x2a02: Counter became zero - call clear */
+        usb_add_nvme_param_20();
+    } else {
+        /* 0x2a07: Counter was zero - call clear */
+        ptr = scsi_get_ctrl_ptr_1b3b();
+        nvme_clear_status_bit1();
+    }
+
+return_0x0a:
+    /*
+     * 0x2a0d: Return 0x0a (10)
+     * NOTE: patch.py changes this return value from 0x0a to 0x05
+     * Patch offset: 0x2a0e (immediate byte of "mov r7, #0x0a")
+     */
+    return 0x0a;
 }
 
 /*
@@ -2820,14 +2903,10 @@ void status_update_handler_e677(void)
  * Protocol State Machine Functions (0x2000-0x3FFF range)
  *===========================================================================*/
 
-/* Forward declarations for helper functions */
+/* Forward declarations for helper functions (not yet in headers) */
 extern void parse_descriptor(uint8_t param);   /* 0x04da */
 extern void usb_state_setup_4c98(void);        /* 0x4c98 */
-/* helper_5359 defined earlier in this file */
-extern void scsi_dma_tag_setup_3212(uint8_t idx, uint16_t reg_addr); /* 0x3212 */
 extern uint8_t mul_add_index_0dd1(uint8_t base, uint8_t mult);       /* 0x0dd1 */
-extern void usb_set_transfer_active_flag(void); /* 0x312a */
-extern void nvme_read_status(void);            /* 0x31ce */
 extern void usb_helper_51ef(void);             /* 0x51ef */
 extern void usb_helper_5112(void);             /* 0x5112 */
 
@@ -3096,7 +3175,8 @@ abort_path:
     }
 
     usb_set_transfer_active_flag();
-    nvme_read_status();
+    /* 0x31ce: Set bit 7 of REG_USB_PHY_CTRL_9006 (DPTR left at 0x9006 by prev call) */
+    XDATA8(0x9006) = (XDATA8(0x9006) & 0x7F) | 0x80;
 }
 
 /*

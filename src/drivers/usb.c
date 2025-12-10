@@ -4595,24 +4595,24 @@ void usb_parse_descriptor(uint8_t param1, uint8_t param2)
 
     if ((param1 & 0x06) == 0) {
         /* Mode 0: Use param2 for buffer configuration */
-        XDATA_REG8(0xC4E9) = param2 | 0x80;
+        REG_NVME_DMA_CTRL_C4E9 = param2 | 0x80;
         val = REG_NVME_DMA_CTRL_ED;
         REG_NVME_DMA_CTRL_ED = (val & 0xC0) | param2;
-        XDATA_REG8(0x905B) = REG_NVME_DMA_ADDR_LO;
-        XDATA_REG8(0x905C) = REG_NVME_DMA_ADDR_HI;
+        REG_USB_EP_BUF_HI = REG_NVME_DMA_ADDR_LO;
+        REG_USB_EP_BUF_LO = REG_NVME_DMA_ADDR_HI;
     } else {
         /* Mode 1: Use fixed configuration */
-        XDATA_REG8(0xC4E9) = 0xA0;
+        REG_NVME_DMA_CTRL_C4E9 = 0xA0;
         val = G_USB_ADDR_HI_0056;
-        XDATA_REG8(0x905B) = val;
-        XDATA_REG8(0x905B) = val;
+        REG_USB_EP_BUF_HI = val;
+        REG_USB_EP_BUF_HI = val;
         val = G_USB_ADDR_LO_0057;
-        XDATA_REG8(0x905C) = val;
-        XDATA_REG8(0x905C) = val;
+        REG_USB_EP_BUF_LO = val;
+        REG_USB_EP_BUF_LO = val;
     }
 
     /* Clear buffer control registers */
-    XDATA_REG8(0x905A) = 0;
+    REG_USB_EP_CFG_905A = 0;
     REG_USB_EP_BUF_LEN_LO = 0;
     REG_DMA_STATUS = 0;
     REG_USB_EP_BUF_LEN_HI = 0;
@@ -4818,8 +4818,8 @@ uint8_t ep_config_read(uint8_t param)
  */
 uint8_t check_usb_phy_link_idle_e5b1(void)
 {
-    uint8_t phy_status = XDATA_REG8(0x9101) & 0x40;  /* Check bit 6 */
-    uint8_t link_status = XDATA_REG8(0x9091) & 0x01; /* Check bit 0 */
+    uint8_t phy_status = REG_USB_PERIPH_STATUS & 0x40;  /* Check bit 6 */
+    uint8_t link_status = REG_INT_FLAGS_EX0 & 0x01;     /* Check bit 0 */
 
     if (phy_status || link_status) {
         return 0;  /* Not idle */

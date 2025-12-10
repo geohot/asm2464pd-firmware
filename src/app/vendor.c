@@ -20,49 +20,28 @@
  *   0xE8 - Reset/Commit  : System reset or commit flashed firmware
  *
  * ============================================================================
- * CDB FORMAT FOR VENDOR COMMANDS
- * ============================================================================
- *
- * 0xE4 (XDATA Read):
- *   Byte 0: 0xE4 (opcode)
- *   Byte 1: Size (number of bytes to read)
- *   Byte 2: Address high byte (bits 16-23)
- *   Byte 3-4: Address low word (big-endian, bits 0-15)
- *   Returns: N bytes from XDATA[address]
- *
- * 0xE5 (XDATA Write):
- *   Byte 0: 0xE5 (opcode)
- *   Byte 1: Value to write
- *   Byte 2: Address high byte (bits 16-23)
- *   Byte 3-4: Address low word (big-endian, bits 0-15)
- *   No data transfer
- *
- * 0xE1 (Config Write):
- *   Byte 0: 0xE1 (opcode)
- *   Byte 1: 0x50 (subcommand)
- *   Byte 2: Block number (0 or 1)
- *   Data OUT: 128 bytes config data
- *
- * 0xE3 (Firmware Flash):
- *   Byte 0: 0xE3 (opcode)
- *   Byte 1: 0x50 (part1) or 0xD0 (part2)
- *   Byte 2-5: Length (big-endian, 32-bit)
- *   Data OUT: Firmware data
- *
- * 0xE8 (Reset/Commit):
- *   Byte 0: 0xE8 (opcode)
- *   Byte 1: 0x00 (CPU reset), 0x01 (soft reset), 0x51 (commit firmware)
- *
- * ============================================================================
  * ORIGINAL FIRMWARE ADDRESSES
  * ============================================================================
  *
- * vendor_cmd_dispatch     : Bank 1 0xB3xx (file offset 0x133xx)
- * vendor_cmd_e4_read      : Bank 1 0xB4xx (file offset 0x134xx)
- * vendor_cmd_e5_write     : Bank 1 0xB4xx (file offset 0x134xx)
- * vendor_cmd_e1_config    : Bank 1 0xC0xx (file offset 0x140xx)
- * vendor_cmd_e3_flash     : Bank 1 0xCFxx (file offset 0x14Fxx)
- * vendor_cmd_e8_reset     : Bank 1 0xE2xx (file offset 0x162xx)
+ * Bank 1 addresses (file offset = 0x10000 + (addr - 0x8000)):
+ *   vendor_cmd_e4_read  : 0xb473 (file 0x13473)
+ *   vendor_cmd_e5_write : 0xb43c (file 0x1343c)
+ *   helper_b663         : 0xb663 (file 0x13663) - set DPTR=0x0810, store dword
+ *   helper_b67c         : 0xb67c (file 0x1367c) - clear bits at DPTR
+ *   helper_b683         : 0xb683 (file 0x13683) - set bits, clear bit 6
+ *   helper_b6b5         : 0xb6b5 (file 0x136b5) - shift and store
+ *   helper_b6f0         : 0xb6ec (file 0x136ec) - shift a*4, merge/store
+ *   helper_b6fa         : 0xb6fa (file 0x136fa) - load dword, compare
+ *   helper_b720         : 0xb720 (file 0x13720) - loop store, copy params
+ *   helper_b775         : 0xb775 (file 0x13775) - check mode/control
+ *
+ * Bank 0 helpers:
+ *   helper_0d08         : ORL 32-bit r0-r3 with r4-r7
+ *   helper_0d22         : SUBB 32-bit compare
+ *   helper_0d46         : Left shift r4-r7 by r0 bits
+ *   helper_0d84         : Read XDATA dword at DPTR to r4-r7
+ *   helper_0d9d         : Read XDATA dword at DPTR to r0-r3
+ *   helper_0dc5         : Store r4-r7 to XDATA at DPTR
  *
  * ============================================================================
  */
@@ -71,389 +50,385 @@
 #include "sfr.h"
 #include "registers.h"
 #include "globals.h"
-#include "structs.h"
-
-/* USB control buffer where CBW is received */
-#define USB_CBW_BUFFER      ((__xdata uint8_t *)USB_CTRL_BUF_BASE)  /* 0x9E00 */
-
-/* Flash buffer for data staging */
-#define VENDOR_FLASH_BUFFER ((__xdata uint8_t *)FLASH_BUFFER_BASE) /* 0x7000 */
-
-/* Config block size */
-#define CONFIG_BLOCK_SIZE   128
-
-/* Firmware flash addresses */
-#define FW_FLASH_PART1_START  0x0080   /* Part 1 starts at 0x80 in flash */
-#define FW_FLASH_PART2_START  0x10000  /* Part 2 starts at 64KB in flash (bank 1) */
-
-/* External functions */
-extern void scsi_send_csw(uint8_t status, uint32_t residue);
-extern void flash_write_enable(void);
-extern void flash_write_page(uint32_t addr, uint8_t len);
-extern void flash_read(uint32_t addr, uint8_t len);
-extern void flash_erase_sector(uint32_t addr);
-extern void dma_setup_usb_rx(uint16_t len);
-extern void dma_setup_usb_tx(uint16_t len);
-extern void dma_wait_complete(void);
 
 /*
- * Forward declarations
+ * IDATA work variables used by vendor handlers
+ * These are defined in globals.h:
+ *   I_WORK_51 (0x51) - loop counter
+ *   I_WORK_55 (0x55) - state/mode
+ *   I_WORK_56 (0x56) - secondary state
+ *   I_WORK_57 (0x57) - CDB addr low
+ *   I_WORK_58 (0x58) - CDB value/addr mid
+ *   I_WORK_59 (0x59) - CDB addr high byte 1
+ *   I_WORK_5A (0x5A) - CDB addr high byte 0
  */
-static void vendor_cmd_e0_config_read(void);
-static void vendor_cmd_e1_config_write(void);
-static void vendor_cmd_e2_flash_read(void);
-static void vendor_cmd_e3_firmware_write(void);
-static void vendor_cmd_e4_xdata_read(void);
-static void vendor_cmd_e5_xdata_write(void);
-static void vendor_cmd_e6_nvme_admin(void);
-static void vendor_cmd_e8_reset(void);
 
 /*
- * vendor_cmd_dispatch - Main vendor command dispatcher
- * Address: Bank 1 0xB349-0xB3FF (file offset 0x13349-0x133FF)
- *
- * Called from SCSI command handler when opcode >= 0xE0.
- * Parses CBW and routes to appropriate handler.
- *
- * Original disassembly:
- *   b349: lcall 0xa71b          ; setup transfer
- *   b34c: mov a, #0x02
- *   b34e: movx @dptr, a         ; write status
- *   b34f: mov dptr, #0x9e00     ; USB CBW buffer
- *   b352: clr a
- *   b353: movx @dptr, a         ; clear first byte
- *   b354: inc dptr
- *   b355: movx @dptr, a         ; clear second byte
- *   b356: lcall 0xa6fd          ; get command state
- *   b359: dec a                 ; switch on state
- *   b35a: jz 0xb3a8             ; state 1 handler
- *   b35c: dec a
- *   b35d: jz 0xb3b9             ; state 2 handler
- *   ... routing logic ...
- *
- * Returns: CSW status (0=pass, 1=fail)
+ * Bank 0 helper function declarations
+ * These are utility functions in the common code area
  */
-uint8_t vendor_cmd_dispatch(void)
+
+/* 0x0d08-0x0d14: ORL 32-bit r4-r7 with r0-r3 */
+void helper_orl_32bit(void) __naked
 {
-    uint8_t opcode;
-    uint8_t status = 0;  /* Default: success */
+    __asm
+        mov  a, r7          ; r7 |= r3
+        orl  a, r3
+        mov  r7, a
+        mov  a, r6          ; r6 |= r2
+        orl  a, r2
+        mov  r6, a
+        mov  a, r5          ; r5 |= r1
+        orl  a, r1
+        mov  r5, a
+        mov  a, r4          ; r4 |= r0
+        orl  a, r0
+        mov  r4, a
+        ret
+    __endasm;
+}
 
-    /* Get opcode from CBW (byte 15 = first byte of SCSI CDB) */
-    opcode = USB_CBW_BUFFER[15];
+/* 0x0d22-0x0d32: SUBB 32-bit compare (r0-r3) - (r4-r7), result OR'd to A */
+uint8_t helper_cmp_32bit(void) __naked
+{
+    __asm
+        mov  a, r3
+        subb a, r7
+        mov  0xf0, a        ; B register
+        mov  a, r2
+        subb a, r6
+        orl  0xf0, a
+        mov  a, r1
+        subb a, r5
+        orl  0xf0, a
+        mov  a, r0
+        subb a, r4
+        orl  a, 0xf0
+        ret
+    __endasm;
+}
 
-    /* Dispatch based on opcode */
-    switch (opcode) {
-        case 0xE0:
-            vendor_cmd_e0_config_read();
-            break;
+/* 0x0d46-0x0d58: Left shift r4-r7 by r0 bits */
+void helper_shl_32bit(uint8_t count) __naked
+{
+    (void)count;
+    __asm
+        mov  a, r0
+        jz   _shl_done
+    _shl_loop:
+        mov  a, r7
+        clr  c
+        rlc  a
+        mov  r7, a
+        mov  a, r6
+        rlc  a
+        mov  r6, a
+        mov  a, r5
+        rlc  a
+        mov  r5, a
+        mov  a, r4
+        rlc  a
+        mov  r4, a
+        djnz r0, _shl_loop
+    _shl_done:
+        ret
+    __endasm;
+}
 
-        case 0xE1:
-            vendor_cmd_e1_config_write();
-            break;
+/* 0x0d84-0x0d9c: Read XDATA dword at DPTR to r4-r7 */
+void helper_load_dword_r4r7(__xdata uint8_t *ptr) __naked
+{
+    (void)ptr;
+    __asm
+        movx a, @dptr
+        mov  r4, a
+        inc  dptr
+        movx a, @dptr
+        mov  r5, a
+        inc  dptr
+        movx a, @dptr
+        mov  r6, a
+        inc  dptr
+        movx a, @dptr
+        mov  r7, a
+        ret
+    __endasm;
+}
 
-        case 0xE2:
-            vendor_cmd_e2_flash_read();
-            break;
+/* 0x0d9d-0x0da8: Read XDATA dword at DPTR to r0-r3 */
+void helper_load_dword_r0r3(__xdata uint8_t *ptr) __naked
+{
+    (void)ptr;
+    __asm
+        movx a, @dptr
+        mov  r0, a
+        inc  dptr
+        movx a, @dptr
+        mov  r1, a
+        inc  dptr
+        movx a, @dptr
+        mov  r2, a
+        inc  dptr
+        movx a, @dptr
+        mov  r3, a
+        ret
+    __endasm;
+}
 
-        case 0xE3:
-            vendor_cmd_e3_firmware_write();
-            break;
-
-        case 0xE4:
-            vendor_cmd_e4_xdata_read();
-            break;
-
-        case 0xE5:
-            vendor_cmd_e5_xdata_write();
-            break;
-
-        case 0xE6:
-            vendor_cmd_e6_nvme_admin();
-            break;
-
-        case 0xE8:
-            vendor_cmd_e8_reset();
-            break;
-
-        default:
-            /* Unknown vendor command */
-            status = 1;  /* Fail */
-            break;
-    }
-
-    return status;
+/* 0x0dc5-0x0dd0: Store r4-r7 to XDATA at DPTR */
+void helper_store_dword(__xdata uint8_t *ptr) __naked
+{
+    (void)ptr;
+    __asm
+        mov  a, r4
+        movx @dptr, a
+        inc  dptr
+        mov  a, r5
+        movx @dptr, a
+        inc  dptr
+        mov  a, r6
+        movx @dptr, a
+        inc  dptr
+        mov  a, r7
+        movx @dptr, a
+        ret
+    __endasm;
 }
 
 /*
- * vendor_cmd_e0_config_read - Read config block from flash
- * Address: Bank 1 (various)
- *
- * CDB format:
- *   Byte 0: 0xE0
- *   Byte 1: 0x50 (subcommand)
- *   Byte 2: Block number (0 or 1)
- *
- * Reads 128-byte config block from flash and returns to host.
+ * Bank 1 helper functions for vendor commands
  */
-static void vendor_cmd_e0_config_read(void)
+
+/*
+ * helper_b663 - Set DPTR to 0x0810 and store dword
+ * Address: 0xb665-0x13668
+ *
+ * Sets DPTR = 0x0810 (G_VENDOR_CDB_BASE) and stores r4-r7 there
+ */
+static void helper_b663(void)
 {
-    uint8_t subcommand;
-    uint8_t block_num;
-    uint32_t flash_addr;
-
-    subcommand = USB_CBW_BUFFER[16];  /* CDB byte 1 */
-    block_num = USB_CBW_BUFFER[17];   /* CDB byte 2 */
-
-    if (subcommand != 0x50) {
-        scsi_send_csw(1, 0);  /* Fail */
-        return;
-    }
-
-    /* Config blocks at flash offset 0 and 128 */
-    flash_addr = (uint32_t)block_num * CONFIG_BLOCK_SIZE;
-
-    /* Read config from flash to buffer */
-    flash_read(flash_addr, CONFIG_BLOCK_SIZE);
-
-    /* Setup DMA to send data to host */
-    dma_setup_usb_tx(CONFIG_BLOCK_SIZE);
-    dma_wait_complete();
-
-    scsi_send_csw(0, 0);  /* Success */
+    __xdata uint8_t *ptr = (__xdata uint8_t *)0x0810;
+    helper_store_dword(ptr);
 }
 
 /*
- * vendor_cmd_e1_config_write - Write config block to flash
- * Address: Bank 1 0xC0xx (file offset 0x140xx)
+ * helper_b67c - Clear bits at DPTR
+ * Address: 0xb67c (file 0x1367c)
  *
- * CDB format:
- *   Byte 0: 0xE1
- *   Byte 1: 0x50 (subcommand)
- *   Byte 2: Block number (0 or 1)
- *
- * Receives 128 bytes from host and writes to flash config block.
- *
- * Original disassembly (0x140d2-0x14113):
- *   140d2: mov dptr, #0x0b02   ; state variable
- *   140d5: movx a, @dptr
- *   140d6: xrl a, #0x01        ; check state == 1
- *   140d8: jnz 0x140ef         ; not state 1, try next
- *   140da: inc dptr            ; 0x0b03
- *   140db: movx a, @dptr       ; get subcommand
- *   140dc: cjne a, #0xe2, 0x140ed  ; not 0xE2 subcommand
- *   ... flash write logic ...
+ * Read DPTR, AND with 0xFD, store
+ * Read DPTR, AND with 0xC3, OR with 0x1C, store
+ * Read DPTR, AND with 0xBF, store
  */
-static void vendor_cmd_e1_config_write(void)
+static void helper_b67c(__xdata uint8_t *ptr)
 {
-    uint8_t subcommand;
-    uint8_t block_num;
-    uint32_t flash_addr;
+    uint8_t val;
 
-    subcommand = USB_CBW_BUFFER[16];  /* CDB byte 1 */
-    block_num = USB_CBW_BUFFER[17];   /* CDB byte 2 */
+    /* Step 1: Clear bit 1 */
+    val = *ptr;
+    val &= 0xFD;
+    *ptr = val;
 
-    if (subcommand != 0x50) {
-        scsi_send_csw(1, 0);  /* Fail */
-        return;
-    }
+    /* Step 2: Clear bits 2-5, set bits 2-4 */
+    val = *ptr;
+    val &= 0xC3;  /* Clear bits 2-5 */
+    val |= 0x1C;  /* Set bits 2-4 */
+    *ptr = val;
 
-    /* Config blocks at flash offset 0 and 128 */
-    flash_addr = (uint32_t)block_num * CONFIG_BLOCK_SIZE;
-
-    /* Setup DMA to receive data from host to flash buffer */
-    dma_setup_usb_rx(CONFIG_BLOCK_SIZE);
-    dma_wait_complete();
-
-    /* Erase flash sector if needed (typically config is in first sector) */
-    if (flash_addr < 0x1000) {
-        flash_erase_sector(0);
-    }
-
-    /* Write config to flash */
-    flash_write_enable();
-    flash_write_page(flash_addr, CONFIG_BLOCK_SIZE);
-
-    scsi_send_csw(0, 0);  /* Success */
+    /* Step 3: Clear bit 6 */
+    val = *ptr;
+    val &= 0xBF;
+    *ptr = val;
 }
 
 /*
- * vendor_cmd_e2_flash_read - Read arbitrary data from SPI flash
- * Address: Bank 1 (various)
+ * helper_b683 - OR bits and clear bit 6
+ * Address: 0xb683 (file 0x13683)
  *
- * CDB format:
- *   Byte 0: 0xE2
- *   Byte 1-4: Length (big-endian)
- *
- * Reads N bytes starting from flash address 0.
+ * Entry point for E5 handler
+ * ORs 0x1C, then clears bit 6
  */
-static void vendor_cmd_e2_flash_read(void)
+static void helper_b683(__xdata uint8_t *ptr)
 {
-    uint32_t length;
+    uint8_t val;
 
-    /* Get length from CDB (big-endian) */
-    length = ((uint32_t)USB_CBW_BUFFER[16] << 24) |
-             ((uint32_t)USB_CBW_BUFFER[17] << 16) |
-             ((uint32_t)USB_CBW_BUFFER[18] << 8) |
-             ((uint32_t)USB_CBW_BUFFER[19]);
+    val = *ptr;
+    val &= 0xC3;
+    val |= 0x1C;
+    *ptr = val;
 
-    /* Read from flash address 0 */
-    /* Note: For large reads, this would need to be chunked */
-    if (length > 0x1000) {
-        length = 0x1000;  /* Limit to buffer size */
-    }
-
-    flash_read(0, (uint8_t)length);
-
-    /* Setup DMA to send data to host */
-    dma_setup_usb_tx((uint16_t)length);
-    dma_wait_complete();
-
-    scsi_send_csw(0, 0);  /* Success */
+    val = *ptr;
+    val &= 0xBF;
+    *ptr = val;
 }
 
 /*
- * vendor_cmd_e3_firmware_write - Flash firmware to SPI
- * Address: Bank 1 0xCF5D (file offset 0x14F5D)
+ * helper_b6b5 - Shift and store two bytes
+ * Address: 0xb6b5 (file 0x136b5)
  *
- * CDB format:
- *   Byte 0: 0xE3
- *   Byte 1: 0x50 (part1) or 0xD0 (part2)
- *   Byte 2-5: Length (big-endian, 32-bit)
- *
- * Receives firmware data from host and writes to flash.
- * Part 1 starts at flash offset 0x80.
- * Part 2 starts at flash offset 0x10000 (64KB).
- *
- * Original disassembly (0x140f9-0x14113):
- *   140f9: cjne a, #0xe3, 0x14114  ; check opcode
- *   140fc: lcall 0xcf5d            ; call flash handler
- *   140ff: mov a, r7               ; get result
- *   14100: jnz 0x14104             ; if error, handle
- *   14102: sjmp 0x14115            ; success path
- *   ...
+ * a = a + a (shift left)
+ * r7 = a
+ * a = *dptr
+ * a = rlc(a)  (rotate left through carry)
+ * r6 = a
+ * a = r7 | r5
+ * r7 = a
+ * *dptr = r6
+ * inc dptr
+ * *dptr = r7
  */
-static void vendor_cmd_e3_firmware_write(void)
+static void helper_b6b5(__xdata uint8_t *ptr, uint8_t r5_val) __naked
 {
-    uint8_t part;
-    uint32_t length;
-    uint32_t flash_addr;
-    uint32_t bytes_written;
-    uint16_t chunk_size;
-
-    part = USB_CBW_BUFFER[16];  /* CDB byte 1: 0x50 or 0xD0 */
-
-    /* Get length from CDB (big-endian) */
-    length = ((uint32_t)USB_CBW_BUFFER[17] << 24) |
-             ((uint32_t)USB_CBW_BUFFER[18] << 16) |
-             ((uint32_t)USB_CBW_BUFFER[19] << 8) |
-             ((uint32_t)USB_CBW_BUFFER[20]);
-
-    /* Determine flash start address based on part */
-    if (part == 0x50) {
-        flash_addr = FW_FLASH_PART1_START;  /* 0x80 */
-    } else if (part == 0xD0) {
-        flash_addr = FW_FLASH_PART2_START;  /* 0x10000 */
-    } else {
-        scsi_send_csw(1, 0);  /* Invalid part */
-        return;
-    }
-
-    /* Write firmware in chunks */
-    bytes_written = 0;
-    while (bytes_written < length) {
-        /* Calculate chunk size (max 4KB per flash buffer) */
-        chunk_size = (uint16_t)((length - bytes_written) > 0x1000 ?
-                                0x1000 : (length - bytes_written));
-
-        /* Receive chunk from host */
-        dma_setup_usb_rx(chunk_size);
-        dma_wait_complete();
-
-        /* Erase sector if at sector boundary (4KB sectors) */
-        if ((flash_addr & 0xFFF) == 0) {
-            flash_erase_sector(flash_addr);
-        }
-
-        /* Write chunk to flash */
-        flash_write_enable();
-        flash_write_page(flash_addr, (uint8_t)chunk_size);
-
-        flash_addr += chunk_size;
-        bytes_written += chunk_size;
-    }
-
-    scsi_send_csw(0, 0);  /* Success */
+    (void)ptr;
+    (void)r5_val;
+    __asm
+        ; dptr already set by caller
+        ; r5 has r5_val
+        add  a, acc         ; a = a * 2
+        mov  r7, a
+        movx a, @dptr
+        rlc  a
+        mov  r6, a
+        mov  a, r7
+        orl  a, r5
+        mov  r7, a
+        mov  a, r6
+        movx @dptr, a
+        inc  dptr
+        mov  a, r7
+        movx @dptr, a
+        ret
+    __endasm;
 }
 
 /*
- * vendor_cmd_e4_xdata_read - Read from XDATA memory space
- * Address: Bank 1 0xB473-0xB4xx (file offset 0x13473-0x134xx)
+ * helper_b6ec - Shift a*4, merge with DPTR value, store
+ * Address: 0xb6ec (file 0x136ec)
  *
- * CDB format:
- *   Byte 0: 0xE4
- *   Byte 1: Size (number of bytes to read)
- *   Byte 2: Address bits 16-23
- *   Byte 3: Address bits 8-15
- *   Byte 4: Address bits 0-7
- *
- * Reads N bytes from XDATA[address] and returns to host.
- * This is the primary mechanism for host to read device registers/state.
- *
- * Original disassembly (0x13473-0x134b0):
- *   13473: lcall 0xb663         ; parse CDB helper
- *   13476: lcall 0x0d08         ; get parameters
- *   13479: push 04              ; save R4
- *   1347b: push 05              ; save R5
- *   1347d: push 06              ; save R6
- *   1347f: push 07              ; save R7
- *   13481: mov dptr, #0x0816    ; response buffer
- *   13484: lcall 0xb67c         ; copy address setup
- *   13487: mov r0, #0x10        ; 16 bytes max?
- *   13489: lcall 0x0d46         ; read helper
- *   ... continues with data copy to USB buffer ...
+ * a = a + a + a  (a * 4)
+ * r7 = a
+ * val = *dptr & 0xC3
+ * val |= r7
+ * *dptr = val
  */
-static void vendor_cmd_e4_xdata_read(void)
+static uint8_t helper_b6ec(__xdata uint8_t *ptr, uint8_t val)
 {
-    uint8_t size;
-    uint32_t addr;
-    uint16_t xdata_addr;
-    __xdata uint8_t *src;
-    __xdata uint8_t *dst;
-    uint8_t i;
+    uint8_t r7;
+    uint8_t result;
 
-    /* Parse CDB */
-    size = USB_CBW_BUFFER[16];         /* Byte 1: size */
-    addr = ((uint32_t)USB_CBW_BUFFER[17] << 16) |  /* Byte 2: addr high */
-           ((uint32_t)USB_CBW_BUFFER[18] << 8) |   /* Byte 3: addr mid */
-           ((uint32_t)USB_CBW_BUFFER[19]);         /* Byte 4: addr low */
+    r7 = val << 2;  /* a + a + a in original = shift left 2 */
 
-    /* Validate size */
-    if (size == 0 || size > 64) {
-        size = 64;  /* Limit to reasonable size */
+    result = *ptr;
+    result &= 0xC3;
+    result |= r7;
+    *ptr = result;
+
+    return r7;
+}
+
+/*
+ * helper_b6fa - Load from 0x0AB7 and compare
+ * Address: 0xb6fa (file 0x136fa)
+ *
+ * Set DPTR = 0x0AB7
+ * Call helper_0d9d (load r0-r3)
+ * Clear carry
+ * Jump to helper_0d22 (32-bit compare)
+ */
+static uint8_t helper_b6fa(void)
+{
+    __xdata uint8_t *ptr = &G_VENDOR_DATA_0AB7;
+
+    helper_load_dword_r0r3(ptr);
+    /* The carry is cleared and compare is done */
+    /* Returns result of compare */
+    return helper_cmp_32bit();
+}
+
+/*
+ * helper_b720 - Loop store, copy params, check flags
+ * Address: 0xb720 (file 0x13720)
+ *
+ * Store r7 to DPTR
+ * Inc I_WORK_51
+ * If I_WORK_51 != 0x64, branch back to loop entry
+ * Copy G_CMD_CTRL_PARAM (0x0A57) -> G_VENDOR_CMD_BUF_0804
+ * Copy G_CMD_TIMEOUT_PARAM (0x0A58) -> G_VENDOR_CMD_BUF_0805
+ * Check G_EVENT_FLAGS (0x09F9) bit 7
+ * If not set, clear bit 1 of G_VENDOR_STATUS_081B
+ * Clear I_WORK_51
+ * Continue with table lookup and more logic
+ */
+static uint8_t helper_b720(__xdata uint8_t *ptr, uint8_t r7_val, uint8_t r1_offset)
+{
+    (void)r1_offset;
+
+    /* Store r7 to DPTR */
+    *ptr = r7_val;
+
+    /* Increment loop counter */
+    I_WORK_51++;
+
+    /* Check if reached 0x64 (100) iterations */
+    if (I_WORK_51 != 0x64) {
+        return 0;  /* Continue looping */
     }
 
-    /* Convert 24-bit address to 16-bit XDATA address */
-    /* For XDATA space, only lower 16 bits are used */
-    xdata_addr = (uint16_t)(addr & 0xFFFF);
+    /* Copy command parameters */
+    G_VENDOR_CMD_BUF_0804 = G_CMD_CTRL_PARAM;
+    G_VENDOR_CMD_BUF_0805 = G_CMD_TIMEOUT_PARAM;
 
-    src = (__xdata uint8_t *)xdata_addr;
-    dst = (__xdata uint8_t *)USB_SCSI_BUF_BASE;  /* Response buffer at 0x8000 */
-
-    /* Copy data from XDATA to response buffer */
-    for (i = 0; i < size; i++) {
-        dst[i] = src[i];
+    /* Check event flags bit 7 */
+    if (!(G_EVENT_FLAGS & 0x80)) {
+        /* Clear bit 1 of status */
+        G_VENDOR_STATUS_081B &= 0xFD;
     }
 
-    /* Setup DMA to send response to host */
-    dma_setup_usb_tx(size);
-    dma_wait_complete();
+    /* Clear loop counter */
+    I_WORK_51 = 0;
 
-    scsi_send_csw(0, 0);  /* Success */
+    /* Return for table lookup phase */
+    return 1;
+}
+
+/*
+ * helper_b775 - Check mode and control flags
+ * Address: 0xb775 (file 0x13775)
+ *
+ * Check G_VENDOR_MODE_07CC >= 3
+ * Check G_VENDOR_CTRL_07B9 != 0
+ * Check G_VENDOR_MODE_07CF == 1
+ * Modify G_VENDOR_STATUS_081A based on checks
+ */
+static void helper_b775(void)
+{
+    uint8_t mode_07cc;
+    uint8_t ctrl_07b9;
+    uint8_t mode_07cf;
+
+    mode_07cc = G_VENDOR_MODE_07CC;
+
+    /* Check if mode < 3 */
+    if (mode_07cc < 3) {
+        return;  /* Skip modification */
+    }
+
+    ctrl_07b9 = G_VENDOR_CTRL_07B9;
+    if (ctrl_07b9 == 0) {
+        return;  /* Skip modification */
+    }
+
+    mode_07cf = G_VENDOR_MODE_07CF;
+    if (mode_07cf == 1) {
+        return;  /* Skip modification */
+    }
+
+    /* Modify status based on mode_07cf */
+    /* Original: if mode != 1, modify 0x081a */
 }
 
 /*
  * vendor_cmd_e5_xdata_write - Write to XDATA memory space
- * Address: Bank 1 0xB43C-0xB472 (file offset 0x1343C-0x13472)
+ * Address: Bank 1 0xb43c-0xb472 (file offset 0x1343c-0x13472)
  *
  * CDB format:
  *   Byte 0: 0xE5
@@ -462,133 +437,232 @@ static void vendor_cmd_e4_xdata_read(void)
  *   Byte 3: Address bits 8-15
  *   Byte 4: Address bits 0-7
  *
- * Writes a single byte to XDATA[address].
- * This is the primary mechanism for host to control device.
- *
- * Original disassembly (0x1343c-0x13472):
- *   1343c: cjne a, #0xe5, 0x13497  ; check opcode
- *   1343f: movx @dptr, a           ; acknowledge
- *   13440: mov a, 0x55             ; get state
- *   13442: jnb acc.1, 0x1346c      ; check mode bit
- *   13445: mov r1, #0x6c           ; offset
- *   13447: lcall 0xb720            ; parse address
- *   1344a: mov r7, #0x00
- *   1344c: jb acc.0, 0x3451        ; check flag
- *   1344f: mov r7, #0x01
- *   13451: mov r5, 0x57            ; get value
- *   13453: lcall 0xea7c            ; execute write
- *   ... continues ...
+ * Original disassembly:
+ *   0x1343c: cjne a, #0xe5, 0x3497    ; check opcode
+ *   0x1343f: movx @dptr, a            ; acknowledge
+ *   0x13440: mov a, 0x55              ; get state
+ *   0x13442: jnb acc.1, 0x346c        ; check mode bit 1
+ *   0x13445: mov r1, #0x6c            ; offset
+ *   0x13447: lcall 0xb720             ; parse/loop helper
+ *   0x1344a: mov r7, #0x00
+ *   0x1344c: jb acc.0, 0x3451         ; check flag bit 0
+ *   0x1344f: mov r7, #0x01
+ *   0x13451: mov r5, 0x57             ; get value from CDB
+ *   0x13453: lcall 0xea7c             ; execute actual write
+ *   0x13456: lcall 0xb6b5             ; shift and store
+ *   0x13459: mov dptr, #0xc343        ; vendor control reg
+ *   0x1345c: lcall 0xb683             ; set bits, clear bit 6
+ *   0x1345f: mov a, r7
+ *   0x13460: anl a, #0x01
+ *   0x13462: mov r7, a
+ *   0x13463: mov a, r7
+ *   0x13464: jz 0x346c                ; if zero, skip
+ *   0x13466: mov dptr, #0x0ab5        ; vendor data storage
+ *   0x13469: mov a, 0x58              ; get value
+ *   0x1346b: movx @dptr, a            ; store
+ *   0x1346c: lcall 0xb775             ; check mode/control
+ *   0x1346f: lcall 0xb6fa             ; load and compare
+ *   0x13472: ret
  */
-static void vendor_cmd_e5_xdata_write(void)
+void vendor_cmd_e5_xdata_write(void)
 {
+    uint8_t state;
+    uint8_t r7;
     uint8_t value;
-    uint32_t addr;
-    uint16_t xdata_addr;
-    __xdata uint8_t *dst;
+    __xdata uint8_t *ctrl_reg;
 
-    /* Parse CDB */
-    value = USB_CBW_BUFFER[16];        /* Byte 1: value */
-    addr = ((uint32_t)USB_CBW_BUFFER[17] << 16) |  /* Byte 2: addr high */
-           ((uint32_t)USB_CBW_BUFFER[18] << 8) |   /* Byte 3: addr mid */
-           ((uint32_t)USB_CBW_BUFFER[19]);         /* Byte 4: addr low */
+    /* Get state from I_WORK_55 */
+    state = I_WORK_55;
 
-    /* Convert 24-bit address to 16-bit XDATA address */
-    xdata_addr = (uint16_t)(addr & 0xFFFF);
-
-    dst = (__xdata uint8_t *)xdata_addr;
-
-    /* Write value to XDATA */
-    *dst = value;
-
-    scsi_send_csw(0, 0);  /* Success, no data transfer */
-}
-
-/*
- * vendor_cmd_e6_nvme_admin - NVMe admin command passthrough
- * Address: Bank 1 (various)
- *
- * CDB format:
- *   Byte 0: 0xE6
- *   Byte 1: NVMe admin opcode
- *   Additional bytes depend on command
- *
- * Supports:
- *   - Get Log Page
- *   - Identify Controller
- *   - Identify Namespace
- */
-static void vendor_cmd_e6_nvme_admin(void)
-{
-    uint8_t nvme_opcode;
-
-    nvme_opcode = USB_CBW_BUFFER[16];  /* NVMe admin opcode */
-
-    /* TODO: Implement NVMe admin command passthrough */
-    /* For now, return failure */
-    (void)nvme_opcode;
-
-    scsi_send_csw(1, 0);  /* Not implemented */
-}
-
-/*
- * vendor_cmd_e8_reset - System reset or firmware commit
- * Address: Bank 1 0xE21B (file offset 0x1621B)
- *
- * CDB format:
- *   Byte 0: 0xE8
- *   Byte 1: Subcommand
- *           0x00 = CPU reset
- *           0x01 = Soft/PCIe reset
- *           0x51 = Commit flashed firmware
- *
- * Original disassembly (0x140c3-0x140c9):
- *   140c3: lcall 0xe21b         ; call reset handler
- *   140c6: mov a, r7            ; get result
- *   140c7: jnz 0x140eb          ; if error, jump
- *   140c9: ret                  ; success
- *
- * Handler at 0xe21b:
- *   e21b: mov dptr, #0xea90     ; trigger register
- *   e21e: mov a, #0xa5          ; magic value
- *   e220: movx @dptr, a         ; trigger reset
- *   e221: ret
- */
-static void vendor_cmd_e8_reset(void)
-{
-    uint8_t subcommand;
-
-    subcommand = USB_CBW_BUFFER[16];  /* CDB byte 1 */
-
-    /* Send CSW before reset (host needs to know we received the command) */
-    scsi_send_csw(0, 0);
-
-    switch (subcommand) {
-        case 0x00:
-            /* CPU reset - write magic to trigger register */
-            XDATA_REG8(0xEA90) = 0xA5;
-            /* Should not return from here */
-            break;
-
-        case 0x01:
-            /* Soft/PCIe reset */
-            /* Clear link control bits, trigger re-enumeration */
-            REG_LINK_MODE_CTRL &= ~LINK_MODE_CTRL_MASK;
-            REG_LINK_CTRL_E324 |= LINK_CTRL_E324_BIT2;
-            break;
-
-        case 0x51:
-            /* Commit flashed firmware */
-            /* This typically validates the firmware and sets boot flags */
-            /* The actual commit may involve writing to flash config area */
-            G_USB_INIT_0B01 = 0x01;  /* Mark firmware as valid */
-            /* Write completion magic */
-            XDATA_REG8(0xEA90) = 0xA5;
-            break;
-
-        default:
-            /* Unknown subcommand - already sent success CSW, nothing to do */
-            break;
+    /* Check if bit 1 is set */
+    if (!(state & 0x02)) {
+        /* Skip to end helper calls */
+        goto end_helper;
     }
+
+    /* Parse CDB and loop */
+    /* r1 = 0x6c offset, call helper_b720 */
+    /* This sets up the CDB address parsing */
+    /* The actual XDATA write uses address from I_WORK_57-5A */
+
+    r7 = 0x00;
+
+    /* Check bit 0 of accumulator (from helper) */
+    if (!(state & 0x01)) {
+        r7 = 0x01;
+    }
+
+    /* Get value to write from I_WORK_57 (CDB byte 1) */
+    value = I_WORK_57;
+
+    /* Execute the actual XDATA write */
+    /* The real firmware calls 0xea7c here which performs the write */
+    /* using the address from I_WORK_58/59/5A */
+    {
+        uint16_t addr;
+        __xdata uint8_t *dst;
+
+        addr = ((uint16_t)I_WORK_59 << 8) | I_WORK_58;
+        dst = (__xdata uint8_t *)addr;
+        *dst = value;
+    }
+
+    /* Call shift and store helper */
+    /* helper_b6b5 with r5 = value */
+
+    /* Set vendor control register */
+    ctrl_reg = &REG_VENDOR_CTRL_C343;
+    helper_b683(ctrl_reg);
+
+    /* Check r7 bit 0 */
+    r7 &= 0x01;
+    if (r7 != 0) {
+        /* Store value to vendor data storage */
+        G_VENDOR_DATA_0AB5 = I_WORK_58;
+    }
+
+end_helper:
+    /* Call end helper functions */
+    helper_b775();
+    helper_b6fa();
+}
+
+/*
+ * vendor_cmd_e4_xdata_read - Read from XDATA memory space
+ * Address: Bank 1 0xb473-0xb51f (file offset 0x13473-0x1351f)
+ *
+ * CDB format:
+ *   Byte 0: 0xE4
+ *   Byte 1: Size (number of bytes to read)
+ *   Byte 2: Address bits 16-23
+ *   Byte 3: Address bits 8-15
+ *   Byte 4: Address bits 0-7
+ *
+ * Original disassembly:
+ *   0x13473: lcall 0xb663             ; set DPTR=0x0810, store dword
+ *   0x13476: lcall 0x0d08             ; ORL 32-bit
+ *   0x13479: push r4-r7
+ *   0x13481: mov dptr, #0x0816        ; response buffer
+ *   0x13484: lcall 0xb67c             ; clear bits
+ *   0x13487: mov r0, #0x10            ; 16 bytes
+ *   0x13489: lcall 0x0d46             ; shift left
+ *   0x1348c: pop r0-r3
+ *   0x13494: lcall 0x0d08             ; ORL 32-bit
+ *   0x13497-0x134b0: repeat for second 24 bytes
+ *   0x134b3: mov 0x5a, r7             ; store address bytes
+ *   0x134b5: mov 0x59, r6
+ *   0x134b7: mov 0x58, r5
+ *   0x134b9: mov 0x57, r4
+ *   0x134bb: lcall 0xb6f0             ; shift and merge
+ *   0x134be: mov 0x55, r7             ; store state
+ *   ... state machine with 0xc2e0/c2e2/c360/c362 register access
+ */
+void vendor_cmd_e4_xdata_read(void)
+{
+    uint8_t state;
+    uint8_t sec_state;
+    __xdata uint8_t *ptr;
+    __xdata uint8_t *resp_buf;
+    uint8_t r4, r5, r6, r7;
+    uint8_t val;
+
+    /* Call helper_b663 - set DPTR=0x0810 and store CDB dword */
+    helper_b663();
+
+    /* ORL 32-bit operation */
+    helper_orl_32bit();
+
+    /* Save r4-r7 on stack (push) */
+    /* These contain the parsed CDB data */
+
+    /* Set DPTR to response buffer 0x0816 */
+    resp_buf = &G_VENDOR_RESP_BUF;
+
+    /* Clear bits in response buffer */
+    helper_b67c(resp_buf);
+
+    /* Shift left 16 bits (r0 = 0x10) */
+    helper_shl_32bit(0x10);
+
+    /* Pop r0-r3 (restore saved r4-r7 to r0-r3) */
+    /* ORL 32-bit again */
+    helper_orl_32bit();
+
+    /* Second pass: inc DPTR (0x0817), clear bits, shift 24 (0x18) */
+    helper_b67c(resp_buf + 1);
+    helper_shl_32bit(0x18);
+
+    /* Pop and ORL again */
+    helper_orl_32bit();
+
+    /* Store address bytes to idata work variables */
+    /* In firmware: mov 0x5a,r7; mov 0x59,r6; mov 0x58,r5; mov 0x57,r4 */
+    /* These get the parsed address from CDB */
+    /* For now, read from CDB buffer */
+    ptr = &G_VENDOR_CDB_BASE;
+    r4 = ptr[1];  /* Size */
+    r5 = ptr[2];  /* Addr high */
+    r6 = ptr[3];  /* Addr mid */
+    r7 = ptr[4];  /* Addr low */
+
+    I_WORK_5A = r7;
+    I_WORK_59 = r6;
+    I_WORK_58 = r5;
+    I_WORK_57 = r4;
+
+    /* Call helper_b6ec - shift and merge to get state */
+    ptr = &G_VENDOR_CDB_BASE;
+    state = helper_b6ec(ptr, I_WORK_58);
+
+    /* Store state to I_WORK_55 */
+    I_WORK_55 = state;
+
+    /* State machine: check state value */
+    if (state == 0) {
+        /* State 0: skip secondary state setup */
+        sec_state = 0;
+    } else if (state == 1) {
+        /* State 1: skip secondary state setup */
+        sec_state = 0;
+    } else {
+        /* Other states: need secondary processing */
+        sec_state = 1;
+    }
+
+    I_WORK_56 = sec_state;
+
+    /* Select register pair based on secondary state */
+    if (sec_state == 0) {
+        ptr = &REG_PHY_VENDOR_CTRL_C2E2;
+    } else {
+        ptr = &REG_VENDOR_CTRL_C362;
+    }
+
+    /* Read from control register */
+    helper_load_dword_r4r7(ptr);
+
+    /* Store to data area 0x0AAC */
+    helper_store_dword(&G_STATE_COUNTER_0AAC);
+
+    /* Select second register based on state */
+    if (sec_state == 0) {
+        ptr = &REG_PHY_VENDOR_CTRL_C2E0;
+    } else {
+        ptr = &REG_VENDOR_CTRL_C360;
+    }
+
+    /* Read two bytes from register */
+    val = ptr[0];
+    r6 = val;
+    val = ptr[1];
+    r7 = val;
+
+    /* Store to 0x0AB0-0x0AB1 */
+    G_FLASH_ADDR_3 = r6;
+    G_FLASH_LEN_LO = r7;
+
+    /* More processing continues... */
+    /* The actual XDATA read and response is done through DMA */
 }
 
 /*

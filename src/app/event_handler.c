@@ -2709,10 +2709,10 @@ void usb_state_handler_isr_1006(void)
 void state_update_e25e(void)
 {
     uint8_t val;
-    val = XDATA_REG8(0x78AF); val = (val & 0xBF) | 0x40; XDATA_REG8(0x78AF) = val;
-    val = XDATA_REG8(0x78B0); val = (val & 0xBF) | 0x40; XDATA_REG8(0x78B0) = val;
-    val = XDATA_REG8(0x78B1); val = (val & 0xBF) | 0x40; XDATA_REG8(0x78B1) = val;
-    val = XDATA_REG8(0x78B2); val = (val & 0xBF) | 0x40; XDATA_REG8(0x78B2) = val;
+    val = REG_FLASH_BUF_CFG_78AF; val = (val & 0xBF) | 0x40; REG_FLASH_BUF_CFG_78AF = val;
+    val = REG_FLASH_BUF_CFG_78B0; val = (val & 0xBF) | 0x40; REG_FLASH_BUF_CFG_78B0 = val;
+    val = REG_FLASH_BUF_CFG_78B1; val = (val & 0xBF) | 0x40; REG_FLASH_BUF_CFG_78B1 = val;
+    val = REG_FLASH_BUF_CFG_78B2; val = (val & 0xBF) | 0x40; REG_FLASH_BUF_CFG_78B2 = val;
 }
 
 /*
@@ -2738,7 +2738,8 @@ void system_state_update(void)
     power_config_d630(0x01);
     pcie_lane_config(0x0F);
     state_update_e25e();
-    val = XDATA_REG8(0x7041); val &= 0xBF; XDATA_REG8(0x7041) = val;
+    val = REG_FLASH_BUF_CTRL_7041; val &= 0xBF; REG_FLASH_BUF_CTRL_7041 = val;
+    /* 0x1507 is in banked PCIe config space - access via XDATA */
     val = XDATA_REG8(0x1507); val = (val & 0xFB) | 0x04; XDATA_REG8(0x1507) = val;
     val = XDATA_REG8(0x1507); val = (val & 0xFD) | 0x02; XDATA_REG8(0x1507) = val;
 }

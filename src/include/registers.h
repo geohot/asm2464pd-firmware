@@ -47,6 +47,13 @@
 #define FLASH_BUFFER_BASE       0x7000
 #define FLASH_BUFFER_SIZE       0x1000
 
+// Flash buffer control registers (0x7041, 0x78AF-0x78B2)
+#define REG_FLASH_BUF_CTRL_7041 XDATA_REG8(0x7041)  /* Flash buffer control */
+#define REG_FLASH_BUF_CFG_78AF  XDATA_REG8(0x78AF)  /* Flash buffer config 0 */
+#define REG_FLASH_BUF_CFG_78B0  XDATA_REG8(0x78B0)  /* Flash buffer config 1 */
+#define REG_FLASH_BUF_CFG_78B1  XDATA_REG8(0x78B1)  /* Flash buffer config 2 */
+#define REG_FLASH_BUF_CFG_78B2  XDATA_REG8(0x78B2)  /* Flash buffer config 3 */
+
 #define USB_SCSI_BUF_BASE       0x8000
 #define USB_SCSI_BUF_SIZE       0x1000
 
@@ -58,6 +65,7 @@
 
 #define USB_CTRL_BUF_BASE       0x9E00
 #define USB_CTRL_BUF_SIZE       0x0200
+#define REG_USB_CTRL_BUF_9E00   XDATA_REG8(0x9E00)  /* USB control buffer first byte */
 
 #define NVME_IOSQ_BASE          0xA000
 #define NVME_IOSQ_SIZE          0x1000
@@ -102,7 +110,8 @@
 #define REG_USB_MODE_VAL_9019   XDATA_REG8(0x9019)
 #define REG_USB_MSC_LENGTH      XDATA_REG8(0x901A)
 
-// USB endpoint registers (0x905E-0x90FF)
+// USB endpoint registers (0x905A-0x90FF)
+#define REG_USB_EP_CFG_905A     XDATA_REG8(0x905A)  // USB endpoint config
 #define REG_USB_EP_BUF_HI       XDATA_REG8(0x905B)  // USB endpoint buffer high byte
 #define REG_USB_EP_BUF_LO       XDATA_REG8(0x905C)  // USB endpoint buffer low byte
 #define REG_USB_EP_MGMT         XDATA_REG8(0x905E)
@@ -232,6 +241,9 @@
 #define REG_PCIE_EXT_CFG_2      XDATA_REG8(0xB23E)   // Extended config 2
 #define REG_PCIE_EXT_CFG_3      XDATA_REG8(0xB23F)   // Extended config 3
 #define REG_PCIE_EXT_STATUS_RD  XDATA_REG8(0xB240)   // Extended status read
+#define REG_PCIE_EXT_STATUS_RD1 XDATA_REG8(0xB241)   // Extended status read 1
+#define REG_PCIE_EXT_STATUS_RD2 XDATA_REG8(0xB242)   // Extended status read 2
+#define REG_PCIE_EXT_STATUS_RD3 XDATA_REG8(0xB243)   // Extended status read 3
 #define REG_PCIE_EXT_STATUS_ALT XDATA_REG8(0xB24E)   // Extended status alternate
 
 #define REG_PCIE_NVME_DOORBELL  XDATA_REG32(0xB250)
@@ -343,6 +355,17 @@
 #define REG_PHY_CONFIG          XDATA_REG8(0xC233)
 #define   PHY_CONFIG_MODE_MASK    0x03  // Bits 0-1: PHY config mode
 #define REG_PHY_STATUS          XDATA_REG8(0xC284)
+#define REG_PHY_VENDOR_CTRL_C2E0 XDATA_REG8(0xC2E0)  /* PHY vendor control (bit 6/7 = read control) */
+#define REG_PHY_VENDOR_CTRL_C2E2 XDATA_REG8(0xC2E2)  /* PHY vendor control 2 (bit 6/7 = read control) */
+
+//=============================================================================
+// Vendor/Debug Registers (0xC300-0xC3FF)
+//=============================================================================
+#define REG_VENDOR_CTRL_C343    XDATA_REG8(0xC343)  /* Vendor control (bit 6 = enable, bit 5 = mode) */
+#define   VENDOR_CTRL_C343_BIT5   0x20              /* Bit 5: Vendor mode */
+#define   VENDOR_CTRL_C343_BIT6   0x40              /* Bit 6: Vendor enable */
+#define REG_VENDOR_CTRL_C360    XDATA_REG8(0xC360)  /* Vendor control (bit 6/7 = read control) */
+#define REG_VENDOR_CTRL_C362    XDATA_REG8(0xC362)  /* Vendor control 2 (bit 6/7 = read control) */
 
 //=============================================================================
 // NVMe Interface Registers (0xC400-0xC5FF)
@@ -420,6 +443,7 @@
 #define   NVME_QUEUE_BUSY_BIT     0x01              /* Bit 0: Queue busy */
 #define REG_NVME_LINK_CTRL      XDATA_REG8(0xC472)  // NVMe link control
 #define REG_NVME_CMD_STATUS_C47A XDATA_REG8(0xC47A) // NVMe command status (used by usb_ep_loop)
+#define REG_NVME_DMA_CTRL_C4E9  XDATA_REG8(0xC4E9)  // NVMe DMA control extended
 #define REG_NVME_PARAM_C4EA     XDATA_REG8(0xC4EA)  // NVMe parameter storage
 #define REG_NVME_PARAM_C4EB     XDATA_REG8(0xC4EB)  // NVMe parameter storage high
 #define REG_NVME_BUF_CFG        XDATA_REG8(0xC508)  // NVMe buffer configuration
@@ -451,6 +475,8 @@
 #define   PHY_EXT_LINK_READY      0x30  // Bits 4,5: Link ready status
 #define REG_PHY_LINK_CTRL_BD    XDATA_REG8(0xC6BD)  /* PHY link control (bit 0 = enable) */
 #define REG_PHY_CFG_C6A8        XDATA_REG8(0xC6A8)  /* PHY config (bit 0 = enable) */
+#define REG_PHY_VENDOR_CTRL_C6DB XDATA_REG8(0xC6DB) /* PHY vendor control (bit 2 = status) */
+#define   PHY_VENDOR_CTRL_C6DB_BIT2 0x04            /* Bit 2: Vendor status flag */
 
 //=============================================================================
 // Interrupt Controller (0xC800-0xC80F)
@@ -563,12 +589,16 @@
 #define   TIMER_CSR_EXPIRED       0x02  // Bit 1: Timer expired flag
 #define   TIMER_CSR_CLEAR         0x04  // Bit 2: Clear interrupt
 #define REG_TIMER0_THRESHOLD    XDATA_REG16(0xCC12)
+#define REG_TIMER0_THRESHOLD_HI XDATA_REG8(0xCC12)  /* Timer 0 threshold high byte */
+#define REG_TIMER0_THRESHOLD_LO XDATA_REG8(0xCC13)  /* Timer 0 threshold low byte */
 #define REG_TIMER1_DIV          XDATA_REG8(0xCC16)
 #define REG_TIMER1_CSR          XDATA_REG8(0xCC17)
 #define REG_TIMER1_THRESHOLD    XDATA_REG16(0xCC18)
 #define REG_TIMER2_DIV          XDATA_REG8(0xCC1C)
 #define REG_TIMER2_CSR          XDATA_REG8(0xCC1D)
 #define REG_TIMER2_THRESHOLD    XDATA_REG16(0xCC1E)
+#define REG_TIMER2_THRESHOLD_LO XDATA_REG8(0xCC1E)  /* Timer 2 threshold low */
+#define REG_TIMER2_THRESHOLD_HI XDATA_REG8(0xCC1F)  /* Timer 2 threshold high */
 #define REG_TIMER3_DIV          XDATA_REG8(0xCC22)
 #define REG_TIMER3_CSR          XDATA_REG8(0xCC23)
 #define REG_TIMER3_IDLE_TIMEOUT XDATA_REG8(0xCC24)

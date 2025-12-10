@@ -3090,28 +3090,28 @@ void pcie_handler_e890(void)
     uint8_t val;
 
     /* Read link status, clear bit 7, write back */
-    val = XDATA_REG8(0xB237);
+    val = REG_PCIE_LINK_STATUS_EXT;
     val &= 0x7F;
-    XDATA_REG8(0xB237) = val;
+    REG_PCIE_LINK_STATUS_EXT = val;
 
     /* Write 0x01 to command trigger register */
-    XDATA_REG8(0xB238) = 0x01;
+    REG_PCIE_LINK_TRIGGER = 0x01;
 
     /* Poll until bit 0 clears (command complete) */
-    while (XDATA_REG8(0xB238) & 0x01) {
+    while (REG_PCIE_LINK_TRIGGER & 0x01) {
         /* Wait for hardware */
     }
 
     /* Read link config, keep only bits 6-7, write back */
-    val = XDATA_REG8(0xB235);
+    val = REG_PCIE_LINK_CFG;
     val &= 0xC0;
-    XDATA_REG8(0xB235) = val;
+    REG_PCIE_LINK_CFG = val;
 
     /* Clear lane config registers 0x3C-0x3F */
-    XDATA_REG8(0xB23C) = 0x00;
-    XDATA_REG8(0xB23D) = 0x00;
-    XDATA_REG8(0xB23E) = 0x00;
-    XDATA_REG8(0xB23F) = 0x00;
+    REG_PCIE_EXT_CFG_0 = 0x00;
+    REG_PCIE_EXT_CFG_1 = 0x00;
+    REG_PCIE_EXT_CFG_2 = 0x00;
+    REG_PCIE_EXT_CFG_3 = 0x00;
 }
 
 /*
@@ -3183,20 +3183,20 @@ void pcie_channel_setup_e19e(void)
     pcie_timer_channels_init();
 
     /* Configure primary PCIe channel 0xCC1C-0xCC1F */
-    val = XDATA_REG8(0xCC1C);
+    val = REG_TIMER2_DIV;
     val = (val & 0xF8) | 0x06;  /* Clear bits 0-2, set bits 1-2 */
-    XDATA_REG8(0xCC1C) = val;
+    REG_TIMER2_DIV = val;
 
-    XDATA_REG8(0xCC1E) = 0x00;
-    XDATA_REG8(0xCC1F) = 0x8B;
+    REG_TIMER2_THRESHOLD_LO = 0x00;
+    REG_TIMER2_THRESHOLD_HI = 0x8B;
 
     /* Configure secondary PCIe channel 0xCC5C-0xCC5F */
-    val = XDATA_REG8(0xCC5C);
+    val = REG_TIMER4_DIV;
     val = (val & 0xF8) | 0x04;  /* Clear bits 0-2, set bit 2 */
-    XDATA_REG8(0xCC5C) = val;
+    REG_TIMER4_DIV = val;
 
-    XDATA_REG8(0xCC5E) = 0x00;
-    XDATA_REG8(0xCC5F) = 0xC7;
+    REG_TIMER4_THRESHOLD_LO = 0x00;
+    REG_TIMER4_THRESHOLD_HI = 0xC7;
 }
 
 /*
@@ -3210,23 +3210,23 @@ void pcie_dma_config_e330(void)
     uint8_t val;
 
     /* Trigger DMA on 0xCC81 */
-    XDATA_REG8(0xCC81) = 0x04;
-    XDATA_REG8(0xCC81) = 0x02;
+    REG_CPU_INT_CTRL = 0x04;
+    REG_CPU_INT_CTRL = 0x02;
 
     /* Wait for DMA */
     helper_9617();
 
     /* Configure 0xCC80: set bits 0-1 */
-    val = XDATA_REG8(0xCC80);
-    XDATA_REG8(0xCC80) = val | 0x03;
+    val = REG_CPU_CTRL_CC80;
+    REG_CPU_CTRL_CC80 = val | 0x03;
 
     /* Clear DMA */
     helper_95bf();
     helper_9617();
 
     /* Configure 0xCC98: set bit 2 */
-    val = XDATA_REG8(0xCC98);
-    XDATA_REG8(0xCC98) = val | 0x04;
+    val = REG_CPU_DMA_READY;
+    REG_CPU_DMA_READY = val | 0x04;
 }
 
 /*
@@ -3240,18 +3240,18 @@ void pcie_channel_disable_e5fe(void)
     uint8_t val;
 
     /* Clear bit 0 of 0xC6BD */
-    val = XDATA_REG8(0xC6BD);
-    XDATA_REG8(0xC6BD) = val & 0xFE;
+    val = REG_PHY_LINK_CTRL_BD;
+    REG_PHY_LINK_CTRL_BD = val & 0xFE;
 
     /* Call helper with dptr=0xC801 - sets bit 5 */
     reg_modify_helper((__xdata uint8_t *)0xC801);
 
     /* Write 4 to 0xCC33 */
-    XDATA_REG8(0xCC33) = 0x04;
+    REG_CPU_EXEC_STATUS_2 = 0x04;
 
     /* Clear bit 2 of 0xCC34 */
-    val = XDATA_REG8(0xCC34);
-    XDATA_REG8(0xCC34) = val & 0xFB;
+    val = REG_CPU_EXEC_CTRL_2;
+    REG_CPU_EXEC_CTRL_2 = val & 0xFB;
 }
 
 /*
@@ -3288,12 +3288,12 @@ void pcie_wait_and_ack_e80a(void)
     timer0_reset();
 
     /* Wait for bit 1 of 0xCC11 to be set */
-    while (!(XDATA_REG8(0xCC11) & 0x02)) {
+    while (!(REG_TIMER0_CSR & 0x02)) {
         /* spin */
     }
 
     /* Acknowledge by writing 2 */
-    XDATA_REG8(0xCC11) = 0x02;
+    REG_TIMER0_CSR = 0x02;
 }
 
 /*
@@ -3302,8 +3302,8 @@ void pcie_wait_and_ack_e80a(void)
  */
 void pcie_trigger_cc11_e8ef(void)
 {
-    XDATA_REG8(0xCC11) = 0x04;
-    XDATA_REG8(0xCC11) = 0x02;
+    REG_TIMER0_CSR = 0x04;
+    REG_TIMER0_CSR = 0x02;
 }
 
 /*
@@ -4011,7 +4011,7 @@ void pcie_link_state_init(void)
  */
 uint8_t check_link_status_e2b9(void)
 {
-    uint8_t val = XDATA_REG8(0xE765);
+    uint8_t val = REG_SYS_CTRL_E765;
     return (val & 0x02) ? 1 : 0;
 }
 
@@ -4325,8 +4325,8 @@ uint8_t check_link_with_delay_e6a7(void)
         return 0xFF;  /* Error/timeout */
     }
 
-    /* Return bit 0 of PCIe extended register 0xB223 */
-    return XDATA_REG8(0xB223) & 0x01;
+    /* Return bit 0 of PCIe extended status register */
+    return REG_PCIE_EXT_STATUS & 0x01;
 }
 
 void pcie_lane_init_e7f8(void)
@@ -4434,16 +4434,16 @@ void pcie_dma_init_e0e4(void)
  */
 uint8_t pcie_read_link_state(void)
 {
-    /* Read from PCIe extended register 0x34 (0xB234) */
-    return XDATA_REG8(0xB234);
+    /* Read from PCIe extended link state register */
+    return REG_PCIE_LINK_STATE_EXT;
 }
 
 uint8_t check_pcie_status_e239(void)
 {
     uint8_t val;
 
-    /* Check 0x9090 bit 7 */
-    val = XDATA_REG8(0x9090);
+    /* Check USB interrupt mask bit 7 */
+    val = REG_USB_INT_MASK_9090;
     if (!(val & 0x80)) {
         return 5;  /* Not ready */
     }
@@ -4457,9 +4457,9 @@ uint8_t check_pcie_status_e239(void)
     val = nvme_clear_ep0_status();
     G_TLP_MODE_0AD3 = val + 1;
 
-    /* Copy bit 0 of 0x9000 to 0x9E00 */
-    val = XDATA_REG8(0x9000) & 0x01;
-    XDATA_REG8(0x9E00) = val;
+    /* Copy bit 0 of USB status to USB control buffer */
+    val = REG_USB_STATUS & 0x01;
+    REG_USB_CTRL_BUF_9E00 = val;
 
     return 3;  /* Success */
 }
@@ -4479,7 +4479,7 @@ uint8_t check_pcie_status_e239(void)
  */
 uint8_t nvme_clear_ep0_status(void)
 {
-    XDATA_REG8(0x9003) = 0;
+    REG_USB_EP0_STATUS = 0;
     return 0;
 }
 
@@ -4496,8 +4496,8 @@ void timer0_configure(uint8_t div_bits, uint8_t threshold_hi, uint8_t threshold_
     REG_TIMER0_DIV = val;
 
     /* Set threshold value (16-bit across CC12:CC13) */
-    XDATA_REG8(0xCC12) = threshold_hi;
-    XDATA_REG8(0xCC13) = threshold_lo;
+    REG_TIMER0_THRESHOLD_HI = threshold_hi;
+    REG_TIMER0_THRESHOLD_LO = threshold_lo;
 
     /* Start timer */
     REG_TIMER0_CSR = 0x01;
@@ -4522,7 +4522,7 @@ void pcie_write_transaction_start(void)
 
 void pcie_trigger_link_init(void)
 {
-    XDATA_REG8(0xCC81) = 0x04;
+    REG_CPU_INT_CTRL = 0x04;
     pcie_config_helper();
 }
 
@@ -4541,16 +4541,16 @@ uint8_t pcie_setup_tlp_transaction(void)
         pcie_clear_reg_at_offset(i);
     }
 
-    /* Check 0x05AE bit 0 and configure 0xB210 */
+    /* Check 0x05AE bit 0 and configure PCIe format/type */
     val = G_PCIE_DIRECTION;
     if (val & 0x01) {
-        XDATA_REG8(0xB210) = 0x40;
+        REG_PCIE_FMT_TYPE = 0x40;
     } else {
-        XDATA_REG8(0xB210) = 0;
+        REG_PCIE_FMT_TYPE = 0;
     }
 
-    /* Write 1 to 0xB213 */
-    XDATA_REG8(0xB213) = 0x01;
+    /* Enable TLP control */
+    REG_PCIE_TLP_CTRL = 0x01;
 
     /* Set byte enables to 0x0F */
     pcie_set_byte_enables(0x0F);
@@ -4588,7 +4588,7 @@ uint8_t pcie_setup_tlp_transaction(void)
         /* Check bit 0 */
         if (!(val & 0x01)) {
             /* Bit 0 not set - timeout, write 1 and return 0xFE */
-            XDATA_REG8(0xB296) = 0x01;
+            REG_PCIE_STATUS = PCIE_STATUS_ERROR;
             return 0xFE;
         }
     }
@@ -4599,14 +4599,14 @@ uint8_t pcie_setup_tlp_transaction(void)
         return 0xFF;
     }
 
-    /* Check 0xB22D (next byte after completion data) */
-    val = XDATA_REG8(0xB22D);
+    /* Check PCIe completion data alternate */
+    val = REG_PCIE_CPL_DATA_ALT;
     if (val != 0) {
         return 0xFF;
     }
 
-    /* Check if link status byte equals 4 */
-    val = XDATA_REG8(0xB22B);
+    /* Check if completion status equals 4 */
+    val = REG_PCIE_CPL_STATUS;
     if (val != 0x04) {
         return 0xFF;
     }

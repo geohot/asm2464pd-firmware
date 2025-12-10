@@ -633,8 +633,8 @@ void timer_event_init(void)
  */
 void timer_trigger_e726(void)
 {
-    XDATA_REG8(0xCD31) = 0x04;
-    XDATA_REG8(0xCD31) = 0x02;
+    REG_CPU_TIMER_CTRL_CD31 = 0x04;
+    REG_CPU_TIMER_CTRL_CD31 = 0x02;
 }
 
 /*

@@ -106,7 +106,7 @@ void dptr_setup_stub(void);
 void dptr_calc_ce40_indexed(uint8_t a, uint8_t b);
 void dptr_calc_ce40_param(uint8_t param);
 uint8_t get_ep_config_indexed(void);
-void addr_setup_0059(uint8_t offset);
+uint8_t addr_setup_0059(uint8_t offset);
 void mem_write_via_ptr(uint8_t value);
 void dptr_calc_work43(void);
 void dma_queue_ptr_setup(void);

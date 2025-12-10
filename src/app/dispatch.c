@@ -115,18 +115,18 @@ void dispatch_0206(void)
 
     /* Path for (R5 & 0x06) == 0 - which is the common case */
     /* Write (R7 | 0x80) to REG 0xC8D4 */
-    XDATA_REG8(0xC8D4) = idx | 0x80;
+    REG_DMA_CONFIG = idx | 0x80;
 
     /* Read REG 0xC4ED, mask with 0xC0, OR with R7, write back */
-    r2 = XDATA_REG8(0xC4ED);
+    r2 = REG_NVME_DMA_CTRL_ED;
     r2 = (r2 & 0xC0) | idx;
-    XDATA_REG8(0xC4ED) = r2;
+    REG_NVME_DMA_CTRL_ED = r2;
 
     /* Read REG 0xC4EE-0xC4EF and write to 0xD802-D803 */
-    r3 = XDATA_REG8(0xC4EE);
-    r2 = XDATA_REG8(0xC4EF);
-    XDATA_REG8(0xD802) = r3;
-    XDATA_REG8(0xD803) = r2;
+    r3 = REG_NVME_DMA_ADDR_LO;
+    r2 = REG_NVME_DMA_ADDR_HI;
+    REG_USB_EP_BUF_DATA = r3;
+    REG_USB_EP_BUF_PTR_LO = r2;
 }
 
 /*===========================================================================

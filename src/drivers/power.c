@@ -463,15 +463,15 @@ uint8_t power_check_state_dde2(void)
         return 0xFF;
     }
 
-    /* Check table[0x0D] bits 0-6 */
-    if ((XDATA_REG8(0x800D) & 0x7F) != 0) {
+    /* Check USB buffer status bits 0-6 */
+    if ((REG_USB_BUF_STATUS_800D & 0x7F) != 0) {
         return 0x01;  /* Active state */
     }
 
     /* Check for specific pattern: [0x08]==1, [0x0A]==2, [0x09]==8 */
-    if (XDATA_REG8(0x8008) == 0x01 &&
-        XDATA_REG8(0x800A) == 0x02 &&
-        XDATA_REG8(0x8009) == 0x08) {
+    if (REG_USB_BUF_CTRL_8008 == 0x01 &&
+        REG_USB_BUF_CTRL_800A == 0x02 &&
+        REG_USB_BUF_CTRL_8009 == 0x08) {
         return 0x02;  /* Complete state */
     }
 

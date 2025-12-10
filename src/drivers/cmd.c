@@ -2037,9 +2037,9 @@ void cmd_setup_aa37(void)
     /* Clear command count area (E42A-E42F) - 6 bytes */
     REG_CMD_COUNT_LOW = 0x00;
     REG_CMD_COUNT_HIGH = 0x00;
-    XDATA_REG8(0xE42C) = 0x00;
-    XDATA_REG8(0xE42D) = 0x00;
-    XDATA_REG8(0xE42E) = 0x00;
+    REG_CMD_LENGTH_LOW = 0x00;
+    REG_CMD_LENGTH_HIGH = 0x00;
+    REG_CMD_RESP_TAG = 0x00;
     REG_CMD_RESP_STATUS = 0x00;
 
     /* Copy control parameters from globals */

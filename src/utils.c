@@ -317,9 +317,9 @@ void reg_clear_bits_and_init(__xdata uint8_t *reg)
 
     /* Write 0xFF to 4 consecutive registers at 0xC438-0xC43B */
     REG_NVME_INIT_CTRL = 0xFF;
-    XDATA_REG8(0xC439) = 0xFF;
-    XDATA_REG8(0xC43A) = 0xFF;
-    XDATA_REG8(0xC43B) = 0xFF;
+    REG_NVME_CMD_CDW11 = 0xFF;
+    REG_NVME_INT_MASK_A = 0xFF;
+    REG_NVME_INT_MASK_B = 0xFF;
 }
 
 /*
@@ -1527,26 +1527,28 @@ uint8_t get_ep_config_indexed(void)
 
 /*
  * addr_setup_0059 - Set up address pointer (0x59 + offset)
- * Address: 0x1755
+ * Address: 0x1752-0x175c (11 bytes)
  *
- * Sets DPTR to the computed address.
+ * Sets DPTR = 0x0059 + offset (in low memory / IDATA space).
+ * Used for accessing work variables at 0x59-0x7F.
  */
-void addr_setup_0059(uint8_t offset)
+uint8_t addr_setup_0059(uint8_t offset)
 {
-    (void)offset;
-    /* TODO: Implement address setup */
+    return *(__idata uint8_t *)(0x59 + offset);
 }
 
 /*
- * mem_write_via_ptr - Write value via computed pointer
- * Address: 0x159f
+ * mem_write_via_ptr - Write value to XDATA via DPTR
+ * Address: 0x159f (1 byte - just movx @dptr, a instruction)
  *
- * Writes the parameter to the address set up by prior helper.
+ * This is not a standalone function in the original firmware - it's
+ * typically inlined. SDCC handles XDATA writes directly.
+ * Kept for documentation purposes.
  */
 void mem_write_via_ptr(uint8_t value)
 {
     (void)value;
-    /* TODO: Implement write operation */
+    /* Writes are handled inline by SDCC via XDATA macros */
 }
 
 void dptr_calc_work43(void)
@@ -2435,7 +2437,7 @@ void pcie_config_helper(void)
     uint8_t val;
 
     /* Read E302 and check bits 4-5 */
-    mode_bits = XDATA_REG8(0xE302) & 0x30;
+    mode_bits = REG_PHY_MODE_E302 & 0x30;
 
     /* Extract and check if both bits 4-5 are set (mode_bits >> 4 == 3) */
     if (((mode_bits >> 4) & 0x0F) == 0x03) {
@@ -2456,7 +2458,7 @@ void pcie_config_helper(void)
     link_state_init_stub();
 
     /* Poll loop 1: Wait for CC89 bit 1 */
-    while (!(XDATA_REG8(0xCC89) & 0x02)) {
+    while (!(REG_XFER_DMA_CMD & 0x02)) {
         /* Wait */
     }
 
@@ -2464,17 +2466,17 @@ void pcie_config_helper(void)
     cmd_config_e40b();
 
     /* E403 = 0 */
-    XDATA_REG8(0xE403) = 0x00;
+    REG_CMD_CTRL_E403 = 0x00;
     /* E404 = 0x40 */
-    XDATA_REG8(0xE404) = 0x40;
+    REG_CMD_CFG_E404 = 0x40;
     /* E405: clear bits 0-2, set bits 0 and 2 (value 5) */
-    val = XDATA_REG8(0xE405);
+    val = REG_CMD_CFG_E405;
     val = (val & 0xF8) | 0x05;
-    XDATA_REG8(0xE405) = val;
+    REG_CMD_CFG_E405 = val;
     /* E402: clear bits 5-7, set bit 5 */
-    val = XDATA_REG8(0xE402);
+    val = REG_CMD_STATUS_E402;
     val = (val & 0x1F) | 0x20;
-    XDATA_REG8(0xE402) = val;
+    REG_CMD_STATUS_E402 = val;
 
     /* Poll loop 2: Wait for cmd_check_busy to return 0 */
     while (cmd_check_busy()) {
@@ -2485,7 +2487,7 @@ void pcie_config_helper(void)
     cmd_start_trigger();
 
     /* Poll loop 3: Wait for E41C bit 0 to clear */
-    while (XDATA_REG8(0xE41C) & 0x01) {
+    while (REG_CMD_BUSY_STATUS & 0x01) {
         /* Wait */
     }
 

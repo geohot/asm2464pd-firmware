@@ -1263,84 +1263,6 @@ uint16_t transfer_calc_work55_offset(void)
     return addr;
 }
 
-/*
- * dma_setup_usb_rx - Setup DMA to receive data from USB host
- * Address: TODO - reverse engineer from original firmware
- *
- * Configures DMA engine to receive 'len' bytes from USB host
- * into the flash buffer (0x7000).
- *
- * Parameters:
- *   len: Number of bytes to receive
- */
-void dma_setup_usb_rx(uint16_t len)
-{
-    uint8_t val;
-
-    /* Configure DMA for USB to buffer transfer */
-    dma_config_channel(0, 0);
-
-    /* Set transfer length */
-    REG_DMA_XFER_CNT_LO = (uint8_t)(len & 0xFF);
-    REG_DMA_XFER_CNT_HI = (uint8_t)((len >> 8) & 0xFF);
-
-    /* Set direction: USB -> Buffer (RX) */
-    val = REG_DMA_CHAN_CTRL2;
-    val &= ~0x02;  /* Clear direction bit for RX */
-    REG_DMA_CHAN_CTRL2 = val;
-
-    /* Trigger DMA */
-    REG_DMA_TRIGGER = DMA_TRIGGER_START;
-}
-
-/*
- * dma_setup_usb_tx - Setup DMA to send data to USB host
- * Address: TODO - reverse engineer from original firmware
- *
- * Configures DMA engine to send 'len' bytes to USB host
- * from the flash/SCSI buffer.
- *
- * Parameters:
- *   len: Number of bytes to send
- */
-void dma_setup_usb_tx(uint16_t len)
-{
-    uint8_t val;
-
-    /* Configure DMA for buffer to USB transfer */
-    dma_config_channel(0, 0);
-
-    /* Set transfer length */
-    REG_DMA_XFER_CNT_LO = (uint8_t)(len & 0xFF);
-    REG_DMA_XFER_CNT_HI = (uint8_t)((len >> 8) & 0xFF);
-
-    /* Set direction: Buffer -> USB (TX) */
-    val = REG_DMA_CHAN_CTRL2;
-    val |= 0x02;  /* Set direction bit for TX */
-    REG_DMA_CHAN_CTRL2 = val;
-
-    /* Trigger DMA */
-    REG_DMA_TRIGGER = DMA_TRIGGER_START;
-}
-
-/*
- * dma_wait_complete - Wait for DMA transfer to complete
- * Address: TODO - reverse engineer from original firmware
- *
- * Blocks until current DMA transfer is complete.
- * Polls the DMA trigger register until busy bit clears.
- */
-void dma_wait_complete(void)
-{
-    /* Poll until DMA transfer completes (bit 0 clears) */
-    while (REG_DMA_TRIGGER & DMA_TRIGGER_START) {
-        /* Busy wait */
-    }
-
-    /* Clear active flag */
-    REG_DMA_CHAN_CTRL2 &= ~DMA_CHAN_CTRL2_ACTIVE;
-}
-
 /* NOTE: Function at 0x16AE-0x16B6 is implemented above as dma_write_to_scsi_ce6e */
 
 /*
@@ -1567,7 +1489,7 @@ process_transfer:
             goto check_completion;
         }
         if (G_BUFFER_STATE_0AA6 != 0) {
-            dma_setup_transfer(0x03, 0x47, 0x0B);
+            dma_setup_transfer(DMA_MODE_SCSI_STATUS, 0x47, 0x0B);
         }
         scsi_csw_write_residue();
         REG_USB_SIGNAL_90A1 = 0x01;
@@ -1588,7 +1510,7 @@ process_transfer:
         G_EP_DISPATCH_OFFSET = work52;
         scsi_decrement_pending();
     } else {
-        dma_setup_transfer(0x03, 0x47, 0x0B);
+        dma_setup_transfer(DMA_MODE_SCSI_STATUS, 0x47, 0x0B);
     }
 
     ptr = (__xdata uint8_t *)(0x0071 + work52);
@@ -1706,47 +1628,47 @@ void dma_transfer_handler(uint8_t param)
     if (param != 0) {
         /* Non-zero path: OR global values with extended register values */
         /* Read ext reg 0x40, OR with G_PCIE_WORK_0B34, write to 0x3C */
-        reg_val = XDATA_REG8(0xB240);
+        reg_val = REG_PCIE_EXT_STATUS_RD;
         combined = G_PCIE_WORK_0B34 | reg_val;
-        XDATA_REG8(0xB23C) = combined;
+        REG_PCIE_EXT_CFG_0 = combined;
 
         /* Read ext reg 0x41, OR with G_PCIE_STATUS_0B35, write to 0x3D */
-        reg_val = XDATA_REG8(0xB241);
+        reg_val = REG_PCIE_EXT_STATUS_RD1;
         combined = G_PCIE_STATUS_0B35 | reg_val;
-        XDATA_REG8(0xB23D) = combined;
+        REG_PCIE_EXT_CFG_1 = combined;
 
         /* Read ext reg 0x42, OR with G_PCIE_STATUS_0B36, write to 0x3E */
-        reg_val = XDATA_REG8(0xB242);
+        reg_val = REG_PCIE_EXT_STATUS_RD2;
         combined = G_PCIE_STATUS_0B36 | reg_val;
-        XDATA_REG8(0xB23E) = combined;
+        REG_PCIE_EXT_CFG_2 = combined;
 
         /* Read ext reg 0x43, OR with G_PCIE_STATUS_0B37 */
-        reg_val = XDATA_REG8(0xB243);
+        reg_val = REG_PCIE_EXT_STATUS_RD3;
         combined = G_PCIE_STATUS_0B37 | reg_val;
     } else {
         /* Zero path: AND complement of globals with extended register values */
         /* Read ext reg 0x40, AND with ~G_PCIE_WORK_0B34, write to 0x3C */
-        reg_val = XDATA_REG8(0xB240);
+        reg_val = REG_PCIE_EXT_STATUS_RD;
         combined = (~G_PCIE_WORK_0B34) & reg_val;
-        XDATA_REG8(0xB23C) = combined;
+        REG_PCIE_EXT_CFG_0 = combined;
 
         /* Read ext reg 0x41, AND with ~G_PCIE_STATUS_0B35, write to 0x3D */
-        reg_val = XDATA_REG8(0xB241);
+        reg_val = REG_PCIE_EXT_STATUS_RD1;
         combined = (~G_PCIE_STATUS_0B35) & reg_val;
-        XDATA_REG8(0xB23D) = combined;
+        REG_PCIE_EXT_CFG_1 = combined;
 
         /* Read ext reg 0x42, AND with ~G_PCIE_STATUS_0B36, write to 0x3E */
-        reg_val = XDATA_REG8(0xB242);
+        reg_val = REG_PCIE_EXT_STATUS_RD2;
         combined = (~G_PCIE_STATUS_0B36) & reg_val;
-        XDATA_REG8(0xB23E) = combined;
+        REG_PCIE_EXT_CFG_2 = combined;
 
         /* Read ext reg 0x43, AND with ~G_PCIE_STATUS_0B37 */
-        reg_val = XDATA_REG8(0xB243);
+        reg_val = REG_PCIE_EXT_STATUS_RD3;
         combined = (~G_PCIE_STATUS_0B37) & reg_val;
     }
 
     /* Write final combined value to lane config register 0x3F */
-    XDATA_REG8(0xB23F) = combined;
+    REG_PCIE_EXT_CFG_3 = combined;
 
     /* Build status flags from PCIe buffers */
     get_pcie_status_flags_e00c();
@@ -1754,8 +1676,8 @@ void dma_transfer_handler(uint8_t param)
     /* Combine upper 2 bits of current status with saved lower 6 bits */
     combined = (pcie_read_status_a334() & 0xC0) | saved_status_lo;
 
-    /* Write combined status to register 0x35 and continue init */
-    XDATA_REG8(0xB235) = combined;
+    /* Write combined status to link config register and continue init */
+    REG_PCIE_LINK_CFG = combined;
 
     /* Continue with pcie_lane_init_e7f8 logic:
      * - Read reg 0x37, clear bit 7, set bit 7, write back
@@ -1763,28 +1685,28 @@ void dma_transfer_handler(uint8_t param)
      * - Poll for completion
      * - Clear lane config registers
      */
-    reg_val = XDATA_REG8(0xB237);
+    reg_val = REG_PCIE_LINK_STATUS_EXT;
     reg_val = (reg_val & 0x7F) | 0x80;
-    XDATA_REG8(0xB237) = reg_val;
+    REG_PCIE_LINK_STATUS_EXT = reg_val;
 
     /* Write 0x01 to command trigger register */
-    XDATA_REG8(0xB238) = 0x01;
+    REG_PCIE_LINK_TRIGGER = PCIE_LINK_TRIGGER_BUSY;
 
     /* Poll until bit 0 clears (command complete) */
-    while (XDATA_REG8(0xB238) & 0x01) {
+    while (REG_PCIE_LINK_TRIGGER & PCIE_LINK_TRIGGER_BUSY) {
         /* Wait for hardware */
     }
 
     /* Read link config, keep only bits 6-7, write back */
-    reg_val = XDATA_REG8(0xB235);
+    reg_val = REG_PCIE_LINK_CFG;
     reg_val &= 0xC0;
-    XDATA_REG8(0xB235) = reg_val;
+    REG_PCIE_LINK_CFG = reg_val;
 
     /* Clear lane config registers 0x3C-0x3F */
-    XDATA_REG8(0xB23C) = 0x00;
-    XDATA_REG8(0xB23D) = 0x00;
-    XDATA_REG8(0xB23E) = 0x00;
-    XDATA_REG8(0xB23F) = 0x00;
+    REG_PCIE_EXT_CFG_0 = 0x00;
+    REG_PCIE_EXT_CFG_1 = 0x00;
+    REG_PCIE_EXT_CFG_2 = 0x00;
+    REG_PCIE_EXT_CFG_3 = 0x00;
 
     /* Clear PCIe status bytes (tail call) */
     clear_pcie_status_bytes_e8cd();
