@@ -42,7 +42,7 @@
 /* UART output functions */
 void uart_putc(uint8_t ch);                     /* 0x5398-0x53a0 */
 void uart_newline(void);                        /* 0xaf5e-0xaf66 (Bank 1) */
-void uart_puthex(uint8_t val);                  /* 0x51c7-0x51e5 */
+void uart_puthex(uint8_t val);                  /* 0x51c7-0x51ee */
 void uart_putdigit(uint8_t digit);              /* 0x51e6-0x51ee */
 void uart_puts(__code const char *str);         /* 0x538d-0x53a6 */
 

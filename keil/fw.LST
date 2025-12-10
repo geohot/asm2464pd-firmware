@@ -1,0 +1,68 @@
+A51 MACRO ASSEMBLER  FW                                                                   12/10/2025 17:09:50 PAGE     1
+
+
+MACRO ASSEMBLER A51 V8.2.7.0
+OBJECT MODULE PLACED IN fw.OBJ
+ASSEMBLER INVOKED BY: C:\Keil_v5\C51\BIN\A51.EXE fw.a51
+
+LOC  OBJ            LINE     SOURCE
+
+                       1     ; ASM2464PD Firmware Reconstruction
+                       2     ; Starting with vectors and first functions
+                       3     
+                       4     $nomod51 
+                       5     
+                       6     ;--------------------------------------------------------------------
+                       7     ; Reset Vector at 0x0000
+                       8     ;--------------------------------------------------------------------
+----                   9             CSEG    AT 0000H
+0000 02431A           10             LJMP    0431AH          ; Reset -> main
+                      11     
+                      12     ;--------------------------------------------------------------------
+                      13     ; INT0 Vector at 0x0003
+                      14     ;--------------------------------------------------------------------
+----                  15             CSEG    AT 0003H
+0003 020E5B           16             LJMP    00E5BH          ; INT0 handler
+                      17     
+                      18     ;--------------------------------------------------------------------
+                      19     ; Function at 0x0006-0x0011
+                      20     ; Calls 0x50DB, decrements counter at XDATA 0x000A
+                      21     ;--------------------------------------------------------------------
+----                  22             CSEG    AT 0006H
+0006                  23     func_0006:
+0006 1250DB           24             LCALL   050DBH          ; 12 50 DB
+0009 90000A           25             MOV     DPTR, #000AH    ; 90 00 0A
+000C E0               26             MOVX    A, @DPTR        ; E0
+000D 6002             27             JZ      $+4             ; 60 02 (jump to RET)
+000F 14               28             DEC     A               ; 14
+0010 F0               29             MOVX    @DPTR, A        ; F0
+0011 22               30             RET                     ; 22
+                      31     
+                      32     ;--------------------------------------------------------------------
+                      33     ; NOP padding at 0x0012
+                      34     ;--------------------------------------------------------------------
+----                  35             CSEG    AT 0012H
+0012 00               36             NOP                     ; 00
+                      37     
+                      38     ;--------------------------------------------------------------------
+                      39     ; INT1 Vector at 0x0013
+                      40     ;--------------------------------------------------------------------
+----                  41             CSEG    AT 0013H
+0013 024486           42             LJMP    04486H          ; INT1 handler
+                      43     
+                      44             END
+A51 MACRO ASSEMBLER  FW                                                                   12/10/2025 17:09:50 PAGE     2
+
+SYMBOL TABLE LISTING
+------ ----- -------
+
+
+N A M E             T Y P E  V A L U E   ATTRIBUTES
+
+FUNC_0006. . . . .  C ADDR   0006H   A   
+
+
+REGISTER BANK(S) USED: 0 
+
+
+ASSEMBLY COMPLETE.  0 WARNING(S), 0 ERROR(S)

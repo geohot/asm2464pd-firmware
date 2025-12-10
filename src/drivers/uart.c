@@ -48,42 +48,63 @@ void uart_newline(void)
 
 /*
  * uart_puthex - Print a byte as two hex characters
- * Address: 0x51c7-0x51e5 (31 bytes)
+ * Address: 0x51c7-0x51ee (40 bytes)
  *
- * From ghidra.c FUN_CODE_51c7:
- *   Prints high nibble then low nibble, using '0'-'9' for 0-9 and 'A'-'F' for 10-15.
- *   Actually uses '7' + value for A-F (since 'A' - 10 = '7')
+ * Outputs the hex representation of a byte to the UART.
+ * Uses '0'-'9' for values 0-9, 'A'-'F' for 10-15.
+ * The trick: 'A' - 10 = '7', so base + nibble gives correct char.
+ *
+ * Register usage:
+ *   R7: val parameter, later reused for second nibble base
+ *   R6: nibble value (both iterations)
+ *   R5: first nibble base character
  *
  * Original disassembly:
- *   51c7: mov a, r7           ; get param
- *   51c8: swap a              ; get high nibble
- *   51c9: anl a, #0x0f        ; mask to 4 bits
- *   51cb: mov r6, a           ; save
+ *   51c7: mov a, r7           ; get val
+ *   51c8: swap a              ; high nibble to low
+ *   51c9: anl a, #0x0f        ; mask
+ *   51cb: mov r6, a           ; save nibble
  *   51cc: clr c
  *   51cd: subb a, #0x0a       ; compare to 10
- *   51cf: mov r5, #0x37       ; assume >= 10, use '7' as base
- *   51d1: jnc 51d5            ; if >= 10, skip
- *   51d3: mov r5, #0x30       ; < 10, use '0' as base
- *   51d5: mov a, r5           ; get base char
- *   51d6: add a, r6           ; add nibble value
+ *   51cf: mov r5, #0x37       ; '7' for >= 10
+ *   51d1: jnc 51d5            ; skip if >= 10
+ *   51d3: mov r5, #0x30       ; '0' for < 10
+ *   51d5: mov a, r5           ; get base
+ *   51d6: add a, r6           ; add nibble
  *   51d7: mov dptr, #0xc001   ; UART THR
  *   51da: movx @dptr, a       ; write char
- *   ... repeat for low nibble ...
+ *   51db: mov a, r7           ; get val again
+ *   51dc: anl a, #0x0f        ; low nibble
+ *   51de: mov r6, a           ; save nibble
+ *   51df: clr c
+ *   51e0: subb a, #0x0a       ; compare
+ *   51e2: mov r7, #0x37       ; '7' (reuses val's register!)
+ *   51e4: jnc 51e8            ; skip if >= 10
+ *   51e6: mov r7, #0x30       ; '0'
+ *   51e8: mov a, r7           ; get base
+ *   51e9: add a, r6           ; add nibble
+ *   51ea: mov dptr, #0xc001   ; UART THR
+ *   51ed: movx @dptr, a       ; write char
+ *   51ee: ret
+ *
+ * Note: Keil v9.60 produces functionally equivalent code with
+ * instruction reordering (constant load before compare).
  */
 void uart_puthex(uint8_t val)
 {
-    uint8_t nibble;
-    uint8_t base;
+    uint8_t n, b;
 
     /* Print high nibble */
-    nibble = (val >> 4) & 0x0F;
-    base = (nibble >= 10) ? '7' : '0';  /* '7' + 10 = 'A' */
-    REG_UART_THR = base + nibble;
+    n = (val >> 4) & 0xF;
+    b = '7';
+    if (n < 10) b = '0';
+    REG_UART_THR = b + n;
 
-    /* Print low nibble */
-    nibble = val & 0x0F;
-    base = (nibble >= 10) ? '7' : '0';
-    REG_UART_THR = base + nibble;
+    /* Print low nibble - reuse val register for base */
+    n = val & 0xF;
+    val = '7';
+    if (n < 10) val = '0';
+    REG_UART_THR = val + n;
 }
 
 /*
