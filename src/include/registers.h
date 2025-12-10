@@ -181,6 +181,10 @@
 #define REG_USB_PHY_CTRL_91C3   XDATA_REG8(0x91C3)
 #define REG_USB_EP_CTRL_91D0    XDATA_REG8(0x91D0)
 #define REG_USB_PHY_CTRL_91D1   XDATA_REG8(0x91D1)
+#define   USB_PHY_CTRL_BIT0      0x01  // Bit 0: PHY control flag 0
+#define   USB_PHY_CTRL_BIT1      0x02  // Bit 1: PHY control flag 1
+#define   USB_PHY_CTRL_BIT2      0x04  // Bit 2: PHY control flag 2
+#define   USB_PHY_CTRL_BIT3      0x08  // Bit 3: PHY control flag 3
 
 // USB control registers (0x9200-0x92BF)
 #define REG_USB_CTRL_9200       XDATA_REG8(0x9200)  /* USB control base */
@@ -214,7 +218,10 @@
 // Buffer config registers (0x9300-0x93FF)
 #define REG_BUF_CFG_9300        XDATA_REG8(0x9300)
 #define REG_BUF_CFG_9301        XDATA_REG8(0x9301)
+#define   BUF_CFG_9301_BIT6      0x40  // Bit 6: Buffer config flag
+#define   BUF_CFG_9301_BIT7      0x80  // Bit 7: Buffer config flag
 #define REG_BUF_CFG_9302        XDATA_REG8(0x9302)
+#define   BUF_CFG_9302_BIT7      0x80  // Bit 7: Buffer status flag
 #define REG_BUF_CFG_9303        XDATA_REG8(0x9303)
 #define REG_BUF_CFG_9304        XDATA_REG8(0x9304)
 #define REG_BUF_CFG_9305        XDATA_REG8(0x9305)
@@ -665,6 +672,7 @@
 #define REG_CPU_CTRL_CC80       XDATA_REG8(0xCC80)  /* CPU control 0xCC80 */
 #define   CPU_CTRL_CC80_ENABLE   0x03  // Bits 0-1: CPU control enable mask
 #define REG_CPU_INT_CTRL        XDATA_REG8(0xCC81)
+#define   CPU_INT_CTRL_ENABLE    0x01  // Bit 0: Enable/start interrupt
 #define   CPU_INT_CTRL_ACK       0x02  // Bit 1: Acknowledge interrupt
 #define   CPU_INT_CTRL_TRIGGER   0x04  // Bit 2: Trigger interrupt
 #define REG_CPU_CTRL_CC82       XDATA_REG8(0xCC82)  /* CPU control 0xCC82 */
@@ -681,6 +689,7 @@
 
 #define REG_CPU_DMA_INT         XDATA_REG8(0xCC91)  /* CPU DMA interrupt status */
 #define   CPU_DMA_INT_ACK        0x02  // Bit 1: Acknowledge DMA interrupt
+#define   CPU_DMA_INT_TRIGGER    0x04  // Bit 2: Trigger DMA
 #define REG_CPU_DMA_READY       XDATA_REG8(0xCC98)  /* CPU DMA ready status */
 #define   CPU_DMA_READY_BIT2     0x04              /* Bit 2: DMA ready flag */
 #define REG_XFER_DMA_CFG        XDATA_REG8(0xCC99)  /* Transfer DMA config */
@@ -813,6 +822,8 @@
 //=============================================================================
 // Command Engine (0xE400-0xE4FF)
 //=============================================================================
+#define REG_CMD_CTRL_E400       XDATA_REG8(0xE400)  /* Command control (bit 6 = busy) */
+#define   CMD_CTRL_E400_BIT6      0x40  // Bit 6: Command busy flag
 #define REG_CMD_STATUS_E402     XDATA_REG8(0xE402)
 #define REG_CMD_CTRL_E403       XDATA_REG8(0xE403)
 #define REG_CMD_CFG_E404        XDATA_REG8(0xE404)

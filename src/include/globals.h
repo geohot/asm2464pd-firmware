@@ -104,6 +104,8 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_IO_CMD_TYPE           XDATA_VAR8(0x0001)  /* I/O command type byte */
 #define G_IO_CMD_STATE          XDATA_VAR8(0x0002)  /* I/O command state byte */
 #define G_EP_STATUS_CTRL        XDATA_VAR8(0x0003)  /* Endpoint status control (checked by usb_ep_process) */
+#define G_WORK_0004             XDATA_VAR8(0x0004)  /* Work variable 0x0004 */
+#define G_DMA_DIRECTION_0005    XDATA_VAR8(0x0005)  /* DMA direction / transfer flag */
 #define G_WORK_0006             XDATA_VAR8(0x0006)  /* Work variable 0x0006 */
 #define G_WORK_0007             XDATA_VAR8(0x0007)  /* Work variable 0x0007 */
 #define G_BOOT_STATUS_0009      XDATA_VAR8(0x0009)  /* Boot status byte */
@@ -150,15 +152,21 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_BUF_BASE_HI           XDATA_VAR8(0x021A)  /* Buffer base address high */
 #define G_BUF_BASE_LO           XDATA_VAR8(0x021B)  /* Buffer base address low */
 #define G_BANK1_STATE_023F      XDATA_VAR8(0x023F)  /* Bank 1 state flag */
+#define G_STATE_CHECKSUM        XDATA_VAR8(0x0240)  /* State checksum storage */
+#define G_STATE_CHECKSUM_DATA   ((__xdata uint8_t *)0x0241)  /* State checksum data base (8 bytes) */
 
 //=============================================================================
 // System Status Work Area (0x0400-0x04FF)
 //=============================================================================
+#define G_PCIE_STATE_0442       XDATA_VAR8(0x0442)  /* PCIe state buffer byte 0 */
+#define G_PCIE_STATE_0443       XDATA_VAR8(0x0443)  /* PCIe state buffer byte 1 */
 #define G_LOG_COUNTER_044B      XDATA_VAR8(0x044B)  /* Log counter */
 #define G_LOG_ACTIVE_044C       XDATA_VAR8(0x044C)  /* Log active flag */
 #define G_LOG_INIT_044D         XDATA_VAR8(0x044D)  /* Log init flag */
+#define G_SYS_STATUS_BASE       ((__xdata uint8_t *)0x0456)  /* System status array base */
 #define G_REG_WAIT_BIT          XDATA_VAR8(0x045E)  /* Register wait bit */
-#define G_WORK_0460             XDATA_VAR8(0x0460)  /* Work variable 0x0460 */
+#define G_DMA_ADDR_LO           XDATA_VAR8(0x045F)  /* DMA address low byte */
+#define G_DMA_ADDR_HI           XDATA_VAR8(0x0460)  /* DMA address high byte */
 #define G_SYS_STATUS_PRIMARY    XDATA_VAR8(0x0464)  /* Primary system status */
 #define G_EP_INDEX_ALT          G_SYS_STATUS_PRIMARY  /* Alias for endpoint index */
 #define G_SYS_STATUS_SECONDARY  XDATA_VAR8(0x0465)  /* Secondary system status */

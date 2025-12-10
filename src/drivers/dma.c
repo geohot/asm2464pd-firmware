@@ -865,10 +865,10 @@ void dma_init_channel_with_config(uint8_t config)
     /* Configure DMA channel 0 */
     dma_config_channel(0, 0x40);
 
-    /* Write to config area at 0x045E (3 bytes: 0x01, 0xA0, 0x00) */
+    /* Write to config area at 0x045E (3 bytes: 0x00, 0xA0, 0x01) */
     G_REG_WAIT_BIT = 0x00;
-    *(__xdata uint8_t *)(0x045F) = 0xA0;
-    *(__xdata uint8_t *)(0x0460) = 0x01;
+    G_DMA_ADDR_LO = 0xA0;
+    G_DMA_ADDR_HI = 0x01;
 
     /* Set bit 0 in DMA status 2 */
     REG_DMA_STATUS2 = (REG_DMA_STATUS2 & ~DMA_STATUS2_TRIGGER) | DMA_STATUS2_TRIGGER;
@@ -1805,13 +1805,13 @@ void dma_poll_complete(void)
         }
 
         /* Check bit 1 for error/alternate exit condition */
-        if (status & 0x02) {
+        if (status & TIMER_CSR_EXPIRED) {
             break;
         }
 
         /* Check timer status - bit 1 indicates timeout */
         status = REG_TIMER0_CSR;
-        if (status & 0x02) {
+        if (status & TIMER_CSR_EXPIRED) {
             /* Timeout - exit poll loop */
             break;
         }
@@ -1864,12 +1864,12 @@ void dma_poll_link_ready(void)
         }
 
         /* Check if bit 1 is set (alternate ready) */
-        if (status & 0x02) {
+        if (status & TIMER_CSR_EXPIRED) {
             break;
         }
 
         /* Check timer status - if bit 1 of CC11 is set, timer expired */
-        if (REG_TIMER0_CSR & 0x02) {
+        if (REG_TIMER0_CSR & TIMER_CSR_EXPIRED) {
             break;
         }
     }

@@ -3190,7 +3190,7 @@ void protocol_state_dispatcher_32a5(void)
     }
 
     /* Read command byte from XDATA[0x0002] */
-    cmd = XDATA_VAR8(0x0002);
+    cmd = G_IO_CMD_STATE;
 
     /* Dispatch based on command value */
     if (cmd == 0xE3 || cmd == 0xFB) {
@@ -3205,7 +3205,7 @@ void protocol_state_dispatcher_32a5(void)
 
 case_f9_e1:
     /* 0x32c6: Check XDATA[0x0001] == 0x07 */
-    if (XDATA_VAR8(0x0001) != 0x07) {
+    if (G_IO_CMD_TYPE != 0x07) {
         /* Not 0x07: call int_aux_set_bit1, dispatch_04a3, then protocol_setup_params */
         int_aux_set_bit1_3280();
         dispatch_04a3();
@@ -3302,7 +3302,7 @@ path_330b_alt:
     int_aux_set_bit1_3280();
 
     /* Check XDATA[0x0005] */
-    if (XDATA_VAR8(0x0005) != 0) {
+    if (G_DMA_DIRECTION_0005 != 0) {
         /* XDATA[0x0005] != 0: Set 32-bit value to 0x00010000 and add to 0x6F */
         val_6f = (uint32_t)dword_6f[0] | ((uint32_t)dword_6f[1] << 8) |
                  ((uint32_t)dword_6f[2] << 16) | ((uint32_t)dword_6f[3] << 24);

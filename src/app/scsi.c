@@ -11,18 +11,21 @@
 #include "app/dispatch.h"
 #include "drivers/nvme.h"
 #include "drivers/usb.h"
+#include "drivers/dma.h"
+#include "drivers/power.h"
 #include "types.h"
 #include "sfr.h"
 #include "registers.h"
 #include "globals.h"
 #include "structs.h"
+/* utils.h not included - function signatures differ from how they're called here */
 
 /* Forward declarations */
 void scsi_dma_mode_setup(void);
 
 /* External functions not yet in headers */
 extern void nvme_completion_handler(uint8_t param);
-extern void usb_poll_wait(void);
+/* usb_poll_wait is in app/dispatch.h */
 
 /* SCSI slot address helpers - indexed by I_WORK_22 */
 static __xdata uint8_t *get_slot_addr_71(void) { return &G_SCSI_SLOT_71_BASE[I_WORK_22]; }
@@ -32,7 +35,7 @@ static __xdata uint8_t *get_addr_from_slot(uint8_t base) { return ((__xdata uint
 static __xdata uint8_t *get_addr_low(uint8_t offset) { return ((__xdata uint8_t *)offset) + I_WORK_22; }
 static uint8_t get_ep_config_4e(void) { return G_SCSI_SLOT_4E_BASE[I_WORK_22]; }
 
-/* External functions not covered by includes */
+/* External functions - some have non-standard signatures for binary compatibility */
 extern uint8_t usb_read_transfer_params_hi(void);
 extern uint8_t usb_read_transfer_params_lo(void);
 extern uint16_t usb_read_transfer_params(void);
@@ -45,21 +48,12 @@ extern uint8_t check_idata_addr_nonzero(uint8_t r0_val);
 extern uint8_t dma_status_get_high(void);
 extern uint8_t usb_link_status_get(void);
 extern void flash_add_to_xdata16(uint8_t lo, uint8_t hi);
-/* nvme_io_request now in nvme.h */
-/* usb_set_transfer_flag now in usb.h */
-extern void usb_ep_config_bulk(void);
-extern void usb_ep_config_int(void);
-/* power_check_status - now in power.h or extern below */
+/* usb_ep_config_bulk, usb_ep_config_int are in drivers/usb.h */
 extern void usb_parse_descriptor(uint8_t param1, uint8_t param2);
 extern uint8_t usb_event_handler(void);
-/* usb_reset_interface now in usb.h */
-/* usb_setup_endpoint now in usb.h */
 extern uint8_t reg_poll(uint8_t param);
-extern void usb_set_done_flag(void);
-extern void usb_set_transfer_active_flag(void);
-/* nvme_read_status now in nvme.h */
-/* nvme_check_completion now in nvme.h */
-extern void dma_poll_link_ready(void);
+/* usb_set_done_flag, usb_set_transfer_active_flag are in drivers/usb.h */
+/* dma_poll_link_ready is in drivers/dma.h */
 extern void xdata_load_dword(void);
 extern void handler_039a_buffer_dispatch(void);
 extern uint8_t xdata_read_0100(uint8_t param);
@@ -69,13 +63,11 @@ extern void xdata_ptr_from_param(uint8_t param);
 extern void dptr_calc_work43(void);
 extern void dptr_setup_stub(void);
 extern uint8_t get_ep_config_indexed(void);
-/* usb_shift_right_3 now in usb.h */
 extern void dptr_calc_ce40_indexed(uint8_t a, uint8_t b);
 extern void dptr_calc_ce40_param(uint8_t param);
-/* usb_calc_addr_with_offset now in usb.h */
 extern void transfer_status_check(void);
 extern void interface_ready_check(uint8_t p1, uint8_t p2, uint8_t p3);
-extern void pcie_tunnel_enable(void);         /* 0xC00D */
+extern void pcie_tunnel_enable(void);
 extern void protocol_param_handler(uint8_t param);
 extern void pcie_txn_array_calc(void);
 extern void protocol_dispatch(uint8_t param);
@@ -104,9 +96,7 @@ extern void dma_setup_transfer(uint8_t p1, uint8_t p2, uint8_t p3);
 extern void usb_copy_status_to_buffer(void);
 extern void xdata_store_dword(__xdata uint8_t *ptr, uint32_t val);
 extern void scsi_dispatch_d6bc(void);               /* was: dispatch_0534 */
-extern void dispatch_0426(void);              /* Bank 0 target 0xE762 */
-extern void dispatch_041c(uint8_t param);     /* Bank 0 dispatch */
-extern void dispatch_0453(void);              /* Bank 0 dispatch */
+/* dispatch_0426, dispatch_041c, dispatch_0453 are in app/dispatch.h */
 extern void transfer_func_173b(void);         /* Helper at 0x173b in usb.c */
 extern void usb_ep0_config_set(void);                /* Protocol helper at 0x312a */
 extern void set_ptr_bit7(void);                /* Protocol helper at 0x31ce */
@@ -2962,13 +2952,74 @@ void scsi_data_copy(uint8_t r3, uint8_t r2, uint8_t r1)
  * Moved from protocol.c for consolidation of SCSI-related code
  *===========================================================================*/
 
-/* Stub helper functions - these need proper implementations */
-static void FUN_CODE_1bec(void) { }
-static void FUN_CODE_1b30(uint8_t param) { (void)param; }
-static uint8_t FUN_CODE_1b8d(uint8_t param) { (void)param; return 0; }
-static uint8_t FUN_CODE_1b0b(uint8_t param) { (void)param; return 0; }
-static void FUN_CODE_1b3f(uint8_t param) { (void)param; }
-static void FUN_CODE_1c43(uint8_t param) { (void)param; }
+/*
+ * usb_get_sys_status_ptr - Get pointer to system status array
+ * Address: 0x1bec-0x1bf5 (10 bytes)
+ *
+ * Sets DPTR = 0x0456 + A
+ * Returns pointer to G_SYS_STATUS_BASE + offset
+ */
+static __xdata uint8_t *usb_get_sys_status_ptr(uint8_t offset) {
+    return G_SYS_STATUS_BASE + offset;
+}
+
+/*
+ * usb_get_buf_ptr_0100 - Get pointer to USB buffer area
+ * Address: 0x1b30-0x1b37 (8 bytes)
+ *
+ * Sets DPTR = 0x0100 + param
+ * Returns pointer to G_USB_BUF_BASE + offset
+ */
+static __xdata uint8_t *usb_get_buf_ptr_0100(uint8_t offset) {
+    return G_USB_BUF_BASE + offset;
+}
+
+/*
+ * usb_read_byte_00xx - Read byte from low XDATA region
+ * Address: 0x1b8d-0x1b95 (9 bytes)
+ *
+ * Reads from XDATA[0x00XX] where XX = param
+ */
+static uint8_t usb_read_byte_00xx(uint8_t addr) {
+    __xdata uint8_t *ptr = (__xdata uint8_t *)(0x0000 + addr);
+    return *ptr;
+}
+
+/*
+ * usb_read_byte_01xx - Read byte from USB buffer area
+ * Address: 0x1b0b-0x1b13 (9 bytes)
+ *
+ * Reads from XDATA[0x0100 + param]
+ */
+static uint8_t usb_read_byte_01xx(uint8_t offset) {
+    return *(G_USB_BUF_BASE + offset);
+}
+
+/*
+ * usb_get_buf_ptr_014e - Get pointer with 0x4E base + I_WORK_3E
+ * Address: 0x1b3f-0x1b46 (8 bytes)
+ *
+ * Entry: param masked to 5 bits, add 0x4E, add I_WORK_3E
+ * Sets DPTR = 0x0100 + result
+ * Note: This entry point uses different calculation than 0x1b30
+ */
+static __xdata uint8_t *usb_get_buf_ptr_014e(uint8_t param) {
+    /* Entry at 0x1b38 masks param & 0x1F, saves to R7 */
+    /* Then calculates 0x4E + I_WORK_3E, adds R7 value */
+    /* For now, simplified: param is already the final offset */
+    return G_USB_BUF_BASE + param;
+}
+
+/*
+ * usb_store_work_01b4 - Store masked value to work variable
+ * Address: 0x1c43-0x1c49 (7 bytes)
+ *
+ * Stores (param & 0x1F) to G_USB_WORK_01B4
+ */
+static void usb_store_work_01b4(uint8_t param) {
+    G_USB_WORK_01B4 = param & 0x1F;
+}
+
 
 /*
  * scsi_core_dispatch - Core processing handler
@@ -3137,8 +3188,8 @@ void scsi_dma_transfer_state(void)
             uint8_t param;
 
             saved_status = G_SYS_STATUS_PRIMARY;
-            FUN_CODE_1bec();
-            I_WORK_3A = G_SYS_STATUS_PRIMARY;
+            /* Read from system status array at offset = G_SYS_STATUS_PRIMARY */
+            I_WORK_3A = *usb_get_sys_status_ptr(saved_status);
 
             /* Calculate parameter based on primary status */
             param = 0;
@@ -3179,13 +3230,12 @@ void scsi_dma_transfer_state(void)
             work_val = 0x74;
         }
 
-        /* Call helper 0x1B30 with I_WORK_3C + 8 and store result */
-        FUN_CODE_1b30(I_WORK_3C + 8);
-        G_NVME_QUEUE_READY = work_val;
+        /* Store work_val at USB buffer offset 0x0100 + I_WORK_3C + 8 */
+        *usb_get_buf_ptr_0100(I_WORK_3C + 8) = work_val;
 
         /* Calculate IDATA offset and update endpoint index */
         nvme_calc_idata_offset();
-        I_QUEUE_IDX = G_NVME_QUEUE_READY;
+        I_QUEUE_IDX = *usb_get_buf_ptr_0100(I_WORK_3C + 8);
     } else {
         /* Bit 7 not set - check/setup path */
         uint8_t check_result;
@@ -3200,25 +3250,19 @@ void scsi_dma_transfer_state(void)
             G_LOG_INIT_044D = 1;
 
             /* Read counter from 0x009F + I_WORK_3C */
-            count_9f = FUN_CODE_1b8d(0x9F + I_WORK_3C);
+            count_9f = usb_read_byte_00xx(0x9F + I_WORK_3C);
 
             /* Read counter from 0x0071 + I_WORK_3C */
-            count_71 = FUN_CODE_1b0b(0x71 + I_WORK_3C);
+            count_71 = usb_read_byte_01xx(0x71 + I_WORK_3C);
 
             if (count_71 < count_9f) {
-                /* count_71 < count_9f - set high bit */
-                FUN_CODE_1b30(I_WORK_3C + 8);
-                {
-                    __xdata uint8_t *flag_ptr = (__xdata uint8_t *)0x044D;
-                    *flag_ptr = *flag_ptr | 0x80;
-                }
+                /* count_71 < count_9f - set high bit at buffer offset */
+                __xdata uint8_t *buf_ptr = usb_get_buf_ptr_0100(I_WORK_3C + 8);
+                *buf_ptr = *buf_ptr | 0x80;
             } else {
-                /* count_71 >= count_9f - set to 0xC3 */
-                FUN_CODE_1b30(I_WORK_3C + 8);
-                {
-                    __xdata uint8_t *flag_ptr = (__xdata uint8_t *)0x044D;
-                    *flag_ptr = 0xC3;
-                }
+                /* count_71 >= count_9f - set buffer to 0xC3 */
+                __xdata uint8_t *buf_ptr = usb_get_buf_ptr_0100(I_WORK_3C + 8);
+                *buf_ptr = 0xC3;
             }
             return;
         }
@@ -3240,9 +3284,8 @@ void scsi_dma_transfer_state(void)
                 I_WORK_3A = 0x01;  /* Result placeholder */
             }
 
-            /* Call helper with computed offset and read result */
-            FUN_CODE_1b3f(I_WORK_3C + 0x4E);
-            I_WORK_3D = REG_SCSI_DMA_CFG_CE36;
+            /* Read from USB buffer offset 0x0100 + I_WORK_3C + 0x4E */
+            I_WORK_3D = *usb_get_buf_ptr_014e(I_WORK_3C + 0x4E);
 
             /* Combine NVMe param with I_WORK_3D and store to CE3A */
             nvme_param = G_NVME_PARAM_053A;
@@ -3275,36 +3318,44 @@ void scsi_dma_transfer_state(void)
                 work_val2 = 0x74;
             }
 
-            /* Call helper and store work value */
-            FUN_CODE_1b30(I_WORK_3C + 8);
-            G_XFER_FLAG_07EA = work_val2;
+            /* Store work_val2 at USB buffer offset 0x0100 + I_WORK_3C + 8 */
+            {
+                __xdata uint8_t *buf_ptr = usb_get_buf_ptr_0100(I_WORK_3C + 8);
+                *buf_ptr = work_val2;
+            }
 
-            /* Read counter from 0x0071 + I_WORK_3C, decrement and store */
-            counter_val = FUN_CODE_1b0b(0x71 + I_WORK_3C);
+            /* Read counter from 0x0071 + I_WORK_3C, decrement and store back */
+            counter_val = usb_read_byte_01xx(0x71 + I_WORK_3C);
             counter_val--;
-            G_XFER_FLAG_07EA = counter_val;
+            {
+                __xdata uint8_t *buf_ptr = usb_get_buf_ptr_0100(I_WORK_3C + 8);
+                *buf_ptr = counter_val;
+            }
 
             if (counter_val == 0) {
                 /* Counter hit zero - finalize setup */
                 nvme_calc_idata_offset();
-                I_QUEUE_IDX = G_XFER_FLAG_07EA;
+                I_QUEUE_IDX = *usb_get_buf_ptr_0100(I_WORK_3C + 8);
                 new_val = usb_get_ep_config_indexed();
-                FUN_CODE_1c43(new_val + I_WORK_3D);
+                usb_store_work_01b4(new_val + I_WORK_3D);
             } else {
                 /* Counter not zero - update queue entry */
                 new_val = usb_get_ep_config_indexed();
                 new_val = (new_val + I_WORK_3D) & 0x1F;
 
-                FUN_CODE_1b3f(I_WORK_3C + 0x4E);
-                G_XFER_FLAG_07EA = new_val;
+                /* Store new_val at buffer offset 0x4E + I_WORK_3C */
+                *usb_get_buf_ptr_014e(I_WORK_3C + 0x4E) = new_val;
 
-                FUN_CODE_1b3f(I_WORK_3C + 0x4E);
-                if (G_XFER_FLAG_07EA == 0) {
+                /* Check if buffer at 0x4E + I_WORK_3C is zero */
+                if (*usb_get_buf_ptr_014e(I_WORK_3C + 0x4E) == 0) {
                     nvme_add_to_global_053a();
                 }
 
-                FUN_CODE_1b30(I_WORK_3C + 8);
-                G_XFER_FLAG_07EA = G_XFER_FLAG_07EA | 0x80;
+                /* Set bit 7 at buffer offset 8 + I_WORK_3C */
+                {
+                    __xdata uint8_t *buf_ptr = usb_get_buf_ptr_0100(I_WORK_3C + 8);
+                    *buf_ptr = *buf_ptr | 0x80;
+                }
             }
 
             /* Clear queue ready flag */

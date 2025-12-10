@@ -1033,8 +1033,8 @@ void sys_timer_handler_e957(void)
  */
 void cpu_int_ctrl_trigger_e933(void)
 {
-    REG_CPU_INT_CTRL = 0x04;
-    REG_CPU_INT_CTRL = 0x02;
+    REG_CPU_INT_CTRL = CPU_INT_CTRL_TRIGGER;
+    REG_CPU_INT_CTRL = CPU_INT_CTRL_ACK;
 }
 
 /*
@@ -1067,9 +1067,9 @@ void cpu_dma_setup_e81b(uint8_t param_hi, uint8_t param_lo)
     REG_CPU_CTRL_CC83 = param_lo;
 
     /* Trigger sequence: 0x04, 0x02, 0x01 to CPU_INT_CTRL */
-    REG_CPU_INT_CTRL = 0x04;
-    REG_CPU_INT_CTRL = 0x02;
-    REG_CPU_INT_CTRL = 0x01;
+    REG_CPU_INT_CTRL = CPU_INT_CTRL_TRIGGER;
+    REG_CPU_INT_CTRL = CPU_INT_CTRL_ACK;
+    REG_CPU_INT_CTRL = CPU_INT_CTRL_ENABLE;
 }
 
 /*
@@ -1085,6 +1085,6 @@ void cpu_dma_setup_e81b(uint8_t param_hi, uint8_t param_lo)
  */
 void cpu_dma_channel_91_trigger_e93a(void)
 {
-    REG_CPU_DMA_INT = 0x04;
-    REG_CPU_DMA_INT = 0x02;
+    REG_CPU_DMA_INT = CPU_DMA_INT_TRIGGER;
+    REG_CPU_DMA_INT = CPU_DMA_INT_ACK;
 }

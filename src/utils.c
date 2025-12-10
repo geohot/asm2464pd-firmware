@@ -22,10 +22,88 @@ extern void protocol_setup_params(uint8_t r3, uint8_t r5, uint8_t r7);  /* app/p
 /* Forward declarations for functions defined later in this file */
 void ext_mem_bank_access(uint8_t bank, uint8_t addr_hi, uint8_t addr_lo);
 
-/* Stub functions - these may need proper implementation */
-void pcie_short_delay(void) { /* TODO: implement 0xbefb */ }
-void cmd_engine_wait_idle(void) { /* TODO: implement 0xb8c3 */ }
-void link_state_init_stub(void) { /* TODO: implement 0x9536 */ }
+/*
+ * pcie_short_delay - PCIe short delay with status read
+ * Address: 0xbefb-0xbf0e (20 bytes)
+ *
+ * Performs a delay loop (0x2269FF iterations) then reads PHY mode status.
+ * Returns bits 4-5 of 0xE302 in low nibble.
+ */
+uint8_t pcie_short_delay(void) {
+    uint32_t delay;
+    uint8_t mode_bits;
+
+    /* Delay loop: 0x2269FF iterations (~2.3M loops) */
+    for (delay = 0x2269FF; delay > 0; delay--) {
+        /* Empty loop body - just wastes cycles */
+    }
+
+    /* Read PHY mode register and extract bits 4-5 */
+    mode_bits = REG_PHY_MODE_E302;
+    mode_bits = (mode_bits & 0x30) >> 4;  /* Extract bits 4-5, shift to low nibble */
+
+    return mode_bits;
+}
+
+/*
+ * cmd_engine_wait_idle - Clear command engine state
+ * Address: 0xb8c3-0xb8f8 (54 bytes)
+ *
+ * Performs a delay loop then clears multiple command state variables.
+ */
+void cmd_engine_wait_idle(void) {
+    uint32_t delay;
+
+    /* Delay loop: 0x21E4FF iterations (~2.2M loops) */
+    for (delay = 0x21E4FF; delay > 0; delay--) {
+        /* Empty loop body - just wastes cycles */
+    }
+
+    /* Clear command slot index pair */
+    G_CMD_SLOT_INDEX = 0;              /* 0x07B7 */
+    *((__xdata uint8_t *)0x07B8) = 0;  /* 0x07B8 */
+
+    /* Clear command state pair */
+    G_CMD_STATE = 0;                   /* 0x07C3 */
+    *((__xdata uint8_t *)0x07C4) = 0;  /* 0x07C4 */
+
+    /* Clear additional command work variables */
+    G_CMD_WORK_C7 = 0;                 /* 0x07C7 */
+    G_CMD_WORK_C5 = 0;                 /* 0x07C5 */
+    G_CMD_WORK_C2 = 0;                 /* 0x07C2 */
+    G_CMD_SLOT_C1 = 0;                 /* 0x07C1 */
+    G_CMD_WORK_E3 = 0;                 /* 0x07E3 */
+
+    /* Set flash operation counter to 1 */
+    G_FLASH_OP_COUNTER = 1;            /* 0x07BD */
+}
+
+/*
+ * link_state_init_stub - Initialize link state registers
+ * Address: 0x9536-0x9565 (48 bytes)
+ *
+ * Initializes command engine and link state registers.
+ */
+void link_state_init_stub(void) {
+    /* Write 0xFF to command control registers 0xE40F and 0xE410 */
+    REG_CMD_CTRL_E40F = 0xFF;
+    REG_CMD_CTRL_E410 = 0xFF;
+
+    /* Clear bits 1, 2, 3 of command config register 0xE40B */
+    REG_CMD_CONFIG = REG_CMD_CONFIG & 0xFD;  /* Clear bit 1 */
+    REG_CMD_CONFIG = REG_CMD_CONFIG & 0xFB;  /* Clear bit 2 */
+    REG_CMD_CONFIG = REG_CMD_CONFIG & 0xF7;  /* Clear bit 3 */
+
+    /* Update transfer DMA control: clear bits 0-2, set bit 1 */
+    REG_XFER_DMA_CTRL = (REG_XFER_DMA_CTRL & 0xF8) | 0x02;  /* CC88 */
+
+    /* Clear transfer DMA address low, set to 0xC7 at next byte */
+    REG_XFER_DMA_ADDR_LO = 0;          /* CC8A */
+    REG_XFER_DMA_ADDR_HI = 0xC7;       /* CC8B */
+
+    /* Set transfer DMA command to 0x01 */
+    REG_XFER_DMA_CMD = 0x01;           /* CC89 */
+}
 
 /*
  * idata_load_dword - Load 32-bit value from IDATA
@@ -1799,12 +1877,12 @@ uint8_t xdata_write_load_triple_1564(uint8_t value, uint8_t r1_addr, uint8_t r2_
     /* Mode 0xfe (xram) not commonly used here */
 
     /* Read and return byte at 0x0460 (third byte of the triple) */
-    return G_WORK_0460;
+    return G_DMA_ADDR_HI;
 }
 
 uint8_t load_triple_1564_read(void)
 {
-    return G_WORK_0460;
+    return G_DMA_ADDR_HI;
 }
 
 /*
@@ -2258,7 +2336,7 @@ uint8_t flash_extract_bit_shift2(uint8_t val, __xdata uint8_t *dest)
     /* rrc a (x2), anl a, #0x01, movx @dptr, a, return G_FLASH_BUF_707D */
     val = (val >> 2) & 0x01;
     *dest = val;
-    return XDATA_VAR8(0x707D);
+    return G_FLASH_BUF_707D;
 }
 
 void flash_set_bit2(__xdata uint8_t *dest)
@@ -2274,7 +2352,7 @@ uint8_t flash_extract_bit_shift1(uint8_t val, __xdata uint8_t *dest)
     /* rrc a, anl a, #0x01, movx @dptr, a, return G_FLASH_BUF_707D */
     val = (val >> 1) & 0x01;
     *dest = val;
-    return XDATA_VAR8(0x707D);
+    return G_FLASH_BUF_707D;
 }
 
 uint8_t flash_extract_2bits_shift2(uint8_t val, __xdata uint8_t *dest)
@@ -2282,7 +2360,7 @@ uint8_t flash_extract_2bits_shift2(uint8_t val, __xdata uint8_t *dest)
     /* rrc a (x2), anl a, #0x03, movx @dptr, a, return G_FLASH_BUF_707B */
     val = (val >> 2) & 0x03;
     *dest = val;
-    return XDATA_VAR8(0x707B);
+    return G_FLASH_BUF_707B;
 }
 
 uint8_t flash_extract_bit0(uint8_t val, __xdata uint8_t *dest)
@@ -2290,7 +2368,7 @@ uint8_t flash_extract_bit0(uint8_t val, __xdata uint8_t *dest)
     /* anl a, #0x01, movx @dptr, a, return G_FLASH_BUF_707D */
     val = val & 0x01;
     *dest = val;
-    return XDATA_VAR8(0x707D);
+    return G_FLASH_BUF_707D;
 }
 
 void flash_set_bit3(__xdata uint8_t *dest)
@@ -2351,11 +2429,11 @@ void state_checksum_calc(void)
 
     /* XOR together bytes at 0x0241-0x0248 */
     for (i = 0; i < 8; i++) {
-        checksum ^= XDATA_VAR8(0x0241 + i);
+        checksum ^= G_STATE_CHECKSUM_DATA[i];
     }
 
     /* Store result at 0x0240 */
-    XDATA_VAR8(0x0240) = checksum;
+    G_STATE_CHECKSUM = checksum;
 }
 
 /*
@@ -2578,7 +2656,7 @@ void pcie_config_helper(void)
     }
 
     /* Set completion flag */
-    XDATA_VAR8(0x07DF) = 1;
+    G_PCIE_COMPLETE_07DF = 1;
 }
 
 void pcie_status_helper(void)

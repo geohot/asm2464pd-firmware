@@ -558,8 +558,8 @@ void timer_wait(uint8_t timeout_lo, uint8_t timeout_hi, uint8_t mode)
     uint8_t csr;
 
     /* Reset timer - 0xE8EF */
-    REG_TIMER0_CSR = 0x04;  /* Reset */
-    REG_TIMER0_CSR = 0x02;  /* Clear done flag */
+    REG_TIMER0_CSR = TIMER_CSR_CLEAR;  /* Reset */
+    REG_TIMER0_CSR = TIMER_CSR_EXPIRED;  /* Clear done flag */
 
     /* Configure timer - 0xE50D */
     csr = REG_TIMER0_DIV;
@@ -570,7 +570,7 @@ void timer_wait(uint8_t timeout_lo, uint8_t timeout_hi, uint8_t mode)
     REG_TIMER0_THRESHOLD = ((uint16_t)timeout_hi << 8) | timeout_lo;
 
     /* Start timer */
-    REG_TIMER0_CSR = 0x01;
+    REG_TIMER0_CSR = TIMER_CSR_ENABLE;
 
     /* Poll until done (bit 1 set) */
     while ((REG_TIMER0_CSR & TIMER_CSR_EXPIRED) == 0) {
@@ -578,7 +578,7 @@ void timer_wait(uint8_t timeout_lo, uint8_t timeout_hi, uint8_t mode)
     }
 
     /* Clear done flag */
-    REG_TIMER0_CSR = 0x02;
+    REG_TIMER0_CSR = TIMER_CSR_EXPIRED;
 }
 
 
@@ -733,8 +733,8 @@ void reg_timer_setup_and_set_bits(void)
 void reg_timer_init_and_start(void)
 {
     G_TIMER_INIT_0B40 = 0;
-    REG_TIMER3_CSR = 0x04;
-    REG_TIMER3_CSR = 0x02;
+    REG_TIMER3_CSR = TIMER_CSR_CLEAR;
+    REG_TIMER3_CSR = TIMER_CSR_EXPIRED;
 }
 
 /*

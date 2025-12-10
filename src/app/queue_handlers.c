@@ -864,9 +864,9 @@ void system_state_clear_bfc4(void)
     G_TRANSFER_ACTIVE = val;        /* 0x07E5 */
     G_EP_STATUS_CTRL = val;         /* 0x0003 */
     G_WORK_0006 = val;              /* 0x0006 */
-    XDATA_VAR8(0x07EB) = val;       /* G_SYS_FLAGS_07EB */
+    G_SYS_FLAGS_07EB = val;         /* 0x07EB */
     G_SYS_FLAGS_07E8 = val;         /* 0x07E8 */
-    XDATA_VAR8(0x0B3C) = val;       /* G_STATE_CTRL_0B3C */
+    G_STATE_CTRL_0B3C = val;        /* 0x0B3C */
     G_SYS_FLAGS_07ED = val;         /* 0x07ED */
 
     /* Call helper functions */

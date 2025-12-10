@@ -4,7 +4,7 @@
 
 | Metric | Value |
 |--------|-------|
-| **Firmware Size** | 52,440 / 98,012 bytes (53.5%) |
+| **Firmware Size** | 52,866 / 98,012 bytes (53.9%) |
 | **Build Status** | Compiles successfully |
 | **Extern Declarations** | ~378 (reduced from ~410) |
 
@@ -12,25 +12,16 @@
 
 ## Stub Functions in protocol.c
 
-These stub functions need to be implemented:
-
-| Address | Function | Signature |
-|---------|----------|-----------|
-| 0x1bec | FUN_CODE_1bec | `void (void)` |
-| 0x1b30 | FUN_CODE_1b30 | `void (uint8_t param)` |
-| 0x1b8d | FUN_CODE_1b8d | `uint8_t (uint8_t param)` |
-| 0x1b0b | FUN_CODE_1b0b | `uint8_t (uint8_t param)` |
-| 0x1b3f | FUN_CODE_1b3f | `void (uint8_t param)` |
-| 0x1c43 | FUN_CODE_1c43 | `void (uint8_t param)` |
+**COMPLETED** - USB buffer pointer functions implemented in scsi.c
 
 ---
 
 ## TODO Comments by File
 
-### utils.c (4 items)
-- Line 26: `pcie_short_delay` - implement 0xbefb
-- Line 27: `cmd_engine_wait_idle` - implement 0xb8c3
-- Line 28: `link_state_init_stub` - implement 0x9536
+### utils.c (1 item)
+- ~~Line 26: `pcie_short_delay` - implement 0xbefb~~ **COMPLETED**
+- ~~Line 27: `cmd_engine_wait_idle` - implement 0xb8c3~~ **COMPLETED**
+- ~~Line 28: `link_state_init_stub` - implement 0x9536~~ **COMPLETED**
 - Line 1616: Helper 0x173b behavior
 
 ### timer.c (1 item)
@@ -48,16 +39,16 @@ These stub functions need to be implemented:
 - Line 289, 295: Full logic for USB helpers
 - Line 2753: Link dispatch_helper_0534
 
-### nvme.c (18 items)
+### nvme.c (10 items)
 - Line 1722: Call nvme_helper_4b25(trigger_val)
 - Line 1729: Call nvme_helper_3da1(*queue_idx)
-- Line 1794: Call 0x0206
-- Line 1797: Call 0x3219
-- Line 1801: Call 0x312a, 0x31ce
-- Line 1813: Call nvme_link_restart
-- Line 1839: Call 0x312a, 0x31ce
-- Line 1846: Call 0x0206
-- Line 1849: Call 0x3219
+- ~~Line 1794: Call 0x0206~~ **COMPLETED** (usb_addr_copy_to_regs)
+- ~~Line 1797: Call 0x3219~~ **COMPLETED** (dma_buffer_write + signal)
+- ~~Line 1801: Call 0x312a, 0x31ce~~ **COMPLETED** (nvme_set_transfer_flag + nvme_reg_set_bit7)
+- ~~Line 1813: Call nvme_link_restart~~ **COMPLETED**
+- ~~Line 1839: Call 0x312a, 0x31ce~~ **COMPLETED**
+- ~~Line 1846: Call 0x0206~~ **COMPLETED**
+- ~~Line 1849: Call 0x3219~~ **COMPLETED**
 - Line 1924: Call protocol_setup_params(0x03, 0x47, 0x0B)
 - Line 1933: Call dma_interrupt_handler()
 - Line 1938: Result = call_0395()

@@ -1,0 +1,12 @@
+C51 COMPILER V9.60.7.0   TEST50                                                            12/10/2025 15:47:37 PAGE 1   
+
+
+C51 COMPILER V9.60.7.0, COMPILATION OF MODULE TEST50
+OBJECT MODULE PLACED IN test50.OBJ
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.exe test50.c OPTIMIZE(9,SIZE)
+
+line level    source
+
+*** ERROR C318 OF test50.c: can't open file 'test50.c'
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  1 ERROR(S)

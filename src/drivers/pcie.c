@@ -69,9 +69,9 @@ uint8_t tlp_write_flash_cmd(uint8_t cmd);
  */
 void pcie_clear_and_trigger(void)
 {
-    REG_PCIE_STATUS = 0x01;  /* Clear error flag */
-    REG_PCIE_STATUS = 0x02;  /* Clear complete flag */
-    REG_PCIE_STATUS = 0x04;  /* Clear busy flag */
+    REG_PCIE_STATUS = PCIE_STATUS_ERROR;     /* Clear error flag */
+    REG_PCIE_STATUS = PCIE_STATUS_COMPLETE;  /* Clear complete flag */
+    REG_PCIE_STATUS = PCIE_STATUS_BUSY;      /* Clear busy flag */
     REG_PCIE_TRIGGER = 0x0F; /* Trigger all lanes */
 }
 
@@ -315,7 +315,7 @@ uint8_t pcie_get_txn_count_hi(void)
  */
 void pcie_write_status_error(void)
 {
-    REG_PCIE_STATUS = 0x01;
+    REG_PCIE_STATUS = PCIE_STATUS_ERROR;
 }
 
 /*
@@ -326,7 +326,7 @@ void pcie_write_status_error(void)
  */
 void pcie_write_status_done(void)
 {
-    REG_PCIE_STATUS = 0x02;
+    REG_PCIE_STATUS = PCIE_STATUS_COMPLETE;
 }
 
 /*
@@ -566,7 +566,7 @@ uint8_t pcie_poll_and_read_completion(void)
         status = REG_PCIE_STATUS;
 
         /* Check completion bit (bit 1) */
-        if (status & 0x02) {
+        if (status & TIMER_CSR_EXPIRED) {
             /* Complete - read completion data */
             cpl_data = pcie_read_completion_data();
             if (cpl_data != 0) {
@@ -589,7 +589,7 @@ uint8_t pcie_poll_and_read_completion(void)
 
         /* Check error bit (bit 0) */
         if (status & 0x01) {
-            REG_PCIE_STATUS = 0x01;  /* Clear error */
+            REG_PCIE_STATUS = PCIE_STATUS_ERROR;  /* Clear error */
             return 0xFE;  /* Error code */
         }
     }
@@ -746,13 +746,13 @@ void pcie_setup_config_tlp(void)
     /* Check for errors - poll until complete or error */
     while (1) {
         status = REG_PCIE_STATUS;
-        if (status & 0x02) {
+        if (status & TIMER_CSR_EXPIRED) {
             /* Transaction complete - success */
             return;
         }
         if (status & 0x01) {
             /* Error occurred */
-            REG_PCIE_STATUS = 0x01;  /* Clear error flag */
+            REG_PCIE_STATUS = PCIE_STATUS_ERROR;  /* Clear error flag */
             /* Set error indicators in globals */
             G_ERROR_CODE_06EA = 0xFE;   /* Error code */
             G_STATE_FLAG_06E6 = 0x01;   /* Error flag */
@@ -863,7 +863,7 @@ void pcie_event_handler(void)
         event_ctrl = G_EVENT_CTRL_09FA;
 
         /* c126: jnb acc.1, 0xc17e - if bit 1 clear, return */
-        if (!(event_ctrl & 0x02)) {
+        if (!(event_ctrl & TIMER_CSR_EXPIRED)) {
             return;
         }
 
@@ -893,7 +893,7 @@ void pcie_event_handler(void)
     status = reg_read_bank_1603();
 
     /* c146: jnb acc.1, 0xc17e - if bit 1 clear, return */
-    if (!(status & 0x02)) {
+    if (!(status & TIMER_CSR_EXPIRED)) {
         return;
     }
 
@@ -904,7 +904,7 @@ void pcie_event_handler(void)
     event_ctrl = G_EVENT_CTRL_09FA;
 
     /* c152: jnb acc.1, 0xc17e - if bit 1 clear, return */
-    if (!(event_ctrl & 0x02)) {
+    if (!(event_ctrl & TIMER_CSR_EXPIRED)) {
         return;
     }
 
@@ -1455,9 +1455,9 @@ __xdata uint8_t *pcie_lookup_r3_multiply(uint8_t idx)
  */
 void pcie_init_b296_regs(void)
 {
-    REG_PCIE_STATUS = 0x01;  /* Clear flag 0 */
-    REG_PCIE_STATUS = 0x02;  /* Clear flag 1 */
-    REG_PCIE_STATUS = 0x04;  /* Clear flag 2 */
+    REG_PCIE_STATUS = PCIE_STATUS_ERROR;  /* Clear flag 0 */
+    REG_PCIE_STATUS = PCIE_STATUS_COMPLETE;  /* Clear flag 1 */
+    REG_PCIE_STATUS = PCIE_STATUS_BUSY;  /* Clear flag 2 */
     REG_PCIE_TRIGGER = 0x0F; /* Trigger transaction */
 }
 
@@ -2161,7 +2161,7 @@ uint8_t pcie_tlp_handler_b402(void)
     /* b4ba-b570: Process CC status registers - simplified */
     /* Check CC23 (Timer3 CSR) bit 1 */
     if (REG_TIMER3_CSR & TIMER_CSR_EXPIRED) {
-        REG_TIMER3_CSR = 0x02;
+        REG_TIMER3_CSR = TIMER_CSR_EXPIRED;
     }
 
     /* Check CPU interrupt ACK bit */
@@ -2520,7 +2520,7 @@ void pcie_interrupt_handler(void)
      * a57b: jnb 0xe0.1, 0xa59b  ; if bit 1 not set, skip
      */
     result = pcie_get_status_a34f();
-    if (result & 0x02) {
+    if (result & TIMER_CSR_EXPIRED) {
         /* Write 0x02 to register */
         /* a57e: mov a, #0x02; lcall 0x0be6 */
 
@@ -3346,12 +3346,12 @@ void pcie_wait_and_ack_e80a(void)
     timer0_reset();
 
     /* Wait for bit 1 of 0xCC11 to be set */
-    while (!(REG_TIMER0_CSR & 0x02)) {
+    while (!(REG_TIMER0_CSR & TIMER_CSR_EXPIRED)) {
         /* spin */
     }
 
     /* Acknowledge by writing 2 */
-    REG_TIMER0_CSR = 0x02;
+    REG_TIMER0_CSR = TIMER_CSR_EXPIRED;
 }
 
 /*
@@ -3360,8 +3360,8 @@ void pcie_wait_and_ack_e80a(void)
  */
 void pcie_trigger_cc11_e8ef(void)
 {
-    REG_TIMER0_CSR = 0x04;
-    REG_TIMER0_CSR = 0x02;
+    REG_TIMER0_CSR = TIMER_CSR_CLEAR;
+    REG_TIMER0_CSR = TIMER_CSR_EXPIRED;
 }
 
 /*
@@ -3493,7 +3493,7 @@ void pcie_doorbell_trigger(uint8_t param)
     uint8_t status;
 
     /* Step 1: Setup (equivalent to lcall 0xc45f) */
-    REG_PCIE_STATUS = 0x04;           /* Write 4 to 0xB296 */
+    REG_PCIE_STATUS = PCIE_STATUS_BUSY;           /* Write 4 to 0xB296 */
     REG_PCIE_DOORBELL_CMD = param;    /* Write param to 0xB251 */
     status = G_SYS_STATUS_PRIMARY;    /* Read from 0x0464 */
 
@@ -3510,7 +3510,7 @@ void pcie_doorbell_trigger(uint8_t param)
     }
 
     /* Step 4: Clear status (equivalent to lcall 0xc48f) */
-    REG_PCIE_STATUS = 0x04;
+    REG_PCIE_STATUS = PCIE_STATUS_BUSY;
 }
 
 /*
@@ -3855,8 +3855,8 @@ void pcie_int_ctrl_link_init(void)
 void timer_config_update(uint8_t param)
 {
     /* Write 0x04 then 0x02 to REG_TIMER1_CSR (start timer) */
-    REG_TIMER1_CSR = 0x04;
-    REG_TIMER1_CSR = 0x02;
+    REG_TIMER1_CSR = TIMER_CSR_CLEAR;
+    REG_TIMER1_CSR = TIMER_CSR_EXPIRED;
 
     /* If bit 0 set: clear bit 0 of REG_POWER_MISC_CTRL */
     if (param & 0x01) {
@@ -3864,7 +3864,7 @@ void timer_config_update(uint8_t param)
     }
 
     /* If bit 1 set: set bit 0 of REG_TUNNEL_LINK_CTRL and call log processor */
-    if (param & 0x02) {
+    if (param & TIMER_CSR_EXPIRED) {
         REG_TUNNEL_LINK_CTRL = (REG_TUNNEL_LINK_CTRL & 0xFE) | 0x01;
         process_log_entries(0);
     }
@@ -4070,7 +4070,7 @@ void pcie_link_state_init(void)
 uint8_t check_link_status_e2b9(void)
 {
     uint8_t val = REG_SYS_CTRL_E765;
-    return (val & 0x02) ? 1 : 0;
+    return (val & TIMER_CSR_EXPIRED) ? 1 : 0;
 }
 
 /*
@@ -4457,12 +4457,12 @@ void pcie_timer_channels_init(void)
     G_LOG_ACTIVE_044C = 0;
 
     /* Initialize primary channel 0xCC1D with trigger sequence */
-    REG_TIMER2_CSR = 0x04;
-    REG_TIMER2_CSR = 0x02;
+    REG_TIMER2_CSR = TIMER_CSR_CLEAR;
+    REG_TIMER2_CSR = TIMER_CSR_EXPIRED;
 
     /* Initialize secondary channel 0xCC5D with trigger sequence */
-    REG_TIMER4_CSR = 0x04;
-    REG_TIMER4_CSR = 0x02;
+    REG_TIMER4_CSR = TIMER_CSR_CLEAR;
+    REG_TIMER4_CSR = TIMER_CSR_EXPIRED;
 }
 
 void pcie_dma_init_e0e4(void)
@@ -4558,7 +4558,7 @@ void timer0_configure(uint8_t div_bits, uint8_t threshold_hi, uint8_t threshold_
     REG_TIMER0_THRESHOLD_LO = threshold_lo;
 
     /* Start timer */
-    REG_TIMER0_CSR = 0x01;
+    REG_TIMER0_CSR = TIMER_CSR_ENABLE;
 }
 
 void timer0_reset(void)
@@ -4640,7 +4640,7 @@ uint8_t pcie_setup_tlp_transaction(void)
     while (1) {
         val = REG_PCIE_STATUS;
         /* Check bit 1 */
-        if (val & 0x02) {
+        if (val & TIMER_CSR_EXPIRED) {
             break;  /* Bit 1 set - exit poll loop */
         }
         /* Check bit 0 */
@@ -4685,20 +4685,20 @@ uint8_t pcie_setup_tlp_transaction(void)
 void pcie_tunnel_init_c00d(void)
 {
     /* Check if tunnel already active - skip if G_TUNNEL_ACTIVE is 0 */
-    if (XDATA_VAR8(0x06E6) == 0) {
+    if (G_STATE_FLAG_06E6 == 0) {
         return;
     }
 
     /* Clear tunnel active flag */
-    XDATA_VAR8(0x06E6) = 0;
+    G_STATE_FLAG_06E6 = 0;
     /* Set sequence numbers */
-    XDATA_VAR8(0x06E7) = 1;  /* inc dptr, inc a */
-    XDATA_VAR8(0x06E8) = 1;  /* inc dptr */
+    G_WORK_06E7 = 1;  /* inc dptr, inc a */
+    G_WORK_06E8 = 1;  /* inc dptr */
     /* Clear state variables */
-    XDATA_VAR8(0x05A7) = 0;
-    XDATA_VAR8(0x06EB) = 0;
-    XDATA_VAR8(0x05AC) = 0;
-    XDATA_VAR8(0x05AD) = 0;
+    G_PCIE_TXN_COUNT_HI = 0;
+    G_WORK_06EB = 0;
+    G_DMA_WORK_05AC = 0;
+    G_DMA_WORK_05AD = 0;
     /* Additional tunnel setup would go here */
 }
 

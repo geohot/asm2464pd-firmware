@@ -10,7 +10,7 @@
 #include "types.h"
 
 /* Stub functions (TODO: implement) */
-void pcie_short_delay(void);                    /* 0xbefb */
+uint8_t pcie_short_delay(void);                 /* 0xbefb - returns PHY mode bits 4-5 */
 void cmd_engine_wait_idle(void);                /* 0xb8c3 */
 void link_state_init_stub(void);                /* 0x9536 */
 
@@ -115,8 +115,14 @@ void dma_queue_ptr_setup(void);                 /* 0x173b */
 __xdata uint8_t *get_sys_status_ptr_0456(uint8_t param);   /* 0x16e9-0x16f2 */
 __xdata uint8_t *get_sys_status_ptr_0400(uint8_t param);   /* 0x16eb-0x16f2 */
 
+/* USB buffer pointers */
+__xdata uint8_t *usb_buf_ptr_0108(uint8_t param);          /* 0x1b2e-0x1b37 */
+__xdata uint8_t *usb_buf_ptr_0100(uint8_t param);          /* 0x1b30-0x1b37 */
+__xdata uint8_t *xdata_ptr_from_param(uint8_t param);      /* 0x1c13-0x1c1a */
+
 /* Misc helpers */
 uint8_t xdata_read_0100(uint8_t low_byte, uint8_t carry);  /* 0x1b0b-0x1b13 */
 uint8_t xdata_write_load_triple_1564(uint8_t value, uint8_t r1_addr, uint8_t r2_addr, uint8_t r3_mode);  /* 0x1564-0x156e */
+uint8_t load_triple_1564_read(void);                       /* 0x1b77 */
 
 #endif /* _UTILS_H_ */

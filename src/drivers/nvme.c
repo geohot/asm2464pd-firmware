@@ -1771,6 +1771,167 @@ void nvme_process_queue_entries(void)
 }
 
 /*
+ * usb_addr_copy_to_regs - Copy USB address to endpoint and buffer registers
+ * Address: 0x0206-0x022a (37 bytes)
+ *
+ * If R5 has bits 1 or 2 set, copies address from G_USB_ADDR (0x0056-0x0057)
+ * to USB endpoint buffer (0x905B-0x905C) and USB EP buffer data (0xD802-0xD803).
+ * Also writes 0xA0 to DMA config register 0xC8D4.
+ *
+ * Original disassembly:
+ *   0206: mov a, r5
+ *   0207: anl a, #0x06         ; check bits 1-2
+ *   0209: jz 0x022b            ; if zero, skip
+ *   020b: mov dptr, #0xc8d4
+ *   020e: mov a, #0xa0
+ *   0210: movx @dptr, a        ; write 0xA0 to 0xC8D4
+ *   0211: mov dptr, #0x0056
+ *   0214: movx a, @dptr
+ *   0215: mov r2, a            ; R2 = XDATA[0x0056]
+ *   0216: inc dptr
+ *   0217: movx a, @dptr
+ *   0218: mov r3, a            ; R3 = XDATA[0x0057]
+ *   0219: mov dptr, #0x905b
+ *   021c: mov a, r2
+ *   021d: movx @dptr, a        ; write R2 to 0x905B
+ *   021e: inc dptr
+ *   021f: mov a, r3
+ *   0220: movx @dptr, a        ; write R3 to 0x905C
+ *   0221: mov dptr, #0xd802
+ *   0224: mov a, r2
+ *   0225: movx @dptr, a        ; write R2 to 0xD802
+ *   0226: inc dptr
+ *   0227: mov a, r3
+ *   0228: movx @dptr, a        ; write R3 to 0xD803
+ *   0229: sjmp 0x0247          ; continue
+ */
+static void usb_addr_copy_to_regs(uint8_t mode)
+{
+    uint8_t addr_hi, addr_lo;
+
+    /* Check if bits 1 or 2 are set */
+    if ((mode & 0x06) == 0) {
+        return;
+    }
+
+    /* Write 0xA0 to DMA config register */
+    REG_DMA_CONFIG = 0xA0;
+
+    /* Read USB address from globals */
+    addr_hi = G_USB_ADDR_HI_0056;
+    addr_lo = G_USB_ADDR_LO_0057;
+
+    /* Copy to USB endpoint buffer registers */
+    REG_USB_EP_BUF_HI = addr_hi;
+    REG_USB_EP_BUF_LO = addr_lo;  /* 0x905C */
+
+    /* Copy to USB endpoint data registers */
+    REG_USB_EP_BUF_DATA = addr_hi;
+    REG_USB_EP_BUF_PTR_LO = addr_lo;  /* 0xD803 */
+}
+
+/*
+ * nvme_set_transfer_flag - Set transfer flag and USB mode bit
+ * Address: 0x312a-0x3139 (16 bytes)
+ *
+ * Sets G_TRANSFER_FLAG_0AF2 to 1, then sets bit 0 of REG_USB_EP0_CONFIG.
+ *
+ * Original disassembly:
+ *   312a: mov dptr, #0x0af2
+ *   312d: mov a, #0x01
+ *   312f: movx @dptr, a        ; G_TRANSFER_FLAG_0AF2 = 1
+ *   3130: mov dptr, #0x9006
+ *   3133: movx a, @dptr
+ *   3134: anl a, #0xfe         ; clear bit 0
+ *   3136: orl a, #0x01         ; set bit 0
+ *   3138: movx @dptr, a
+ *   3139: ret
+ */
+static void nvme_set_transfer_flag(void)
+{
+    G_TRANSFER_FLAG_0AF2 = 0x01;
+    REG_USB_EP0_CONFIG = (REG_USB_EP0_CONFIG & 0xFE) | 0x01;
+}
+
+/*
+ * nvme_reg_set_bit7 - Set bit 7 of register pointed to by DPTR
+ * Address: 0x31ce-0x31d4 (7 bytes)
+ *
+ * Generic read-modify-write: reads register via DPTR, clears bit 7,
+ * sets bit 7, writes back. Used with registers that need bit 7 set.
+ *
+ * Original disassembly:
+ *   31ce: movx a, @dptr
+ *   31cf: anl a, #0x7f         ; clear bit 7
+ *   31d1: orl a, #0x80         ; set bit 7
+ *   31d3: movx @dptr, a
+ *   31d4: ret
+ */
+static void nvme_reg_set_bit7(__xdata uint8_t *reg)
+{
+    uint8_t val = *reg;
+    val = (val & 0x7F) | 0x80;
+    *reg = val;
+}
+
+/*
+ * nvme_reg_set_bit0 - Set bit 0 of register pointed to by DPTR
+ * Address: 0x3133-0x3139 (7 bytes)
+ *
+ * Generic read-modify-write: reads register via DPTR, clears bit 0,
+ * sets bit 0, writes back. Used with registers that need bit 0 set.
+ *
+ * Original disassembly:
+ *   3133: movx a, @dptr
+ *   3134: anl a, #0xfe         ; clear bit 0
+ *   3136: orl a, #0x01         ; set bit 0
+ *   3138: movx @dptr, a
+ *   3139: ret
+ */
+static void nvme_reg_set_bit0(__xdata uint8_t *reg)
+{
+    uint8_t val = *reg;
+    val = (val & 0xFE) | 0x01;
+    *reg = val;
+}
+
+/*
+ * nvme_link_restart - Restart NVMe link and increment counter
+ * Address: 0x53d4-0x53e5 (18 bytes)
+ *
+ * Writes 0xFF to REG_NVME_LINK_CTRL (0xC51A), then reads G_LINK_COUNTER
+ * at 0x012B, increments it (masked to 5 bits), and calls the power
+ * check status function at 0x041c (which checks 0xE647).
+ *
+ * Original disassembly:
+ *   53d4: mov dptr, #0xc51a
+ *   53d7: mov a, #0xff
+ *   53d9: movx @dptr, a        ; REG_NVME_LINK_CTRL = 0xFF
+ *   53da: mov dptr, #0x012b
+ *   53dd: movx a, @dptr        ; Read G_LINK_COUNTER
+ *   53de: inc a                ; Increment
+ *   53df: anl a, #0x1f         ; Mask to 5 bits
+ *   53e1: mov r7, a            ; Save to R7
+ *   53e2: movx @dptr, a        ; Write back
+ *   53e3: ljmp 0x041c          ; Jump to power_check_status_e647
+ */
+static void nvme_link_restart(void)
+{
+    uint8_t counter;
+
+    /* Write 0xFF to link control register (0xC51A) */
+    REG_NVME_QUEUE_TRIGGER = 0xFF;
+
+    /* Read, increment, and mask counter */
+    counter = G_WORK_012B;
+    counter = (counter + 1) & 0x1F;
+    G_WORK_012B = counter;
+
+    /* Call power check status */
+    power_check_status_e647();
+}
+
+/*
  * nvme_state_handler - Handle NVMe state based on device mode
  * Address: 0x4784-0x47f1 (110 bytes)
  *
@@ -1806,14 +1967,16 @@ void nvme_state_handler(void)
             if (REG_USB_STATUS & USB_STATUS_ACTIVE) {
                 /* USB active - call status handlers */
                 nvme_call_and_signal();
-                /* TODO: call 0x0206 */
+                usb_addr_copy_to_regs(cmd_type);
             } else {
-                /* USB not active - call alternative handler */
-                /* TODO: call 0x3219 */
+                /* USB not active - call DMA buffer write and signal */
+                dma_buffer_write();
+                REG_USB_SIGNAL_90A1 = 0x01;
             }
         } else {
-            /* Other modes - call error handler */
-            /* TODO: call 0x312a, 0x31ce */
+            /* Other modes - set transfer flag and bit 7 of EP0 config */
+            nvme_set_transfer_flag();
+            nvme_reg_set_bit7(&REG_USB_EP0_CONFIG);
         }
         /* Set state to 5 (done) */
         *state_ptr = 0x05;
@@ -1825,7 +1988,7 @@ void nvme_state_handler(void)
         cmd_type = G_IO_CMD_TYPE;
         if (cmd_type == 7) {
             /* Mode 7 - jump to 0x53d4 (link restart) */
-            /* TODO: call nvme_link_restart */
+            nvme_link_restart();
             return;
         }
         /* Other modes - fall through to error */
@@ -1850,18 +2013,20 @@ void nvme_state_handler(void)
     }
 
 handle_error:
-    /* Error path - call error handlers */
-    /* TODO: call 0x312a, 0x31ce */
+    /* Error path - set transfer flag and bit 7 of EP0 config */
+    nvme_set_transfer_flag();
+    nvme_reg_set_bit7(&REG_USB_EP0_CONFIG);
 
 common_exit:
     /* Check USB status and handle */
     if (REG_USB_STATUS & USB_STATUS_ACTIVE) {
         /* USB active */
         nvme_call_and_signal();
-        /* TODO: call 0x0206 */
+        usb_addr_copy_to_regs(cmd_type);
     } else {
-        /* USB not active */
-        /* TODO: call 0x3219 */
+        /* USB not active - call DMA buffer write and signal */
+        dma_buffer_write();
+        REG_USB_SIGNAL_90A1 = 0x01;
     }
 
     /* Set state to 5 */

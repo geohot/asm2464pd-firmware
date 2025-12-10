@@ -321,16 +321,16 @@ usb_master_handler:
     if (status & 0x20) {
         /* Check 0xCEF3 bit 3 */
         status = REG_CPU_LINK_CEF3;
-        if (status & 0x08) {
+        if (status & CPU_LINK_CEF3_ACTIVE) {
             G_SYS_STATUS_PRIMARY = 0x00;
-            REG_CPU_LINK_CEF3 = 0x08;
+            REG_CPU_LINK_CEF3 = CPU_LINK_CEF3_ACTIVE;
             /* Would call handler at 0x2608 */
         }
     }
     /* Check 0xCEF2 bit 7 */
     status = REG_CPU_LINK_CEF2;
-    if (status & 0x80) {
-        REG_CPU_LINK_CEF2 = 0x80;
+    if (status & CPU_LINK_CEF2_READY) {
+        REG_CPU_LINK_CEF2 = CPU_LINK_CEF2_READY;
         /* Would call handler at 0x3ADB with R7=0 */
     }
 
@@ -353,13 +353,13 @@ peripheral_handler:
     status = REG_USB_PERIPH_STATUS;
     if (status & 0x08) {
         status = REG_BUF_CFG_9301;
-        if (status & 0x40) {
+        if (status & BUF_CFG_9301_BIT6) {
             /* Call 0x035E dispatch */
-            REG_BUF_CFG_9301 = 0x40;
+            REG_BUF_CFG_9301 = BUF_CFG_9301_BIT6;
             goto usb_master_handler;
         }
-        if (status & 0x80) {
-            REG_BUF_CFG_9301 = 0x80;
+        if (status & BUF_CFG_9301_BIT7) {
+            REG_BUF_CFG_9301 = BUF_CFG_9301_BIT7;
             /* Modify 0x92E0: set bit 1 */
             REG_POWER_DOMAIN = (REG_POWER_DOMAIN & ~POWER_DOMAIN_BIT1) | POWER_DOMAIN_BIT1;
             /* Call 0x0363 dispatch */
@@ -367,10 +367,10 @@ peripheral_handler:
         }
         /* Check 0x9302 bit 7 */
         status = REG_BUF_CFG_9302;
-        if ((status & 0x80) == 0) {
+        if ((status & BUF_CFG_9302_BIT7) == 0) {
             goto usb_master_handler;
         }
-        REG_BUF_CFG_9302 = 0x80;
+        REG_BUF_CFG_9302 = BUF_CFG_9302_BIT7;
         goto usb_master_handler;
     }
 
@@ -379,21 +379,21 @@ peripheral_handler:
     if (status & 0x01) {
         /* USB PHY state machine - checks 0x91D1 bits */
         status = REG_USB_PHY_CTRL_91D1;
-        if (status & 0x08) {
-            REG_USB_PHY_CTRL_91D1 = 0x08;
+        if (status & USB_PHY_CTRL_BIT3) {
+            REG_USB_PHY_CTRL_91D1 = USB_PHY_CTRL_BIT3;
             /* Call 0x0345 dispatch */
         }
-        if (status & 0x01) {
-            REG_USB_PHY_CTRL_91D1 = 0x01;
+        if (status & USB_PHY_CTRL_BIT0) {
+            REG_USB_PHY_CTRL_91D1 = USB_PHY_CTRL_BIT0;
             /* Call 0x034A dispatch */
             goto usb_master_handler;
         }
-        if (status & 0x02) {
-            REG_USB_PHY_CTRL_91D1 = 0x02;
+        if (status & USB_PHY_CTRL_BIT1) {
+            REG_USB_PHY_CTRL_91D1 = USB_PHY_CTRL_BIT1;
             /* Call 0x034F dispatch */
             goto usb_master_handler;
         }
-        if ((status & 0x04) == 0) {
+        if ((status & USB_PHY_CTRL_BIT2) == 0) {
             goto usb_master_handler;
         }
         /* Call 0x0354 dispatch */
