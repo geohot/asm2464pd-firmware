@@ -2,7 +2,7 @@
  * ASM2464PD Firmware - Global Variables (Keil C51 Version)
  *
  * Global variables in XRAM and IDATA for Keil compiler.
- * Uses Keil's _at_ syntax for absolute addressing.
+ * Declarations only - definitions are in globals.c
  */
 
 #ifndef __GLOBALS_H__
@@ -15,26 +15,26 @@
  *===========================================================================*/
 
 /* Boot signature bytes (0x09-0x0C) - used in startup_0016 */
-idata uint8_t I_BOOT_SIG_0 _at_ 0x09;      /* Boot signature byte 0 */
-idata uint8_t I_BOOT_SIG_1 _at_ 0x0A;      /* Boot signature byte 1 */
-idata uint8_t I_BOOT_SIG_2 _at_ 0x0B;      /* Boot signature byte 2 */
-idata uint8_t I_BOOT_SIG_3 _at_ 0x0C;      /* Boot signature byte 3 */
+extern idata uint8_t I_BOOT_SIG_0;      /* 0x09 - Boot signature byte 0 */
+extern idata uint8_t I_BOOT_SIG_1;      /* 0x0A - Boot signature byte 1 */
+extern idata uint8_t I_BOOT_SIG_2;      /* 0x0B - Boot signature byte 2 */
+extern idata uint8_t I_BOOT_SIG_3;      /* 0x0C - Boot signature byte 3 */
 
 /* State machine variable (0x6A-0x6E) */
-idata uint8_t I_STATE_6A _at_ 0x6A;        /* State machine variable */
-idata uint8_t I_TRANSFER_6B _at_ 0x6B;     /* Transfer pending byte 0 */
-idata uint8_t I_TRANSFER_6C _at_ 0x6C;     /* Transfer pending byte 1 */
-idata uint8_t I_TRANSFER_6D _at_ 0x6D;     /* Transfer pending byte 2 */
-idata uint8_t I_TRANSFER_6E _at_ 0x6E;     /* Transfer pending byte 3 */
+extern idata uint8_t I_STATE_6A;        /* 0x6A - State machine variable */
+extern idata uint8_t I_TRANSFER_6B;     /* 0x6B - Transfer pending byte 0 */
+extern idata uint8_t I_TRANSFER_6C;     /* 0x6C - Transfer pending byte 1 */
+extern idata uint8_t I_TRANSFER_6D;     /* 0x6D - Transfer pending byte 2 */
+extern idata uint8_t I_TRANSFER_6E;     /* 0x6E - Transfer pending byte 3 */
 
 /*===========================================================================
- * XDATA Variables - Use _at_ for proper MOVX access via DPTR
+ * XDATA Variables
  *===========================================================================*/
 
 /* System Work Area - XDATA at 0x0001 */
-xdata uint8_t G_IO_CMD_TYPE _at_ 0x0001;   /* I/O command type / boot state */
+extern xdata uint8_t G_IO_CMD_TYPE;     /* 0x0001 - I/O command type / boot state */
 
 /* Transfer State - XDATA at 0x0AF3 */
-xdata uint8_t G_XFER_STATE_0AF3 _at_ 0x0AF3;  /* Transfer state / boot mode */
+extern xdata uint8_t G_XFER_STATE_0AF3; /* 0x0AF3 - Transfer state / boot mode */
 
 #endif /* __GLOBALS_H__ */

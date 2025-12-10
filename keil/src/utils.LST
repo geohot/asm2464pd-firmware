@@ -1,0 +1,137 @@
+C51 COMPILER V9.60.7.0   UTILS                                                             12/10/2025 17:30:51 PAGE 1   
+
+
+C51 COMPILER V9.60.7.0, COMPILATION OF MODULE UTILS
+OBJECT MODULE PLACED IN ../src/utils.OBJ
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.exe ../src/utils.c OPTIMIZE(9,SIZE) INCDIR(../include)
+
+line level    source
+
+   1          /*
+   2           * ASM2464PD Firmware - Utility Functions (Keil C51 Version)
+   3           *
+   4           * Helper functions matching original firmware at specific addresses.
+   5           */
+   6          
+   7          #include "types.h"
+   8          #include "sfr.h"
+   9          #include "globals.h"
+  10          
+  11          /*
+  12           * idata_load_dword - Load 32-bit value from IDATA
+  13           * Address: 0x0d78-0x0d83 (12 bytes)
+  14           *
+  15           * Original disassembly:
+  16           *   0d78: mov a, @r0        ; read byte 0
+  17           *   0d79: mov r4, a
+  18           *   0d7a: inc r0
+  19           *   0d7b: mov a, @r0        ; read byte 1
+  20           *   0d7c: mov r5, a
+  21           *   0d7d: inc r0
+  22           *   0d7e: mov a, @r0        ; read byte 2
+  23           *   0d7f: mov r6, a
+  24           *   0d80: inc r0
+  25           *   0d81: mov a, @r0        ; read byte 3
+  26           *   0d82: mov r7, a
+  27           *   0d83: ret
+  28           */
+  29          uint32_t idata_load_dword(uint8_t addr)
+  30          {
+  31   1          idata uint8_t *ptr = (idata uint8_t *)addr;
+  32   1          uint32_t val;
+  33   1      
+  34   1          val = ptr[0];
+  35   1          val |= ((uint32_t)ptr[1]) << 8;
+  36   1          val |= ((uint32_t)ptr[2]) << 16;
+  37   1          val |= ((uint32_t)ptr[3]) << 24;
+  38   1      
+  39   1          return val;
+  40   1      }
+  41          
+  42          /*
+  43           * idata_or_dword - Load 4 bytes from IDATA and OR them together
+  44           *
+  45           * This is the pattern used after idata_load_dword:
+  46           *   ec: mov a, r4
+  47           *   4d: orl a, r5
+  48           *   4e: orl a, r6
+  49           *   4f: orl a, r7
+  50           *
+  51           * By making this a separate function, startup_0016 will generate LCALL.
+  52           */
+  53          uint8_t idata_or_dword(uint8_t addr)
+  54          {
+  55   1          uint32_t val = idata_load_dword(addr);
+C51 COMPILER V9.60.7.0   UTILS                                                             12/10/2025 17:30:51 PAGE 2   
+
+  56   1          uint8_t b0 = (uint8_t)(val);
+  57   1          uint8_t b1 = (uint8_t)(val >> 8);
+  58   1          uint8_t b2 = (uint8_t)(val >> 16);
+  59   1          uint8_t b3 = (uint8_t)(val >> 24);
+  60   1      
+  61   1          return b0 | b1 | b2 | b3;
+  62   1      }
+  63          
+  64          /*
+  65           * cmp32_eq - Compare if two 32-bit values are equal
+  66           * Address: 0x0d22-0x0d32 (17 bytes)
+  67           *
+  68           * Original uses SUBB and ORL to check if difference is zero.
+  69           */
+  70          uint8_t cmp32_eq(uint32_t a, uint32_t b)
+  71          {
+  72   1          return (a == b) ? 1 : 0;
+  73   1      }
+  74          
+  75          /*
+  76           * load_signatures_and_compare - Load and compare boot/transfer signatures
+  77           * Address: 0x1b7e-0x1b87 (10 bytes)
+  78           *
+  79           * Original disassembly:
+  80           *   1b7e: mov r0, #0x09     ; point to boot sig
+  81           *   1b80: lcall 0x0d78      ; load boot sig into R4-R7
+  82           *   1b83: mov r0, #0x6b     ; point to transfer sig
+  83           *   1b85: ljmp 0x0d90       ; jump to compare helper
+  84           */
+  85          uint8_t load_signatures_and_compare(void)
+  86          {
+  87   1          uint32_t boot_sig = idata_load_dword(0x09);
+  88   1          uint32_t transfer_sig = idata_load_dword(0x6B);
+  89   1      
+  90   1          return cmp32_eq(boot_sig, transfer_sig);
+  91   1      }
+  92          
+  93          /*
+  94           * idata_compare_4bytes - Compare 4 IDATA bytes at two addresses
+  95           *
+  96           * Used by startup_0016 for byte-by-byte signature comparison.
+  97           * Returns 1 if all 4 bytes match, 0 otherwise.
+  98           */
+  99          uint8_t idata_compare_4bytes(uint8_t addr1, uint8_t addr2)
+ 100          {
+ 101   1          idata uint8_t *p1 = (idata uint8_t *)addr1;
+ 102   1          idata uint8_t *p2 = (idata uint8_t *)addr2;
+ 103   1      
+ 104   1          if (p1[0] != p2[0]) return 0;
+ 105   1          if (p1[1] != p2[1]) return 0;
+ 106   1          if (p1[2] != p2[2]) return 0;
+ 107   1          if (p1[3] != p2[3]) return 0;
+ 108   1      
+ 109   1          return 1;
+ 110   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    339    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+C51 COMPILER V9.60.7.0   UTILS                                                             12/10/2025 17:30:51 PAGE 3   
+
+   DATA SIZE        =   ----      24
+   IDATA SIZE       =   ----       9
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

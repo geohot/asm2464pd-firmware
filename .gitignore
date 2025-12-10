@@ -3,3 +3,5 @@ fw.bin
 build
 .*.swp
 uartexact
+__pycache__
+*.asm
