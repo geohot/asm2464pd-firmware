@@ -3560,3 +3560,51 @@ uint8_t check_nvme_ready_e03c(void)
 
     return 3;  /* Ready */
 }
+
+/*
+ * nvme_clear_bits_and_init - Clear bit 4 in DPTR reg, clear bit 2 in 0xC472, write 0xFF to init regs
+ * Address: 0xbb37-0xbb4e (24 bytes)
+ *
+ * Clears bit 4 in register pointed by DPTR, clears bit 2 in REG_NVME_LINK_CTRL,
+ * then writes 0xFF to 4 consecutive registers at 0xC438-0xC43B.
+ */
+void nvme_clear_bits_and_init(__xdata uint8_t *reg)
+{
+    uint8_t val;
+
+    /* Clear bit 4 in the input register */
+    val = *reg;
+    *reg = val & 0xEF;
+
+    /* Clear bit 2 in REG_NVME_LINK_CTRL (0xC472) */
+    val = REG_NVME_LINK_CTRL;
+    REG_NVME_LINK_CTRL = val & 0xFB;
+
+    /* Write 0xFF to 4 consecutive registers at 0xC438-0xC43B */
+    REG_NVME_INIT_CTRL = 0xFF;
+    REG_NVME_CMD_CDW11 = 0xFF;
+    REG_NVME_INT_MASK_A = 0xFF;
+    REG_NVME_INT_MASK_B = 0xFF;
+}
+
+/*
+ * nvme_clear_bit3_link_ctrl - Clear bit 3 in DPTR reg, clear bit 1 in 0xC472, return 0xFF
+ * Address: 0xbb7e-0xbb8e (17 bytes)
+ *
+ * Clears bit 3 in register pointed by DPTR, clears bit 1 in REG_NVME_LINK_CTRL,
+ * returns 0xFF and sets DPTR to 0xC448.
+ */
+uint8_t nvme_clear_bit3_link_ctrl(__xdata uint8_t *reg)
+{
+    uint8_t val;
+
+    /* Clear bit 3 in the input register */
+    val = *reg;
+    *reg = val & 0xF7;
+
+    /* Clear bit 1 in REG_NVME_LINK_CTRL (0xC472) */
+    val = REG_NVME_LINK_CTRL;
+    REG_NVME_LINK_CTRL = val & 0xFD;
+
+    return 0xFF;
+}

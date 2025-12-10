@@ -702,3 +702,92 @@ void timer_phy_config_e57d(uint8_t param)
     val = REG_PHY_TIMER_CTRL_E764; val &= 0xF7; REG_PHY_TIMER_CTRL_E764 = val;
     val = REG_PHY_TIMER_CTRL_E764; val = (val & 0xFB) | 0x04; REG_PHY_TIMER_CTRL_E764 = val;
 }
+
+/*
+ * reg_timer_setup_and_set_bits - Setup timer and set bits in 0xCC3A and 0xCC38
+ * Address: 0xbcf2-0xbd04 (19 bytes)
+ *
+ * Sets bit 1 in REG_TIMER_ENABLE_B and REG_TIMER_ENABLE_A.
+ */
+void reg_timer_setup_and_set_bits(void)
+{
+    uint8_t val;
+
+    /* Set bit 1 in REG_TIMER_ENABLE_B */
+    val = REG_TIMER_ENABLE_B;
+    val = (val & ~TIMER_ENABLE_B_BIT) | TIMER_ENABLE_B_BIT;
+    REG_TIMER_ENABLE_B = val;
+
+    /* Set bit 1 in REG_TIMER_ENABLE_A */
+    val = REG_TIMER_ENABLE_A;
+    val = (val & ~TIMER_ENABLE_A_BIT) | TIMER_ENABLE_A_BIT;
+    REG_TIMER_ENABLE_A = val;
+}
+
+/*
+ * reg_timer_init_and_start - Clear timer init flag, write 4 to timer CSR, then 2
+ * Address: 0xbd05-0xbd13 (15 bytes)
+ *
+ * Clears G_TIMER_INIT_0B40, writes 4 to REG_TIMER3_CSR, then writes 2.
+ */
+void reg_timer_init_and_start(void)
+{
+    G_TIMER_INIT_0B40 = 0;
+    REG_TIMER3_CSR = 0x04;
+    REG_TIMER3_CSR = 0x02;
+}
+
+/*
+ * reg_timer_clear_bits - Clear bit 1 in REG_TIMER_ENABLE_B and REG_TIMER_ENABLE_A
+ * Address: 0xbd14-0xbd22 (15 bytes)
+ */
+void reg_timer_clear_bits(void)
+{
+    uint8_t val;
+
+    val = REG_TIMER_ENABLE_B;
+    REG_TIMER_ENABLE_B = val & ~TIMER_ENABLE_B_BIT;
+
+    val = REG_TIMER_ENABLE_A;
+    REG_TIMER_ENABLE_A = val & ~TIMER_ENABLE_A_BIT;
+}
+
+/*
+ * timer_clear_bit1_cc3b - Clear bit 1 in REG_TIMER_CTRL_CC3B
+ * Address: 0xbd41-0xbd48 (8 bytes)
+ */
+void timer_clear_ctrl_bit1(void)
+{
+    uint8_t val = REG_TIMER_CTRL_CC3B;
+    REG_TIMER_CTRL_CC3B = val & ~TIMER_CTRL_START;
+}
+
+/* timer0_configure and timer0_reset are implemented in pcie.c */
+
+/*
+ * delay_short_e89d - Short delay with IDATA setup
+ * Address: 0xe89d-0xe8a8 (12 bytes)
+ *
+ * Sets I_WORK_65 = 0x0F, I_WORK_60 = 0, then calls delay loop at 0xadb0.
+ * The result is left in R7 (via I_WORK_65).
+ */
+void delay_short_e89d(void)
+{
+    I_WORK_65 = 0x0F;
+    *(__idata uint8_t *)0x60 = 0;
+    delay_loop_adb0();
+}
+
+/*
+ * delay_wait_e80a - Delay with parameters
+ * Address: 0xe80a-0xe81x
+ *
+ * Waits for a specified delay using timer-based polling.
+ * Parameters are passed in R4:R5 (delay value) and R7 (flags).
+ */
+void delay_wait_e80a(uint16_t delay, uint8_t flag)
+{
+    (void)delay;
+    (void)flag;
+    /* TODO: Implement timer-based delay */
+}

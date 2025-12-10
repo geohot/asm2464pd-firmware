@@ -105,5 +105,15 @@ void timer_phy_config_e57d(uint8_t param);      /* 0xe57d-0xe5fd (Bank 1) */
 
 /* Delay functions */
 void delay_loop_adb0(void);                     /* 0xadb0-0xade5 */
+void delay_short_e89d(void);                    /* 0xe89d-0xe8a8 */
+void delay_wait_e80a(uint16_t delay, uint8_t flag);  /* 0xe80a-0xe81x */
+
+/* Timer enable/disable */
+void reg_timer_setup_and_set_bits(void);        /* 0xbcf2-0xbd04 */
+void reg_timer_init_and_start(void);            /* 0xbd05-0xbd13 */
+void reg_timer_clear_bits(void);                /* 0xbd14-0xbd22 */
+void timer_clear_ctrl_bit1(void);               /* 0xbd41-0xbd48 */
+void timer0_configure(uint8_t div_bits, uint8_t threshold_hi, uint8_t threshold_lo);  /* 0xad72-0xad85 */
+void timer0_reset(void);                        /* 0xad86-0xad94 */
 
 #endif /* _TIMER_H_ */

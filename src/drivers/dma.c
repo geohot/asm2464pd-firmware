@@ -12,6 +12,7 @@
 #include "utils.h"
 #include "drivers/pcie.h"
 #include "drivers/usb.h"
+#include "drivers/timer.h"
 
 /* External protocol/state functions from app layer */
 extern void helper_dd42(uint8_t param);

@@ -10,6 +10,8 @@ You can use radare on the fw.bin files to get the 8051 assembly, don't forget th
 In bank 0:  0x8000-0x10000 is 0x8000-0x10000
 In bank 1: 0x10000-0x18000 is 0x8000-0x10000
 
+BANK1 function addresses should be based on their position in the file, so they should be 0x10000-0x18000 while they will be mapped into code ram at 0x8000-0x10000.
+
 ghidra.c is ghidra's attempt at C disassembly of the functions, you are welcome to reference it. Note: all the names in there may be wrong.
 
 python/usb.py is tinygrad's library that talks to this chip. python/patch.py is a reflasher for this chip.
@@ -26,8 +28,6 @@ Don't use extern void, instead include the correct header file.
 
 Prioritize functions that you have already reversed the caller of.
 
-BANK1 function addresses should be based on their position in the file, so they should be 0x10000-0x18000 while they will be mapped into code ram at 0x8000-0x10000.
-
 Whenever you see a function or register with a name that includes the address in it, think about if you can give it a better name from context.
 
 Registers and variables in general should not have aliases. Adding bit constants to registers.h similar to what's there is encouraged. You may not be the only one working in the repo. Don't do git checkout and make sure you read before you write.
@@ -35,3 +35,5 @@ Registers and variables in general should not have aliases. Adding bit constants
 All functions should exactly match the functions in the real firmware! It should match them one to one. This is the only way to ensure it is correct.
 
 Checking in and making sure it builds every once in a while is good. You can also see how far along you are by comparing the size of our compiled firmware bin to fw.bin
+
+Before reverse engineering, check all the headers to see if the functions are already there.

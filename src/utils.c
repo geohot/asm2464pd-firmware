@@ -204,6 +204,262 @@ void xdata_store_dword(__xdata uint8_t *ptr, uint32_t val)
 }
 
 /*
+ * =============================================================================
+ * 32-bit Math Functions
+ *
+ * Low-level arithmetic operations using register calling convention:
+ *   - First operand:  R4:R5:R6:R7 (MSB:...:LSB)
+ *   - Second operand: R0:R1:R2:R3 (MSB:...:LSB)
+ *   - Result: R4:R5:R6:R7
+ * =============================================================================
+ */
+
+/*
+ * mul16x16 - 16x16-bit multiplication returning 24-bit result
+ * Address: 0x0bfd-0x0c0e (18 bytes)
+ *
+ * Input: R6:R7 (16-bit multiplicand), R4:R5 (16-bit multiplier)
+ * Output: R6:R7 (lower 16 bits), overflow in R0
+ */
+void mul16x16(void) __naked
+{
+    __asm
+        mov a, r7
+        mov b, r5
+        mul ab
+        mov r0, b
+        xch a, r7
+        mov b, r4
+        mul ab
+        add a, r0
+        xch a, r6
+        mov b, r5
+        mul ab
+        add a, r6
+        mov r6, a
+        ret
+    __endasm;
+}
+
+/*
+ * add32 - 32-bit addition
+ * Address: 0x0c9e-0x0caa (13 bytes)
+ *
+ * R4:R5:R6:R7 = R4:R5:R6:R7 + R0:R1:R2:R3
+ */
+void add32(void) __naked
+{
+    __asm
+        mov a, r7
+        add a, r3
+        mov r7, a
+        mov a, r6
+        addc a, r2
+        mov r6, a
+        mov a, r5
+        addc a, r1
+        mov r5, a
+        mov a, r4
+        addc a, r0
+        mov r4, a
+        ret
+    __endasm;
+}
+
+/*
+ * sub32 - 32-bit subtraction
+ * Address: 0x0cab-0x0cb8 (14 bytes)
+ *
+ * R4:R5:R6:R7 = R4:R5:R6:R7 - R0:R1:R2:R3
+ */
+void sub32(void) __naked
+{
+    __asm
+        clr c
+        mov a, r7
+        subb a, r3
+        mov r7, a
+        mov a, r6
+        subb a, r2
+        mov r6, a
+        mov a, r5
+        subb a, r1
+        mov r5, a
+        mov a, r4
+        subb a, r0
+        mov r4, a
+        ret
+    __endasm;
+}
+
+/*
+ * mul32 - 32-bit multiplication
+ * Address: 0x0cb9-0x0d07 (79 bytes)
+ *
+ * R4:R5:R6:R7 = R4:R5:R6:R7 * R0:R1:R2:R3 (lower 32 bits)
+ */
+void mul32(void) __naked
+{
+    __asm
+        mov a, r0
+        mov b, r7
+        mul ab
+        xch a, r4
+
+        mov b, r3
+        mul ab
+        add a, r4
+        mov r4, a
+
+        mov a, r1
+        mov b, r6
+        mul ab
+        add a, r4
+        mov r4, a
+
+        mov b, r2
+        mov a, r5
+        mul ab
+        add a, r4
+        mov r4, a
+
+        mov a, r2
+        mov b, r6
+        mul ab
+        xch a, r5
+        mov r0, b
+
+        mov b, r3
+        mul ab
+        add a, r5
+        xch a, r4
+        addc a, r0
+        add a, b
+        mov r5, a
+
+        mov a, r1
+        mov b, r7
+        mul ab
+        add a, r4
+        xch a, r5
+        addc a, b
+        mov r4, a
+
+        mov a, r3
+        mov b, r6
+        mul ab
+        mov r6, a
+        mov r1, b
+
+        mov a, r3
+        mov b, r7
+        mul ab
+        xch a, r7
+        xch a, b
+        add a, r6
+        xch a, r5
+        addc a, r1
+        mov r6, a
+        clr a
+        addc a, r4
+        mov r4, a
+
+        mov a, r2
+        mul ab
+        add a, r5
+        xch a, r6
+        addc a, b
+        mov r5, a
+        clr a
+        addc a, r4
+        mov r4, a
+
+        ret
+    __endasm;
+}
+
+/*
+ * or32 - 32-bit bitwise OR
+ * Address: 0x0d08-0x0d14 (13 bytes)
+ *
+ * R4:R5:R6:R7 = R4:R5:R6:R7 | R0:R1:R2:R3
+ */
+void or32(void) __naked
+{
+    __asm
+        mov a, r7
+        orl a, r3
+        mov r7, a
+        mov a, r6
+        orl a, r2
+        mov r6, a
+        mov a, r5
+        orl a, r1
+        mov r5, a
+        mov a, r4
+        orl a, r0
+        mov r4, a
+        ret
+    __endasm;
+}
+
+/*
+ * xor32 - 32-bit bitwise XOR
+ * Address: 0x0d15-0x0d21 (13 bytes)
+ *
+ * R4:R5:R6:R7 = R4:R5:R6:R7 ^ R0:R1:R2:R3
+ */
+void xor32(void) __naked
+{
+    __asm
+        mov a, r7
+        xrl a, r3
+        mov r7, a
+        mov a, r6
+        xrl a, r2
+        mov r6, a
+        mov a, r5
+        xrl a, r1
+        mov r5, a
+        mov a, r4
+        xrl a, r0
+        mov r4, a
+        ret
+    __endasm;
+}
+
+/*
+ * shl32 - 32-bit shift left
+ * Address: 0x0d46-0x0d58 (19 bytes)
+ *
+ * Shifts R4:R5:R6:R7 left by R0 bits.
+ */
+void shl32(void) __naked
+{
+    __asm
+        mov a, r0
+        jz shl32_done
+    shl32_loop:
+        mov a, r7
+        clr c
+        rlc a
+        mov r7, a
+        mov a, r6
+        rlc a
+        mov r6, a
+        mov a, r5
+        rlc a
+        mov r5, a
+        mov a, r4
+        rlc a
+        mov r4, a
+        djnz r0, shl32_loop
+    shl32_done:
+        ret
+    __endasm;
+}
+
+/*
  * xdata_load_triple - Load 3 bytes from XDATA
  * Address: 0x0ddd-0x0de5 (9 bytes)
  *
@@ -282,45 +538,7 @@ __xdata uint8_t *dptr_index_mul(__xdata uint8_t *base, uint8_t index, uint8_t el
 
 #include "globals.h"
 
-/*
- * reg_clear_bits_and_init - Clear bit 4 in DPTR reg, clear bit 2 in 0xC472, write 0xFF to init regs
- * Address: 0xbb37-0xbb4e (24 bytes)
- *
- * Clears bit 4 in register pointed by DPTR, clears bit 2 in REG_NVME_LINK_CTRL,
- * then writes 0xFF to 4 consecutive registers at 0xC438-0xC43B.
- *
- * Original disassembly:
- *   bb37: movx a, @dptr     ; read from DPTR
- *   bb38: anl a, #0xef      ; clear bit 4
- *   bb3a: movx @dptr, a     ; write back
- *   bb3b: mov dptr, #0xc472
- *   bb3e: movx a, @dptr
- *   bb3f: anl a, #0xfb      ; clear bit 2
- *   bb41: movx @dptr, a
- *   bb42: mov a, #0xff
- *   bb44: mov dptr, #0xc438
- *   bb47: movx @dptr, a     ; write 0xFF
- *   bb48-bb4d: inc dptr, movx @dptr, a (repeat 3x)
- *   bb4e: ret
- */
-void reg_clear_bits_and_init(__xdata uint8_t *reg)
-{
-    uint8_t val;
-
-    /* Clear bit 4 in the input register */
-    val = *reg;
-    *reg = val & 0xEF;
-
-    /* Clear bit 2 in REG_NVME_LINK_CTRL (0xC472) */
-    val = REG_NVME_LINK_CTRL;
-    REG_NVME_LINK_CTRL = val & 0xFB;
-
-    /* Write 0xFF to 4 consecutive registers at 0xC438-0xC43B */
-    REG_NVME_INIT_CTRL = 0xFF;
-    REG_NVME_CMD_CDW11 = 0xFF;
-    REG_NVME_INT_MASK_A = 0xFF;
-    REG_NVME_INT_MASK_B = 0xFF;
-}
+/* reg_clear_bits_and_init moved to drivers/nvme.c as nvme_clear_bits_and_init */
 
 /*
  * reg_read_indexed_0a84 - Read from indexed register and store to 0x0A84
@@ -423,27 +641,7 @@ uint8_t reg_extract_bit7(__xdata uint8_t *dest, uint8_t val)
     return G_FLASH_BUF_707D;
 }
 
-/*
- * reg_clear_bit3_link_ctrl - Clear bit 3 in DPTR reg, clear bit 1 in 0xC472, return 0xFF
- * Address: 0xbb7e-0xbb8e (17 bytes)
- *
- * Clears bit 3 in register pointed by DPTR, clears bit 1 in REG_NVME_LINK_CTRL,
- * returns 0xFF and sets DPTR to 0xC448.
- */
-uint8_t reg_clear_bit3_link_ctrl(__xdata uint8_t *reg)
-{
-    uint8_t val;
-
-    /* Clear bit 3 in the input register */
-    val = *reg;
-    *reg = val & 0xF7;
-
-    /* Clear bit 1 in REG_NVME_LINK_CTRL (0xC472) */
-    val = REG_NVME_LINK_CTRL;
-    REG_NVME_LINK_CTRL = val & 0xFD;
-
-    return 0xFF;
-}
+/* reg_clear_bit3_link_ctrl moved to drivers/nvme.c as nvme_clear_bit3_link_ctrl */
 
 /*
  * reg_write_dph_r7 - Write R7 to XDATA at address formed from A (high) and R6 (low)
@@ -662,70 +860,8 @@ uint8_t reg_read_bank_1407(void)
     return XDATA_REG8(0x1407);
 }
 
-/*
- * reg_write_and_set_link_bit0 - Write to DPTR, then set bit 0 in REG_LINK_CTRL_E717
- * Address: 0xbce7-0xbcf1 (11 bytes)
- *
- * Writes A to register at DPTR, then sets bit 0 in link control register 0xE717.
- */
-void reg_write_and_set_link_bit0(__xdata uint8_t *reg, uint8_t val)
-{
-    uint8_t tmp;
+/* reg_write_and_set_link_bit0 moved to drivers/phy.c as phy_write_and_set_link_bit0 */
 
-    *reg = val;
-    tmp = REG_LINK_CTRL_E717;
-    tmp = (tmp & 0xFE) | 0x01;
-    REG_LINK_CTRL_E717 = tmp;
-}
-
-/*
- * reg_timer_setup_and_set_bits - Setup timer and set bits in 0xCC3A and 0xCC38
- * Address: 0xbcf2-0xbd04 (19 bytes)
- *
- * Sets bit 1 in REG_TIMER_ENABLE_B and REG_TIMER_ENABLE_A.
- */
-void reg_timer_setup_and_set_bits(void)
-{
-    uint8_t val;
-
-    /* Set bit 1 in REG_TIMER_ENABLE_B */
-    val = REG_TIMER_ENABLE_B;
-    val = (val & ~TIMER_ENABLE_B_BIT) | TIMER_ENABLE_B_BIT;
-    REG_TIMER_ENABLE_B = val;
-
-    /* Set bit 1 in REG_TIMER_ENABLE_A */
-    val = REG_TIMER_ENABLE_A;
-    val = (val & ~TIMER_ENABLE_A_BIT) | TIMER_ENABLE_A_BIT;
-    REG_TIMER_ENABLE_A = val;
-}
-
-/*
- * reg_timer_init_and_start - Clear timer init flag, write 4 to timer CSR, then 2
- * Address: 0xbd05-0xbd13 (15 bytes)
- *
- * Clears G_TIMER_INIT_0B40, writes 4 to REG_TIMER3_CSR, then writes 2.
- */
-void reg_timer_init_and_start(void)
-{
-    G_TIMER_INIT_0B40 = 0;
-    REG_TIMER3_CSR = 0x04;
-    REG_TIMER3_CSR = 0x02;
-}
-
-/*
- * reg_timer_clear_bits - Clear bit 1 in REG_TIMER_ENABLE_B and REG_TIMER_ENABLE_A
- * Address: 0xbd14-0xbd22 (15 bytes)
- */
-void reg_timer_clear_bits(void)
-{
-    uint8_t val;
-
-    val = REG_TIMER_ENABLE_B;
-    REG_TIMER_ENABLE_B = val & ~TIMER_ENABLE_B_BIT;
-
-    val = REG_TIMER_ENABLE_A;
-    REG_TIMER_ENABLE_A = val & ~TIMER_ENABLE_A_BIT;
-}
 
 /*
  * reg_set_bit5 - Set bit 5 in register at DPTR
@@ -773,35 +909,9 @@ void reg_set_bit6_generic(__xdata uint8_t *reg)
     *reg = val;
 }
 
-/*
- * reg_clear_bit1_cc3b - Clear bit 1 in REG_TIMER_CTRL_CC3B
- * Address: 0xbd41-0xbd48 (8 bytes)
- */
-void reg_clear_bit1_cc3b(void)
-{
-    uint8_t val = REG_TIMER_CTRL_CC3B;
-    REG_TIMER_CTRL_CC3B = val & ~TIMER_CTRL_START;
-}
 
-/*
- * reg_read_link_width - Read REG_LINK_WIDTH_E710 and mask bits 5-7
- * Address: 0xbd49-0xbd4f (7 bytes)
- *
- * Returns the link width from bits 5-7 of REG_LINK_WIDTH_E710.
- */
-uint8_t reg_read_link_width(void)
-{
-    return REG_LINK_WIDTH_E710 & 0xE0;
-}
-
-/*
- * reg_read_link_status_e716 - Read REG_LINK_STATUS_E716 and mask bits 0-1
- * Address: 0xbd50-0xbd56 (7 bytes)
- */
-uint8_t reg_read_link_status_e716(void)
-{
-    return REG_LINK_STATUS_E716 & 0xFC;
-}
+/* reg_read_link_width moved to drivers/phy.c as phy_read_link_width */
+/* reg_read_link_status_e716 moved to drivers/phy.c as phy_read_link_status */
 
 /*
  * reg_read_cpu_mode_next - Read REG_CPU_MODE_NEXT and mask bits 0-4
@@ -834,24 +944,8 @@ void reg_set_bit7(__xdata uint8_t *reg)
     *reg = val;
 }
 
-/*
- * reg_read_phy_mode_lane_config - Read PHY mode and extract lane configuration
- * Address: 0xbe8b-0xbe96 (12 bytes) / 0xbefb-0xbf0e (also partial)
- *
- * Reads REG_PHY_MODE_E302, masks with 0x30 (bits 4-5), swaps nibbles,
- * masks with 0x0F, and returns the lane configuration.
- */
-uint8_t reg_read_phy_mode_lane_config(void)
-{
-    uint8_t val;
-
-    val = REG_PHY_MODE_E302;
-    val = val & 0x30;            /* Keep bits 4-5 */
-    val = (val >> 4) | (val << 4);  /* swap nibbles */
-    val = val & 0x0F;            /* Keep low nibble */
-
-    return val;
-}
+/* reg_read_phy_mode_lane_config moved to drivers/phy.c as phy_read_mode_lane_config */
+/* reg_read_phy_lanes moved to drivers/phy.c as phy_read_lanes */
 
 /*
  * reg_delay_param_setup - Setup delay parameters for bank read
@@ -863,22 +957,6 @@ uint8_t reg_delay_param_setup(void)
 {
     /* This calls into bank read routine - returns value from 0xFF2269 */
     return XDATA_REG8(0x2269);  /* Simplified - actual routine uses banked memory */
-}
-
-/*
- * reg_read_phy_lanes - Read PHY mode register and return lane count as nibble
- * Address: 0xbf04-0xbf0e (11 bytes)
- */
-uint8_t reg_read_phy_lanes(void)
-{
-    uint8_t val;
-
-    val = REG_PHY_MODE_E302;
-    val = val & 0x30;             /* Mask bits 4-5 */
-    val = (val >> 4) | (val << 4);  /* Swap nibbles */
-    val = val & 0x0F;             /* Keep low nibble */
-
-    return val;
 }
 
 /*
@@ -937,44 +1015,7 @@ void init_sys_flags_07f0(void)
     REG_CPU_EXEC_STATUS_3 = REG_CPU_EXEC_STATUS_3 & 0xFE;
 }
 
-/* delay_loop_adb0 is declared in timer.h */
-
-/*
- * delay_short_e89d - Short delay with IDATA setup
- * Address: 0xe89d-0xe8a8 (12 bytes)
- *
- * Sets I_WORK_65 = 0x0F, I_WORK_60 = 0, then calls delay loop at 0xadb0.
- * The result is left in R7 (via I_WORK_65).
- *
- * Original disassembly:
- *   e89d: mov r0, #0x65      ; point to I_WORK_65
- *   e89f: mov @r0, #0x0f     ; I_WORK_65 = 0x0F
- *   e8a1: clr a
- *   e8a2: mov r0, #0x60      ; point to I_WORK_60 area
- *   e8a4: mov @r0, a         ; clear it
- *   e8a5: lcall 0xadb0       ; call delay loop
- *   e8a8: ret
- */
-void delay_short_e89d(void)
-{
-    I_WORK_65 = 0x0F;
-    *(__idata uint8_t *)0x60 = 0;
-    delay_loop_adb0();
-}
-
-/*
- * delay_wait_e80a - Delay with parameters
- * Address: 0xe80a-0xe81x
- *
- * Waits for a specified delay using timer-based polling.
- * Parameters are passed in R4:R5 (delay value) and R7 (flags).
- */
-void delay_wait_e80a(uint16_t delay, uint8_t flag)
-{
-    (void)delay;
-    (void)flag;
-    /* TODO: Implement timer-based delay */
-}
+/* delay functions moved to drivers/timer.c */
 
 /*
  * cmp32 - 32-bit comparison (check if equal)
@@ -1448,39 +1489,7 @@ void table_search_dispatch(void) __naked
 
 
 
-/* ============================================================
- * PCIe Transaction Helper Functions
- * ============================================================ */
-
-/*
- * pcie_txn_index_load - Read PCIe transaction count and set up array access
- * Address: 0x1579-0x157c (4 bytes)
- *
- * Reads G_PCIE_TXN_COUNT_LO then falls through to pcie_txn_array_calc.
- */
-void pcie_txn_index_load(void)
-{
-    uint8_t idx = G_PCIE_TXN_COUNT_LO;
-    (void)idx;  /* Sets up for subsequent array access */
-}
-
-/*
- * pcie_txn_array_calc - Set up array access with index calculation
- * Address: 0x157d-0x1585 (9 bytes)
- *
- * Disassembly:
- *   157d: mov dptr, #0x05b4  ; Base address (G_PCIE_DIRECTION area)
- *   1580: mov B, #0x22       ; Element size = 34 bytes
- *   1583: ljmp 0x0dd1        ; Array index calculation helper
- *
- * The 0x0dd1 function calculates: DPTR = DPTR + (A * B)
- * This sets DPTR to point to a 34-byte structure in an array at 0x05B4.
- */
-void pcie_txn_array_calc(void)
-{
-    /* This sets up DPTR for array access - DPTR = 0x05B4 + (A * 0x22)
-     * In context, A contains the index from prior call */
-}
+/* PCIe transaction functions moved to drivers/pcie.c */
 
 void dptr_setup_stub(void)
 {
@@ -1799,23 +1808,7 @@ uint8_t math_sub32(uint8_t r0, uint8_t r1, uint8_t r6, uint8_t r7) {
     return 0;  /* Actual result is in R4-R7 registers */
 }
 
-/*
- * pcie_txn_table_lookup - USB/Transfer table lookup helper
- * Address: 0x1c5d-0x1c6b (15 bytes)
- *
- * Reads a value from a table based on G_SYS_STATUS_PRIMARY (0x0464)
- * and stores result in G_PCIE_TXN_COUNT_LO (0x05a6).
- *
- * From ghidra.c FUN_CODE_1c5d:
- *   G_PCIE_TXN_COUNT_LO = table[0x05A8 + *param_1];
- *   where param_1 points to G_SYS_STATUS_PRIMARY (0x0464)
- */
-void pcie_txn_table_lookup(void)
-{
-    uint8_t idx = G_SYS_STATUS_PRIMARY;
-    /* Table lookup at 0x05A8 + idx */
-    G_PCIE_TXN_COUNT_LO = (&G_EP_CONFIG_05A8)[idx];
-}
+/* pcie_txn_table_lookup moved to drivers/pcie.c */
 
 /*
  * reg_poll - Register dispatch table polling

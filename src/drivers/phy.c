@@ -635,3 +635,74 @@ _bw_exit:
         ret
     __endasm;
 }
+
+/*
+ * phy_read_link_width - Read REG_LINK_WIDTH_E710 and mask bits 5-7
+ * Address: 0xbd49-0xbd4f (7 bytes)
+ *
+ * Returns the link width from bits 5-7 of REG_LINK_WIDTH_E710.
+ */
+uint8_t phy_read_link_width(void)
+{
+    return REG_LINK_WIDTH_E710 & 0xE0;
+}
+
+/*
+ * phy_read_link_status - Read REG_LINK_STATUS_E716 and mask bits 0-1
+ * Address: 0xbd50-0xbd56 (7 bytes)
+ */
+uint8_t phy_read_link_status(void)
+{
+    return REG_LINK_STATUS_E716 & 0xFC;
+}
+
+/*
+ * phy_read_mode_lane_config - Read PHY mode and extract lane configuration
+ * Address: 0xbe8b-0xbe96 (12 bytes)
+ *
+ * Reads REG_PHY_MODE_E302, masks with 0x30 (bits 4-5), swaps nibbles,
+ * masks with 0x0F, and returns the lane configuration.
+ */
+uint8_t phy_read_mode_lane_config(void)
+{
+    uint8_t val;
+
+    val = REG_PHY_MODE_E302;
+    val = val & 0x30;            /* Keep bits 4-5 */
+    val = (val >> 4) | (val << 4);  /* swap nibbles */
+    val = val & 0x0F;            /* Keep low nibble */
+
+    return val;
+}
+
+/*
+ * phy_read_lanes - Read PHY mode register and return lane count as nibble
+ * Address: 0xbf04-0xbf0e (11 bytes)
+ */
+uint8_t phy_read_lanes(void)
+{
+    uint8_t val;
+
+    val = REG_PHY_MODE_E302;
+    val = val & 0x30;             /* Mask bits 4-5 */
+    val = (val >> 4) | (val << 4);  /* Swap nibbles */
+    val = val & 0x0F;             /* Keep low nibble */
+
+    return val;
+}
+
+/*
+ * phy_write_and_set_link_bit0 - Write to DPTR, then set bit 0 in REG_LINK_CTRL_E717
+ * Address: 0xbce7-0xbcf1 (11 bytes)
+ *
+ * Writes A to register at DPTR, then sets bit 0 in link control register 0xE717.
+ */
+void phy_write_and_set_link_bit0(__xdata uint8_t *reg, uint8_t val)
+{
+    uint8_t tmp;
+
+    *reg = val;
+    tmp = REG_LINK_CTRL_E717;
+    tmp = (tmp & 0xFE) | 0x01;
+    REG_LINK_CTRL_E717 = tmp;
+}

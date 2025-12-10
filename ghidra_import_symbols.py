@@ -19,20 +19,41 @@ from ghidra.program.model.address import AddressSet
 
 def create_function_if_needed(addr, name):
     """Create function at address if it doesn't exist, then set the name"""
+    from ghidra.app.cmd.disassemble import DisassembleCommand
+    from ghidra.app.cmd.function import CreateFunctionCmd
+
+    # First, ensure the code is disassembled at this address
+    if getInstructionAt(addr) is None:
+        disasm_cmd = DisassembleCommand(addr, None, True)
+        disasm_cmd.applyTo(currentProgram, monitor)
+
+    # Check if function already exists
     func = getFunctionAt(addr)
     if func is None:
-        createFunction(addr, name)
+        # Try to create function using CreateFunctionCmd for better analysis
+        cmd = CreateFunctionCmd(addr)
+        cmd.applyTo(currentProgram, monitor)
         func = getFunctionAt(addr)
+
     if func is not None:
         func.setName(name, SourceType.USER_DEFINED)
         print("Added function: {} at {}".format(name, addr))
         return True
     else:
-        # Try to just set a label
+        # Fallback: try createFunction API
+        try:
+            createFunction(addr, name)
+            func = getFunctionAt(addr)
+            if func is not None:
+                print("Added function (fallback): {} at {}".format(name, addr))
+                return True
+        except:
+            pass
+
+        # Last resort: just set a label
         createLabel(addr, name, True)
-        print("Added label: {} at {}".format(name, addr))
+        print("Added label only: {} at {}".format(name, addr))
         return True
-    return False
 
 def create_label(addr, name):
     """Create a label at the given address"""
@@ -1009,6 +1030,8 @@ def add_bank1_functions():
         (0x12066, "error_handler_pcie_bit5"),
         (0x12f5e, "uart_newline"),
         (0x13230, "error_handler_recovery"),
+        (0x1343c, "vendor_cmd_e5_xdata_write"),
+        (0x13473, "vendor_cmd_e4_xdata_read"),
         (0x1600c, "get_pcie_status_flags_e00c"),
         (0x1619e, "pcie_channel_setup_e19e"),
         (0x16330, "pcie_dma_config_e330"),

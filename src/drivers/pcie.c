@@ -11,6 +11,7 @@
 #include "globals.h"
 #include "utils.h"
 #include "drivers/phy.h"
+#include "drivers/timer.h"
 #include "app/dispatch.h"
 #include "drivers/cmd.h"
 #include "drivers/uart.h"
@@ -4654,4 +4655,52 @@ void pcie_lane_disable_e8a9(uint8_t param)
     if (param & 0x01) {
         REG_PCIE_LANE_CTRL_C659 &= 0xFE;
     }
+}
+
+/*
+ * pcie_txn_index_load - Read PCIe transaction count and set up array access
+ * Address: 0x1579-0x157c (4 bytes)
+ *
+ * Reads G_PCIE_TXN_COUNT_LO then falls through to pcie_txn_array_calc.
+ */
+void pcie_txn_index_load(void)
+{
+    uint8_t idx = G_PCIE_TXN_COUNT_LO;
+    (void)idx;  /* Sets up for subsequent array access */
+}
+
+/*
+ * pcie_txn_array_calc - Set up array access with index calculation
+ * Address: 0x157d-0x1585 (9 bytes)
+ *
+ * Disassembly:
+ *   157d: mov dptr, #0x05b4  ; Base address (G_PCIE_DIRECTION area)
+ *   1580: mov B, #0x22       ; Element size = 34 bytes
+ *   1583: ljmp 0x0dd1        ; Array index calculation helper
+ *
+ * The 0x0dd1 function calculates: DPTR = DPTR + (A * B)
+ * This sets DPTR to point to a 34-byte structure in an array at 0x05B4.
+ */
+void pcie_txn_array_calc(void)
+{
+    /* This sets up DPTR for array access - DPTR = 0x05B4 + (A * 0x22)
+     * In context, A contains the index from prior call */
+}
+
+/*
+ * pcie_txn_table_lookup - USB/Transfer table lookup helper
+ * Address: 0x1c5d-0x1c6b (15 bytes)
+ *
+ * Reads a value from a table based on G_SYS_STATUS_PRIMARY (0x0464)
+ * and stores result in G_PCIE_TXN_COUNT_LO (0x05a6).
+ *
+ * From ghidra.c FUN_CODE_1c5d:
+ *   G_PCIE_TXN_COUNT_LO = table[0x05A8 + *param_1];
+ *   where param_1 points to G_SYS_STATUS_PRIMARY (0x0464)
+ */
+void pcie_txn_table_lookup(void)
+{
+    uint8_t idx = G_SYS_STATUS_PRIMARY;
+    /* Table lookup at 0x05A8 + idx */
+    G_PCIE_TXN_COUNT_LO = (&G_EP_CONFIG_05A8)[idx];
 }

@@ -117,7 +117,15 @@ undefined1 ep_bit_mask_table;
 byte DAT_INTMEM_37;
 undefined1 REG_USB_PERIPH_STATUS;
 undefined ep_offset_table;
+undefined BANK0_R0;
+undefined1 BANK0_R1;
+undefined1 BANK0_R2;
 undefined1 REG_USB_EP_STATUS;
+undefined1 BANK0_R3;
+undefined1 BANK0_R4;
+undefined1 BANK0_R5;
+undefined1 BANK0_R6;
+undefined1 BANK0_R7;
 undefined1 REG_INT_USB_STATUS;
 undefined1 G_EP_DISPATCH_OFFSET;
 undefined1 REG_USB_STATUS_909E;
@@ -127,15 +135,7 @@ undefined1 REG_USB_EP_STATUS_90E3;
 undefined1 G_EP_DISPATCH_VAL2;
 undefined ep_index_table;
 undefined1 REG_USB_EP_READY;
-undefined BANK0_R0;
-undefined1 BANK0_R1;
-undefined1 BANK0_R2;
-undefined1 BANK0_R3;
-undefined1 BANK0_R4;
-undefined1 BANK0_R5;
-undefined1 BANK0_R6;
 undefined1 G_SYS_STATUS_PRIMARY;
-undefined1 BANK0_R7;
 undefined1 REG_USB_PHY_CTRL_91D1;
 undefined1 REG_BUF_CFG_9300;
 undefined1 REG_BUF_CFG_9301;
@@ -551,9 +551,9 @@ byte DAT_INTMEM_2b;
 undefined1 DAT_INTMEM_24;
 byte DAT_INTMEM_75;
 undefined RCAP2H;
-byte DAT_INTMEM_72;
+byte DAT_INTMEM_74;
 undefined1 DAT_SFR_ef;
-byte UNK_INTMEM_74;
+byte DAT_INTMEM_72;
 undefined DAT_SFR_aa;
 undefined DAT_SFR_95;
 undefined FIE1;
@@ -690,6 +690,8 @@ undefined1 G_CMD_TIMEOUT_PARAM;
 undefined1 REG_XFER_DMA_CMD;
 undefined1 G_CMD_ADDR_HI;
 undefined1 G_CMD_ADDR_LO;
+undefined1 G_CMD_SLOT_C1;
+undefined1 REG_CMD_CONFIG;
 undefined1 REG_CMD_ISSUE;
 undefined1 REG_CMD_TAG;
 undefined1 G_CMD_STATUS;
@@ -705,7 +707,7 @@ undefined1 REG_CMD_MODE_E421;
 undefined1 G_CMD_LBA_3;
 undefined1 G_CMD_LBA_2;
 undefined1 G_CMD_PARAM_2;
-undefined1 G_CMD_SLOT_C1;
+undefined1 G_CMD_FLAG_07DE;
 undefined1 G_CMD_STATE;
 undefined1 REG_CMD_TRIGGER;
 undefined1 DAT_EXTMEM_e409;
@@ -735,6 +737,10 @@ undefined1 REG_PCIE_LINK_STATUS;
 undefined1 REG_PCIE_CPL_DATA;
 char DAT_INTMEM_25;
 char DAT_INTMEM_26;
+undefined1 G_FLASH_CMD_TYPE;
+undefined1 G_CMD_MODE;
+undefined1 G_SYS_FLAGS_07ED;
+undefined1 REG_CMD_CTRL_E40F;
 byte DAT_INTMEM_63;
 undefined1 DAT_EXTMEM_b222;
 undefined LAB_CODE_05b9;
@@ -752,6 +758,9 @@ char DAT_INTMEM_61;
 byte DAT_INTMEM_62;
 undefined LAB_CODE_05b4+1;
 undefined1 G_PCIE_STATUS_0B35;
+undefined1 G_VENDOR_CTRL_07B9;
+undefined1 REG_CPU_CTRL_CA81;
+undefined1 DAT_EXTMEM_07be;
 undefined1 REG_LINK_WIDTH_E710;
 undefined1 G_USB_DESC_STATE_0AD7;
 undefined1 G_TLP_MASK_0ACB;
@@ -771,7 +780,6 @@ undefined1 REG_USB_INT_MASK_9090;
 undefined1 G_VENDOR_MODE_07CC;
 undefined1 REG_INT_FLAGS_EX0;
 undefined1 DAT_EXTMEM_9220;
-undefined1 G_FLASH_CMD_TYPE;
 undefined1 G_SYS_FLAGS_BASE;
 undefined1 G_SYS_FLAGS_07EC;
 undefined1 G_SYS_FLAGS_07EE;
@@ -785,11 +793,7 @@ undefined1 DAT_EXTMEM_b403;
 undefined DAT_CODE_5d29;
 undefined1 G_PHY_CFG_0AEC;
 undefined1 G_PHY_CFG_0AED;
-undefined1 G_VENDOR_CTRL_07B9;
-undefined1 REG_CPU_CTRL_CA81;
 undefined1 REG_POWER_CTRL_92C8;
-undefined1 REG_CMD_LBA_0;
-undefined1 REG_CMD_LBA_1;
 undefined1 REG_CMD_LBA_2;
 undefined1 REG_CMD_LBA_3;
 undefined1 REG_CMD_COUNT_LOW;
@@ -799,7 +803,6 @@ undefined1 REG_CMD_PARAM_L;
 undefined1 REG_CMD_PARAM_H;
 undefined1 REG_CMD_EXT_PARAM_0;
 undefined1 REG_CMD_EXT_PARAM_1;
-undefined1 G_CMD_MODE;
 undefined1 DAT_EXTMEM_b260;
 undefined LAB_CODE_b25e+2;
 char DAT_INTMEM_51;
@@ -814,7 +817,6 @@ undefined1 REG_PCIE_CPL_STATUS;
 undefined1 REG_PCIE_FMT_TYPE;
 undefined1 REG_PCIE_COMPL_STATUS;
 undefined1 DAT_EXTMEM_e400;
-undefined1 REG_CMD_CONFIG;
 undefined LAB_CODE_e409;
 undefined1 DAT_EXTMEM_cac4;
 undefined1 REG_INT_CTRL;
@@ -861,6 +863,8 @@ undefined1 REG_CMD_PARAM;
 undefined1 REG_CMD_STATUS;
 undefined1 G_CMD_LBA_0;
 undefined1 G_CMD_LBA_1;
+undefined1 REG_CMD_LBA_0;
+undefined1 REG_CMD_LBA_1;
 undefined1 DAT_EXTMEM_9202;
 undefined1 DAT_EXTMEM_9207;
 undefined1 DAT_EXTMEM_9206;
@@ -877,6 +881,8 @@ undefined1 REG_FLASH_MODE;
 undefined1 REG_FLASH_ADDR_MD;
 undefined1 REG_FLASH_ADDR_HI;
 undefined1 G_FLASH_BUF_BASE;
+undefined1 G_VENDOR_MODE_07CF;
+undefined1 DAT_EXTMEM_07cd;
 undefined1 REG_USB_EP0_LEN_L;
 undefined1 G_FLASH_CMD_FLAG;
 undefined REG_NVME_INIT_CTRL;
@@ -895,7 +901,6 @@ undefined1 REG_FLASH_CON;
 undefined1 REG_DMA_LEN_H;
 undefined1 REG_FLASH_BUF_OFFSET;
 undefined1 DAT_EXTMEM_07e6;
-undefined1 G_SYS_FLAGS_07ED;
 undefined1 G_TLP_BLOCK_SIZE_0ACC;
 undefined1 REG_CPU_TIMER_CTRL_CD31;
 undefined1 G_STATE_CTRL_0B3C;
@@ -923,6 +928,7 @@ undefined1 G_PCIE_STATUS_0B36;
 undefined1 G_PCIE_STATUS_0B37;
 undefined1 G_PCIE_LANE_STATE_0A9E;
 undefined1 DAT_EXTMEM_0a9f;
+undefined1 REG_PCIE_DOORBELL_CMD;
 byte DAT_INTMEM_4d;
 undefined1 DAT_EXTMEM_0050;
 undefined1 DAT_EXTMEM_002e;
@@ -952,10 +958,12 @@ undefined1 REG_POWER_EVENT_92E1;
 undefined1 REG_POWER_STATUS_92F7;
 undefined1 REG_USB_CTRL_920C;
 undefined1 REG_USB_PHY_CONFIG_9241;
+undefined1 REG_POWER_CTRL_92C6;
 undefined1 REG_CLOCK_ENABLE;
 undefined1 REG_PHY_LINK_CTRL_C208;
 undefined1 REG_PHY_POWER;
 undefined1 REG_PHY_LINK_CONFIG_C20C;
+undefined1 REG_POWER_CTRL_92C7;
 undefined1 REG_PCIE_CTRL_B402;
 undefined1 REG_PHY_TIMER_CTRL_E764;
 undefined1 DAT_EXTMEM_e762;
@@ -1060,8 +1068,18 @@ undefined1 DAT_INTMEM_60;
 undefined1 REG_PCIE_LANE_CTRL_C659;
 undefined1 DAT_INTMEM_21;
 undefined1 UNK_CODE_21ad;
+undefined1 DAT_INTMEM_23;
+char DAT_INTMEM_70;
+undefined1 DAT_EXTMEM_0779;
+undefined1 DAT_EXTMEM_0767;
 byte DAT_CODE_21ae;
 undefined1 DAT_CODE_21ae;
+undefined DAT_SFR_bf;
+undefined1 DAT_EXTMEM_f204;
+undefined1 DAT_EXTMEM_f208;
+undefined1 DAT_EXTMEM_f04d;
+undefined1 DAT_EXTMEM_f20d;
+undefined TXFLG;
 undefined1 G_LINK_CFG_BIT_0AE7;
 undefined LAB_CODE_053c;
 undefined dispatch_0548+1;
@@ -1073,17 +1091,63 @@ undefined1 REG_NVME_LBA_LOW;
 undefined1 REG_NVME_LBA_MID;
 undefined1 REG_NVME_LBA_HIGH;
 undefined1 DAT_EXTMEM_055e;
+undefined1 DAT_EXTMEM_c321;
+undefined LAB_CODE_c2ce;
+undefined1 DAT_EXTMEM_c2c9;
+undefined1 DAT_EXTMEM_c349;
+undefined FUN_CODE_BANK1__c34a;
+undefined1 REG_VENDOR_CTRL_C343;
+undefined1 DAT_EXTMEM_c30c;
+undefined1 DAT_EXTMEM_c33c;
+undefined1 DAT_EXTMEM_c304;
+undefined1 DAT_EXTMEM_c35b;
 undefined1 DAT_INTMEM_54;
 undefined1 DAT_EXTMEM_801b;
+undefined1 DAT_EXTMEM_0763;
+undefined1 DAT_EXTMEM_0764;
+undefined1 DAT_EXTMEM_c2c0;
+undefined1 DAT_EXTMEM_c340;
 undefined1 REG_PHY_VENDOR_CTRL_C6DB;
+byte DAT_INTMEM_5a;
+char DAT_INTMEM_58;
+undefined1 DAT_INTMEM_57;
+undefined FUN_CODE_BANK1__c343;
+undefined pcie_set_state_a2df+1;
+undefined LAB_CODE_c340;
+undefined UNK_CODE_0819;
+undefined LAB_CODE_c2c2+1;
+undefined1 DAT_EXTMEM_0993;
+undefined1 DAT_EXTMEM_0992;
+undefined1 DAT_EXTMEM_09e4;
+undefined1 G_LOOP_STATE_0991;
+undefined1 G_EVENT_CHECK_09EF;
+undefined1 DAT_EXTMEM_c2c3;
+char DAT_INTMEM_56;
+byte DAT_INTMEM_4f;
+char DAT_INTMEM_50;
+undefined1 DAT_EXTMEM_0754;
+undefined1 DAT_INTMEM_59;
+undefined1 G_FLASH_ADDR_0;
+undefined1 DAT_INTMEM_58;
+undefined1 G_FLASH_ADDR_1;
+undefined1 G_FLASH_ADDR_2;
+undefined1 G_FLASH_ADDR_3;
+undefined1 REG_PHY_VENDOR_CTRL_C2E0;
+undefined1 REG_VENDOR_CTRL_C360;
+undefined1 DAT_EXTMEM_0825;
+undefined1 DAT_EXTMEM_0824;
+undefined1 DAT_EXTMEM_0827;
+undefined1 DAT_EXTMEM_0826;
+undefined1 DAT_EXTMEM_0829;
+undefined1 DAT_EXTMEM_0828;
+undefined1 DAT_EXTMEM_074f;
+undefined1 DAT_EXTMEM_074e;
 undefined1 DAT_CODE_21d4;
 undefined UNK_CODE_213d;
 undefined1 G_VENDOR_CMD_BUF_0804;
 undefined1 G_VENDOR_CMD_BUF_0805;
 undefined1 G_VENDOR_STATUS_081B;
 undefined DAT_CODE_21d4;
-undefined1 G_VENDOR_MODE_07CF;
-undefined1 DAT_EXTMEM_0767;
 undefined1 DAT_EXTMEM_0766;
 undefined1 DAT_EXTMEM_072a;
 undefined1 DAT_EXTMEM_06ed;
@@ -1095,20 +1159,67 @@ undefined1 DAT_EXTMEM_0758;
 undefined1 DAT_EXTMEM_075d;
 undefined1 G_VENDOR_STATUS_081A;
 undefined1 DAT_EXTMEM_075e;
-byte DAT_INTMEM_48;
+char DAT_INTMEM_28;
+undefined1 DAT_EXTMEM_0b02;
+undefined1 G_PCIE_STATUS_0B1C;
+undefined1 DAT_INTMEM_4e;
+undefined 2f.1;
 byte DAT_INTMEM_58;
+undefined1 DAT_EXTMEM_c2c4;
+undefined1 DAT_EXTMEM_c344;
+char DAT_INTMEM_4c;
 byte DAT_INTMEM_42;
+byte DAT_INTMEM_44;
+byte DAT_INTMEM_50;
 byte DAT_INTMEM_57;
+byte DAT_INTMEM_48;
 byte DAT_INTMEM_5e;
 undefined1 DAT_INTMEM_5d;
 undefined1 DAT_INTMEM_5b;
-undefined1 DAT_INTMEM_59;
-byte DAT_INTMEM_5a;
-undefined s_3743f30eed2_CODE_072e;
-undefined s_USB4_or_Thunderbolt_device_funct_CODE_073e;
-undefined LAB_CODE_c342+1;
 undefined1 G_VENDOR_DATA_0AB5;
+undefined s_3743f30eed2_CODE_072e;
 undefined1 DAT_EXTMEM_0ab4;
+undefined s_USB4_or_Thunderbolt_device_funct_CODE_073e;
+undefined F8.7;
+undefined1 SADDR;
+undefined1 DAT_EXTMEM_0249;
+undefined1 DAT_EXTMEM_024b;
+undefined1 DAT_EXTMEM_024a;
+undefined1 DAT_EXTMEM_024c;
+undefined1 DAT_EXTMEM_024e;
+undefined1 DAT_EXTMEM_0442;
+undefined1 DAT_EXTMEM_ea81;
+char DAT_INTMEM_4d;
+undefined1 DAT_INTMEM_50;
+undefined1 DAT_EXTMEM_c2cb;
+undefined1 DAT_EXTMEM_c34b;
+undefined1 G_EVENT_INIT_097A;
+undefined RXCON;
+undefined1 DAT_EXTMEM_c350;
+undefined1 DAT_EXTMEM_0718;
+undefined1 DAT_EXTMEM_075a;
+undefined1 DAT_EXTMEM_075c;
+undefined 28.7;
+undefined1 DAT_EXTMEM_09e0;
+undefined1 DAT_EXTMEM_09e2;
+undefined1 DAT_EXTMEM_0995;
+undefined1 DAT_EXTMEM_09dd;
+undefined1 DAT_EXTMEM_09dc;
+undefined1 REG_SYS_CTRL_E763;
+undefined LAB_CODE_c2c8+1;
+undefined LAB_CODE_c349;
+undefined1 DAT_EXTMEM_c2ec;
+undefined1 DAT_EXTMEM_c36c;
+undefined1 REG_SYS_CTRL_E760;
+undefined1 REG_SYS_CTRL_E761;
+undefined1 DAT_INTMEM_74;
+undefined1 DAT_INTMEM_4f;
+undefined1 G_BANK1_STATE_023F;
+undefined1 DAT_EXTMEM_0b43;
+undefined1 DAT_EXTMEM_0b42;
+undefined DAT_SFR_ac;
+undefined 20.2;
+undefined 2b.2;
 
 void func_util_0006(void)
 
@@ -1993,6 +2104,15 @@ void dispatch_0412(void)
 
 
 
+void helper_0417(void)
+
+{
+  jump_bank_0(0xe62f);
+  return;
+}
+
+
+
 void dispatch_041c(void)
 
 {
@@ -2240,6 +2360,15 @@ void dispatch_04a3(void)
 
 {
   jump_bank_0(0xe95b);
+  return;
+}
+
+
+
+void dispatch_04a8(void)
+
+{
+  jump_bank_0(0xe79b);
   return;
 }
 
@@ -2605,6 +2734,15 @@ void timer_pcie_error_handler(void)
 
 
 
+void dispatch_0575(void)
+
+{
+  jump_bank_1(0xedbd);
+  return;
+}
+
+
+
 void dispatch_event_e0d9(void)
 
 {
@@ -2839,6 +2977,15 @@ void pcie_cleanup_05f7(void)
 
 
 
+void pcie_cleanup_05fc(void)
+
+{
+  jump_bank_1(0xbe88);
+  return;
+}
+
+
+
 void dispatch_0601(void)
 
 {
@@ -3012,6 +3159,32 @@ void flash_func_0b15(undefined1 param_1,undefined1 param_2,undefined1 param_3,un
   if (param_5 < 0x80) {
     *(undefined1 *)CONCAT11(param_4,param_3) = param_1;
     ((undefined1 *)CONCAT11(param_4,param_3))[1] = param_2;
+  }
+  DPX = 0;
+  return;
+}
+
+
+
+void banked_store_dword(undefined1 param_1,undefined1 param_2,byte param_3,undefined1 param_4,
+                       undefined1 param_5,undefined1 param_6,undefined1 param_7)
+
+{
+  char cVar1;
+  byte bVar2;
+  undefined1 *puVar3;
+  
+  puVar3 = (undefined1 *)CONCAT11(param_2,param_1);
+  DPX = param_3;
+  cVar1 = DPX;
+  DPX = cVar1 + -1;
+  bVar2 = DPX;
+  DPX = bVar2 & 0x7f;
+  if (param_3 < 0x80) {
+    *puVar3 = param_4;
+    puVar3[1] = param_5;
+    puVar3[2] = param_6;
+    puVar3[3] = param_7;
   }
   DPX = 0;
   return;
@@ -3304,6 +3477,14 @@ byte or32(byte param_1,byte param_2)
 
 
 
+byte xor32(byte param_1,byte param_2)
+
+{
+  return param_2 ^ param_1;
+}
+
+
+
 byte cmp32(char param_1,byte param_2,byte param_3,byte param_4,char param_5,char param_6,
           char param_7,char param_8)
 
@@ -3399,6 +3580,14 @@ undefined1 xdata_load_dword_alt(short param_1)
 
 
 
+undefined1 code_load_dword(short param_1)
+
+{
+  return *(undefined1 *)(param_1 + 3);
+}
+
+
+
 void idata_store_dword(undefined1 *param_1,undefined1 param_2,undefined1 param_3,undefined1 param_4,
                       undefined1 param_5)
 
@@ -3474,6 +3663,99 @@ LAB_CODE_0dff:
                     // WARNING: Could not recover jumptable at 0x0e09. Too many branches
                     // WARNING: Treating indirect jump as call
   (*(code *)CONCAT11(pcVar2[bVar1],pcVar2[1]))();
+  return;
+}
+
+
+
+void table_search_dispatch(char param_1,char param_2,char param_3,byte param_4)
+
+{
+  byte bVar1;
+  char *pcVar2;
+  undefined1 uStackX_0;
+  undefined1 in_stack_000000ff;
+  
+  for (pcVar2 = (char *)CONCAT11(uStackX_0,in_stack_000000ff);
+      (*pcVar2 != '\0' || (pcVar2[1] != '\0')); pcVar2 = pcVar2 + 6) {
+    if ((pcVar2[2] == param_1) &&
+       (((pcVar2[3] == param_2 && (pcVar2[4] == param_3)) &&
+        (bVar1 = pcVar2[5] ^ param_4, bVar1 == 0)))) goto LAB_CODE_0e24;
+  }
+  pcVar2 = pcVar2 + 2;
+  bVar1 = 0;
+LAB_CODE_0e24:
+                    // WARNING: Could not recover jumptable at 0x0e2e. Too many branches
+                    // WARNING: Treating indirect jump as call
+  (*(code *)CONCAT11(pcVar2[bVar1],pcVar2[1]))();
+  return;
+}
+
+
+
+void pdata_store_dword(byte param_1,undefined1 param_2,undefined1 param_3,undefined1 param_4,
+                      undefined1 param_5)
+
+{
+  *(undefined1 *)(ushort)param_1 = param_2;
+  *(undefined1 *)(ushort)(param_1 + 1) = param_3;
+  *(undefined1 *)(ushort)(param_1 + 2) = param_4;
+  *(undefined1 *)(ushort)(param_1 + 3) = param_5;
+  return;
+}
+
+
+
+void ext0_isr(void)
+
+{
+  byte bVar1;
+  byte bVar2;
+  
+  bVar1 = REG_INT_USB_STATUS;
+  if ((bVar1 & 1) != 1) {
+    usb_master_handler();
+    return;
+  }
+  bVar1 = REG_USB_PERIPH_STATUS;
+  if ((bVar1 >> 5 & 1) != 1) {
+    usb_peripheral_handler();
+    return;
+  }
+  bVar1 = REG_USB_STATUS;
+  if ((bVar1 & 1) != 1) {
+    usb_endpoint_handler();
+    return;
+  }
+  DAT_INTMEM_37 = 0;
+  do {
+    bVar1 = REG_USB_EP_STATUS;
+    G_EP_DISPATCH_VAL1 = ep_index_table[bVar1];
+    bVar1 = G_EP_DISPATCH_VAL1;
+    if (7 < bVar1) break;
+    G_EP_DISPATCH_VAL2 =
+         ep_index_table[*(byte *)CONCAT11(-0x70 - (((0x69 < bVar1) << 7) >> 7),bVar1 + 0x96)];
+    bVar1 = G_EP_DISPATCH_VAL2;
+    if (7 < bVar1) break;
+    bVar2 = G_EP_DISPATCH_VAL1;
+    G_EP_DISPATCH_OFFSET = bVar1 + (char)ep_offset_table[bVar2];
+    usb_endpoint_handler();
+    bVar2 = G_EP_DISPATCH_VAL2;
+    bVar1 = G_EP_DISPATCH_VAL1;
+    *(undefined1 *)CONCAT11(-0x70 - (((0x69 < bVar1) << 7) >> 7),bVar1 + 0x96) =
+         (&ep_bit_mask_table)[bVar2];
+    DAT_INTMEM_37 = DAT_INTMEM_37 + 1;
+  } while ((DAT_INTMEM_37 < 0x20) << 7 < '\0');
+  bVar1 = REG_USB_STATUS_909E;
+  if ((bVar1 & 1) != 1) {
+    usb_master_handler();
+    return;
+  }
+  G_EP_DISPATCH_OFFSET = 0x40;
+  usb_endpoint_handler();
+  REG_USB_STATUS_909E = 1;
+  REG_USB_EP_STATUS_90E3 = 2;
+  usb_master_handler();
   return;
 }
 
@@ -9352,6 +9634,15 @@ void helper_313a_check_nonzero(void)
 
 
 
+byte buf_check_transfer_pending(byte param_1,byte param_2,byte param_3,byte param_4)
+
+{
+  idata_load_dword(0x6b);
+  return param_1 | param_2 | param_3 | param_4;
+}
+
+
+
 byte helper_313f(byte param_1,byte param_2,byte param_3,byte param_4)
 
 {
@@ -11743,64 +12034,66 @@ void scsi_buffer_threshold_config(void)
 
 {
   byte bVar1;
-  byte bVar2;
-  undefined1 uVar3;
-  byte *pbVar4;
+  code cVar2;
+  code cVar3;
+  undefined1 uVar4;
+  byte bVar5;
+  code *pcVar6;
   
-  pbVar4 = &G_LOG_INIT_044D;
+  pcVar6 = (code *)&G_LOG_INIT_044D;
   G_LOG_INIT_044D = 0;
   FUN_CODE_166f();
-  bVar2 = *pbVar4;
-  if (bVar2 == 1) {
+  cVar3 = *pcVar6;
+  if (cVar3 == (code)0x1) {
     addr_setup_0059();
-    REG_SCSI_DMA_STATUS_H = *pbVar4;
+    REG_SCSI_DMA_STATUS_H = *pcVar6;
     return;
   }
   addr_setup_0059();
-  bVar1 = *pbVar4;
+  cVar2 = *pcVar6;
   FUN_CODE_15d4();
-  if (1 < *pbVar4) {
-    pbVar4 = (byte *)0x578;
-    bVar1 = G_DMA_ENDPOINT_0578;
-    bVar2 = get_ep_config_indexed();
+  if (1 < (byte)*pcVar6) {
+    pcVar6 = (code *)0x578;
+    cVar2 = (code)G_DMA_ENDPOINT_0578;
+    cVar3 = (code)get_ep_config_indexed();
   }
-  uVar3 = usb_shift_right_3(bVar1);
-  if (2 < bVar2) {
-    if (bVar2 < 5) {
-      bVar2 = bVar1 >> 2 & 1;
-      FUN_CODE_15ef(uVar3);
+  uVar4 = usb_shift_right_3(cVar2);
+  if (2 < (byte)cVar3) {
+    if ((byte)cVar3 < 5) {
+      bVar5 = (byte)cVar2 >> 2 & 1;
+      FUN_CODE_15ef(uVar4);
       bVar1 = 0xf0;
-      if (bVar2 != 0) {
+      if (bVar5 != 0) {
         bVar1 = 0xf;
       }
-      bVar1 = *pbVar4 & bVar1;
+      cVar3 = (code)((byte)*pcVar6 & bVar1);
       FUN_CODE_15ef();
-      *pbVar4 = bVar1;
+      *pcVar6 = cVar3;
       return;
     }
-    if (bVar2 < 9) {
-      uVar3 = 0x40;
+    if ((byte)cVar3 < 9) {
+      uVar4 = 0x40;
     }
-    else if (bVar2 < 0x11) {
-      FUN_CODE_15ef(bVar2 - 0x11,uVar3);
-      *pbVar4 = 0;
-      uVar3 = 0x3f;
+    else if ((byte)cVar3 < 0x11) {
+      FUN_CODE_15ef((char)cVar3 + -0x11,uVar4);
+      *pcVar6 = (code)0x0;
+      uVar4 = 0x3f;
     }
     else {
-      FUN_CODE_15ef(bVar2 - 0x11,uVar3);
-      *pbVar4 = 0;
+      FUN_CODE_15ef((char)cVar3 + -0x11,uVar4);
+      *pcVar6 = (code)0x0;
       FUN_CODE_15f1(0x3f);
-      *pbVar4 = 0;
+      *pcVar6 = (code)0x0;
       FUN_CODE_15f1(0x3e);
-      *pbVar4 = 0;
-      uVar3 = 0x3d;
+      *pcVar6 = (code)0x0;
+      uVar4 = 0x3d;
     }
-    FUN_CODE_15f1(uVar3);
-    *pbVar4 = 0;
+    FUN_CODE_15f1(uVar4);
+    *pcVar6 = (code)0x0;
     return;
   }
-  REG_SCSI_DMA_STATUS_H = bVar1;
-  REG_SCSI_DMA_STATUS_H = bVar1 + 1;
+  REG_SCSI_DMA_STATUS_H = cVar2;
+  REG_SCSI_DMA_STATUS_H = (char)cVar2 + '\x01';
   return;
 }
 
@@ -12707,6 +13000,49 @@ void scsi_handle_init_4d92(void)
 
 
 
+void scsi_transfer_check(char param_1)
+
+{
+  byte bVar1;
+  undefined1 uVar2;
+  undefined1 uVar3;
+  char cVar4;
+  
+  cVar4 = buf_check_transfer_pending();
+  if (cVar4 != '\0') {
+    nvme_init_step();
+    while( true ) {
+      do {
+        bVar1 = REG_USB_EP_CFG1;
+        if ((bVar1 >> 1 & 1) == 1) {
+          REG_USB_EP_CFG1 = 2;
+          idata_load_dword(0x6b);
+          uVar3 = BANK0_R7;
+          uVar2 = BANK0_R6;
+          usb_read_status_pair();
+          helper_3279();
+          BANK0_R6 = uVar2;
+          BANK0_R7 = uVar3;
+          sub32();
+                    // WARNING: Subroutine does not return
+          idata_store_dword(0x6b);
+        }
+        handler_0395();
+        if (param_1 != '\0') {
+          return;
+        }
+        bVar1 = REG_USB_PERIPH_STATUS;
+      } while ((bVar1 >> 1 & 1) == 0);
+      handler_0395();
+      if (param_1 != '\0') break;
+      dispatch_033b();
+    }
+  }
+  return;
+}
+
+
+
 void scsi_buffer_setup_4e25(void)
 
 {
@@ -13059,6 +13395,39 @@ void scsi_transfer_start(char param_1)
   cVar1 = G_LOG_COUNTER_044B;
   if ((cVar1 == '\x01') && (cVar1 = G_WORK_0006, cVar1 != '\0')) {
     usb_dma_transfer_setup(0,0x3a,2);
+  }
+  usb_copy_idata_6b_to_6f();
+  return;
+}
+
+
+
+void scsi_transfer_start_alt(char param_1)
+
+{
+  char cVar1;
+  byte bVar2;
+  
+  helper_3f4a();
+  DAT_INTMEM_3b = param_1;
+  if (param_1 != '\0') {
+    return;
+  }
+  usb_func_1b23();
+  bVar2 = usb_setup_endpoint();
+  DAT_INTMEM_3c = bVar2 & 2;
+  if (DAT_INTMEM_3c == 0) {
+    cVar1 = G_XFER_FLAG_07EA;
+    if (cVar1 == '\x01') {
+      cVar1 = '\0';
+      helper_3bcd();
+      if (cVar1 != '\0') {
+        usb_dma_transfer_setup(0,0x44,4);
+      }
+    }
+  }
+  else {
+    usb_setup_transfer_mode5_24();
   }
   usb_copy_idata_6b_to_6f();
   return;
@@ -13771,7 +14140,7 @@ code_c0x5023:
         if (pbVar9 != (byte *)0xec) {
                     // WARNING: Could not recover jumptable at 0x519c. Too many branches
                     // WARNING: Treating indirect jump as call
-          (*(code *)(param_2 + ((byte)pcVar10 ^ (byte)param_3 ^ bINTMEM74 ^ DAT_INTMEM_72)))
+          (*(code *)(param_2 + ((byte)pcVar10 ^ (byte)param_3 ^ DAT_INTMEM_74 ^ DAT_INTMEM_72)))
                     (uVar2,param_9 - 1);
           return;
         }
@@ -13919,7 +14288,7 @@ LAB_CODE_55fc:
           }
                     // WARNING: Could not recover jumptable at 0x519c. Too many branches
                     // WARNING: Treating indirect jump as call
-          (*(code *)(param_2 + ((byte)pbVar5 ^ (byte)param_4 ^ bINTMEM74 ^ DAT_INTMEM_72)))();
+          (*(code *)(param_2 + ((byte)pbVar5 ^ (byte)param_4 ^ DAT_INTMEM_74 ^ DAT_INTMEM_72)))();
           return;
         }
         *param_4 = DAT_INTMEM_5c;
@@ -14124,7 +14493,7 @@ void scsi_loop_process_573b
         if ((param_6 != &BANK0_R1) && (cVar7 != -0x14)) {
                     // WARNING: Could not recover jumptable at 0x519c. Too many branches
                     // WARNING: Treating indirect jump as call
-          (*(code *)(param_1 + ((byte)pbVar3 ^ (byte)param_3 ^ bINTMEM74 ^ DAT_INTMEM_72)))();
+          (*(code *)(param_1 + ((byte)pbVar3 ^ (byte)param_3 ^ DAT_INTMEM_74 ^ DAT_INTMEM_72)))();
           return;
         }
         BANK0_R1 = 0x23;
@@ -14305,6 +14674,1841 @@ void FUN_CODE_5765(byte param_1)
   uart_putdigit(param_1 >> 4 | param_1 << 4);
                     // WARNING: Bad instruction - Truncating control flow here
   halt_baddata();
+}
+
+
+
+void FUN_CODE_7a12(byte param_1,char param_2)
+
+{
+  undefined1 *puVar1;
+  undefined1 uVar2;
+  undefined1 uVar3;
+  byte bVar4;
+  char cVar5;
+  char cVar6;
+  byte bVar7;
+  char *pcVar8;
+  undefined2 uVar9;
+  undefined1 *puVar10;
+  undefined *puVar11;
+  
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  FUN_CODE_9ee5();
+  if (param_2 != '\0') {
+    return;
+  }
+  DAT_INTMEM_65 = 3;
+  puVar1 = &DAT_INTMEM_64;
+  DAT_INTMEM_64 = '\x01';
+  DAT_INTMEM_63 = param_2;
+  pcie_write_data_reg_with_val(4);
+  FUN_CODE_e91d();
+  if (param_2 != '\0') {
+    return;
+  }
+  cfg_init_ep_mode();
+  *puVar1 = 4;
+  cVar5 = -1;
+  pcie_write_data_reg_with_val(0xff);
+  FUN_CODE_e91d();
+  if (cVar5 != '\0') {
+    return;
+  }
+  delay_short_e89d();
+  if (cVar5 != '\0') {
+    return;
+  }
+  bVar4 = REG_PCIE_EXT_STATUS;
+  if ((bVar4 & 9) != 0) {
+    return;
+  }
+  DAT_INTMEM_25 = 0;
+  DAT_INTMEM_26 = 0;
+  do {
+    if (DAT_INTMEM_26 == 0 && DAT_INTMEM_25 == 0) {
+      uVar2 = 0xd0;
+    }
+    else {
+      uVar2 = 0;
+    }
+    cVar5 = '\0';
+    FUN_CODE_994d(uVar2,0);
+    DAT_INTMEM_65 = 0xf;
+    FUN_CODE_e91d();
+    if (cVar5 != '\0') {
+      return;
+    }
+    DAT_INTMEM_64 = DAT_INTMEM_64 + '\x01';
+    if (DAT_INTMEM_64 == '\0') {
+      DAT_INTMEM_63 = DAT_INTMEM_63 + '\x01';
+    }
+    DAT_INTMEM_26 = DAT_INTMEM_26 + 1;
+    if (DAT_INTMEM_26 == 0) {
+      DAT_INTMEM_25 = DAT_INTMEM_25 + 1;
+    }
+    cVar5 = ((DAT_INTMEM_26 < 6) << 7) >> 7;
+  } while ((DAT_INTMEM_25 < (byte)-cVar5) << 7 < '\0');
+  DAT_INTMEM_65 = 3;
+  DAT_INTMEM_63 = '\0';
+  DAT_INTMEM_64 = '\x01';
+  cVar6 = '\x06';
+  FUN_CODE_994b(DAT_INTMEM_25 + cVar5,4);
+  FUN_CODE_e91d();
+  if (cVar6 != '\0') {
+    return;
+  }
+  pcie_get_txn_count_with_mult();
+  cVar5 = pcie_check_status_error();
+  if (cVar5 != '\0') {
+    DAT_INTMEM_65 = 3;
+    cfg_store_ep_with_carry();
+    cVar5 = '\x10';
+    pcie_write_data_reg_with_val(0,8);
+    FUN_CODE_e91d();
+    if (cVar5 != '\0') {
+      return;
+    }
+    pcie_setup_buffer_from_config();
+    FUN_CODE_e91d();
+    if (cVar5 != '\0') {
+      return;
+    }
+  }
+  pcie_get_txn_count_with_mult();
+  pcVar8 = &DAT_EXTMEM_05bc;
+  mul_add_index();
+  if (*pcVar8 == '\0') {
+    uVar2 = G_PCIE_TXN_COUNT_LO;
+    pcVar8 = &DAT_EXTMEM_05bb;
+    FUN_CODE_99c0(uVar2);
+    if (*pcVar8 == '\0') {
+      return;
+    }
+    cVar5 = '\x01';
+    phy_register_config();
+    if (cVar5 != '\0') {
+      return;
+    }
+    DAT_INTMEM_64 = DAT_INTMEM_64 + '\x01';
+    if (DAT_INTMEM_64 == '\0') {
+      DAT_INTMEM_63 = DAT_INTMEM_63 + '\x01';
+    }
+    cVar5 = '\x01';
+    FUN_CODE_d511(0);
+    if (cVar5 != '\0') {
+      return;
+    }
+    DAT_INTMEM_65 = 0xc;
+    pcie_get_txn_count_with_mult();
+    pcie_lookup_and_store_idata(dispatch_05bb);
+    bVar4 = DAT_EXTMEM_8001;
+    if ((bVar4 & 0xe) == 0) {
+      cVar5 = '\0';
+      FUN_CODE_994d(1,0);
+      G_DMA_WORK_05AC = 1;
+    }
+    else {
+      cVar5 = '\0';
+      FUN_CODE_994d(0x11,0);
+    }
+    FUN_CODE_e91d();
+    if (cVar5 != '\0') {
+      return;
+    }
+  }
+  else {
+    FUN_CODE_99d9();
+    cVar5 = '\x03';
+    power_state_machine_d02a();
+    if (cVar5 != '\0') {
+      return;
+    }
+    bVar4 = DAT_EXTMEM_8007;
+    DAT_INTMEM_26 = bVar4 & 7;
+    DAT_INTMEM_25 = '\0';
+    bVar4 = DAT_EXTMEM_8007;
+    DAT_EXTMEM_8007 = bVar4 & 0xf8;
+    xdata_load_dword(0x8004);
+    uVar2 = G_PCIE_TXN_COUNT_LO;
+    FUN_CODE_9997(0x5c7,uVar2);
+    xdata_store_dword();
+    xdata_load_dword(0x8008);
+    pcie_wait_for_completion(0x5cb);
+    xdata_store_dword();
+    bVar4 = USB_SCSI_BUF_BASE;
+    USB_SCSI_BUF_BASE = bVar4 & 7;
+    uVar3 = USB_SCSI_BUF_BASE;
+    cVar5 = DAT_EXTMEM_8001;
+    puVar10 = &DAT_EXTMEM_05cf;
+    pcie_wait_for_completion();
+    *puVar10 = uVar3;
+    pcVar8 = puVar10 + 1;
+    *pcVar8 = cVar5;
+    if (DAT_INTMEM_26 != 0 || DAT_INTMEM_25 != '\0') {
+      if ((DAT_INTMEM_26 != 4 || DAT_INTMEM_25 != '\0') &&
+         (DAT_INTMEM_26 != 5 || DAT_INTMEM_25 != '\0')) {
+        return;
+      }
+      pcie_check_txn_count(uVar2);
+      FUN_CODE_998f(*pcVar8);
+      FUN_CODE_99f8();
+      pcie_wait_complete();
+      pcie_write_data_reg();
+      FUN_CODE_e91d();
+      if (cVar5 != '\0') {
+        return;
+      }
+      FUN_CODE_e775();
+      pcie_get_txn_count_with_mult();
+      uVar9 = 0x5c7;
+      mul_add_index();
+      xdata_load_dword();
+      xdata_store_dword(uVar9,param_1 | 1);
+      DAT_INTMEM_65 = 0xf;
+      DAT_INTMEM_63 = BANK0_R6;
+      DAT_INTMEM_64 = BANK0_R7;
+      cVar5 = '\0';
+      pcie_write_data_reg(1,0xd0,0);
+      FUN_CODE_e91d();
+      if (cVar5 != '\0') {
+        return;
+      }
+    }
+    pcie_get_txn_count_with_mult();
+    pcVar8 = &DAT_EXTMEM_05cf;
+    mul_add_index();
+    DAT_INTMEM_27 = *pcVar8;
+    if (pcVar8[1] == '\0' && DAT_INTMEM_27 == '\0') {
+      DAT_INTMEM_28 = 2;
+      DAT_INTMEM_27 = '\0';
+    }
+    else {
+      DAT_INTMEM_28 = pcVar8[1] + 1;
+      if (DAT_INTMEM_28 == 0) {
+        DAT_INTMEM_27 = DAT_INTMEM_27 + '\x01';
+      }
+    }
+    cVar5 = '\0';
+    FUN_CODE_e762();
+    xdata_load_dword(0x5af);
+    pcie_get_txn_count_with_mult();
+    mul_add_index(0x5c7);
+    xdata_load_dword_alt();
+    add32();
+    xdata_store_dword(0x5af);
+    DAT_INTMEM_25 = 0;
+    DAT_INTMEM_26 = 0;
+    while (bVar4 = DAT_INTMEM_27 - (((DAT_INTMEM_26 < DAT_INTMEM_28) << 7) >> 7),
+          DAT_INTMEM_25 < bVar4) {
+      FUN_CODE_e8f9();
+      if (cVar5 != '\0') {
+        return;
+      }
+      pcie_write_data_reg(0x10,0,0,0);
+      FUN_CODE_839c();
+      cVar5 = '\0';
+      pcie_write_data_reg_with_val(0);
+      FUN_CODE_839c();
+      pcie_get_txn_count_with_mult();
+      cVar6 = FUN_CODE_9a3e(dispatch_05cf);
+      if (cVar6 == '\0' && cVar5 == '\0') {
+        pcie_write_data_reg_with_val(0,0);
+        G_DMA_WORK_05AC = 1;
+      }
+      else {
+        pcie_write_data_reg(0,0,DAT_INTMEM_25,DAT_INTMEM_26);
+      }
+      FUN_CODE_83b9();
+      cVar5 = (byte)-(((DAT_INTMEM_26 < 2) << 7) >> 7) <= DAT_INTMEM_25;
+      pcie_write_data_reg(0,0,0);
+      FUN_CODE_83b9();
+      DAT_INTMEM_26 = DAT_INTMEM_26 + 1;
+      if (DAT_INTMEM_26 == 0) {
+        DAT_INTMEM_25 = DAT_INTMEM_25 + 1;
+      }
+    }
+    DAT_INTMEM_65 = 8;
+    pcie_get_txn_count_with_mult(DAT_INTMEM_25 - bVar4);
+    pcie_lookup_and_store_idata(0x5bc);
+    REG_PCIE_DATA = 0x80;
+    DAT_EXTMEM_b221 = 0;
+    FUN_CODE_e91d();
+    if (cVar5 != '\0') {
+      return;
+    }
+  }
+  pcie_clear_address_regs();
+  cVar5 = '@';
+  power_state_machine_d02a();
+  if (cVar5 != '\0') {
+    return;
+  }
+  uVar2 = G_PCIE_TXN_COUNT_LO;
+  puVar10 = &DAT_EXTMEM_05d2;
+  pcie_trigger_transaction(uVar2);
+  bVar4 = 0;
+  cVar5 = BANK0_R7 + '\x01';
+  DAT_INTMEM_26 = 4;
+  while (cVar5 = cVar5 + -1, cVar5 != '\0') {
+    bVar4 = bVar4 << 1 | DAT_INTMEM_26 >> 7;
+    DAT_INTMEM_26 = DAT_INTMEM_26 << 1;
+  }
+  puVar11 = &UNK_EXTMEM_b230;
+  DAT_INTMEM_25 = bVar4;
+  cfg_write_dptr_34_04(*puVar10);
+  puVar11[1] = 0;
+  cfg_write_dptr_34_04(0xb234);
+  cVar5 = '\x02';
+  bVar7 = DAT_INTMEM_26;
+  do {
+    bVar7 = bVar7 >> 1 | bVar4 << 7;
+    cVar5 = cVar5 + -1;
+    bVar4 = bVar4 >> 1;
+  } while (cVar5 != '\0');
+  REG_PCIE_LINK_PARAM = bVar7;
+  cfg_write_dptr_34_04(0xb240);
+  bVar4 = DAT_INTMEM_26 * '\x02';
+  cVar5 = '\x02';
+  bVar7 = DAT_INTMEM_25 << 1 | CARRY1(DAT_INTMEM_26,DAT_INTMEM_26);
+  do {
+    bVar4 = bVar4 >> 1 | bVar7 << 7;
+    cVar5 = cVar5 + -1;
+    bVar7 = bVar7 >> 1;
+  } while (cVar5 != '\0');
+  REG_PCIE_EXT_STATUS_RD2 = bVar4;
+  cfg_write_dptr_34_04(0xb244);
+  bVar4 = DAT_INTMEM_25;
+  bVar7 = DAT_INTMEM_26;
+  mul16x16(0,3);
+  cVar5 = '\x02';
+  do {
+    bVar7 = bVar7 >> 1 | bVar4 << 7;
+    cVar5 = cVar5 + -1;
+    bVar4 = bVar4 >> 1;
+  } while (cVar5 != '\0');
+  DAT_EXTMEM_b246 = bVar7;
+  puVar10 = &REG_TRANSFER_FLAGS;
+  pcie_clear_address_regs_full(uVar2);
+  *puVar10 = 2;
+  return;
 }
 
 
@@ -15194,12 +17398,42 @@ void nvme_cmd_store_direct(undefined1 param_1,undefined1 *param_2)
 
 
 
+undefined1 cmd_calc_slot_addr(void)
+
+{
+  undefined1 uVar1;
+  byte bVar2;
+  byte bVar3;
+  
+  bVar2 = G_CMD_SLOT_C1;
+  bVar3 = (byte)((ushort)bVar2 * 0x20);
+  G_CMD_ADDR_HI = (char)((ushort)bVar2 * 0x20 >> 8) + (-0x1c - (((0xbd < bVar3) << 7) >> 7));
+  G_CMD_ADDR_LO = bVar3 + 0x42;
+  uVar1 = G_CMD_ADDR_HI;
+  uVar1 = G_CMD_ADDR_LO;
+  return uVar1;
+}
+
+
+
 undefined1 nvme_cmd_store_and_read(undefined1 param_1,undefined1 *param_2)
 
 {
   undefined1 uVar1;
   
   *param_2 = param_1;
+  uVar1 = G_CMD_ADDR_HI;
+  uVar1 = G_CMD_ADDR_LO;
+  return uVar1;
+}
+
+
+
+undefined1 FUN_CODE_957c(void)
+
+{
+  undefined1 uVar1;
+  
   uVar1 = G_CMD_ADDR_HI;
   uVar1 = G_CMD_ADDR_LO;
   return uVar1;
@@ -15215,26 +17449,37 @@ undefined1 nvme_cmd_read_offset(short param_1)
 
 
 
-void cmd_call_e120_setup(undefined1 param_1)
+void cmd_config_e40b(void)
 
 {
-  cmd_param_setup(2);
-  REG_CMD_ISSUE = param_1;
-  REG_CMD_TAG = BANK0_R3;
-  G_CMD_STATUS = 6;
+  byte bVar1;
+  
+  REG_XFER_DMA_CMD = 2;
+  bVar1 = REG_CMD_CONFIG;
+  REG_CMD_CONFIG = bVar1 & 0xfd | 2;
+  bVar1 = REG_CMD_CONFIG;
+  REG_CMD_CONFIG = bVar1 & 0xfb | 4;
+  bVar1 = REG_CMD_CONFIG;
+  REG_CMD_CONFIG = bVar1 & 0xf7 | 8;
   return;
 }
 
 
 
-void nvme_cmd_issue_alternate(undefined1 param_1)
+void cmd_call_e120_setup(void)
 
 {
+                    // WARNING: Subroutine does not return
+  cmd_param_setup(2);
+}
+
+
+
+void nvme_cmd_issue_alternate(void)
+
+{
+                    // WARNING: Subroutine does not return
   cmd_param_setup();
-  REG_CMD_ISSUE = param_1;
-  REG_CMD_TAG = BANK0_R3;
-  G_CMD_STATUS = 6;
-  return;
 }
 
 
@@ -15394,6 +17639,14 @@ void FUN_CODE_95e4(void)
 {
   G_CMD_STATUS = 2;
   return;
+}
+
+
+
+byte cmd_extract_bit5(undefined1 param_1,undefined1 param_2)
+
+{
+  return *(byte *)(CONCAT11(param_2,param_1) + 1) >> 7;
 }
 
 
@@ -15562,6 +17815,14 @@ void cmd_setup_delay(void)
 
 
 
+undefined1 cmd_read_indexed(byte param_1,char param_2)
+
+{
+  return *(undefined1 *)CONCAT11(param_2 - (((0xf9 < param_1) << 7) >> 7),param_1 + 6);
+}
+
+
+
 byte cmd_combine_lba_param(byte *param_1)
 
 {
@@ -15631,6 +17892,14 @@ undefined1 cmd_wait_and_store_counter(undefined1 param_1,undefined1 param_2)
 
 
 
+void cmd_set_dptr_inc2(void)
+
+{
+  return;
+}
+
+
+
 void nvme_nop_96a7(void)
 
 {
@@ -15659,6 +17928,14 @@ undefined1 cmd_call_e73a_with_params(void)
 
 
 
+undefined1 cmd_read_dptr_offset1(undefined1 param_1,undefined1 param_2)
+
+{
+  return *(undefined1 *)(CONCAT11(param_1,param_2) + 1);
+}
+
+
+
 undefined1 nvme_read_offset_1(undefined1 param_1,undefined1 param_2)
 
 {
@@ -15676,6 +17953,15 @@ void cmd_update_slot_index(void)
   cVar2 = G_CMD_PARAM_2;
   cVar1 = G_CMD_SLOT_C1;
   G_CMD_SLOT_C1 = cVar1 + 1U & cVar2 - 1U;
+  return;
+}
+
+
+
+void cmd_set_flag_07de(void)
+
+{
+  G_CMD_FLAG_07DE = 1;
   return;
 }
 
@@ -15714,6 +18000,18 @@ void nvme_cmd_calc_store_2(char param_1,undefined1 param_2)
   G_CMD_ADDR_HI = param_1 + (-0x1c - (in_PSW >> 7));
   G_CMD_ADDR_LO = param_2;
   return;
+}
+
+
+
+undefined1 cmd_load_addr(void)
+
+{
+  undefined1 uVar1;
+  
+  uVar1 = G_CMD_ADDR_HI;
+  uVar1 = G_CMD_ADDR_LO;
+  return uVar1;
 }
 
 
@@ -15794,6 +18092,24 @@ void cmd_set_trigger_bit6(byte *param_1)
 
 {
   *param_1 = *param_1 & 0xbf | 0x40;
+  return;
+}
+
+
+
+void cmd_call_dd12_config(void)
+
+{
+  cmd_trigger_params(2,0xf);
+  return;
+}
+
+
+
+void cmd_extract_bits67_write(byte param_1,byte *param_2)
+
+{
+  *param_2 = param_1 >> 6;
   return;
 }
 
@@ -16998,6 +19314,343 @@ char pcie_write_data_reg_with_val(void)
 
 
 
+void pcie_write_data_reg(undefined1 param_1,short param_2,char param_3)
+
+{
+  byte bVar1;
+  char cVar2;
+  undefined1 uVar3;
+  undefined1 uVar4;
+  undefined1 uVar5;
+  undefined1 *puVar6;
+  short sVar7;
+  
+  param_3 = param_3 + '\x01';
+  *(undefined1 *)(param_2 + 1) = param_1;
+  uVar5 = cmd_write_trigger_wait();
+  cmd_extract_bits67_write(*(undefined1 *)CONCAT11(param_3,uVar5),0xaa4);
+  puVar6 = &G_STATE_COUNTER_0AA5;
+  G_STATE_COUNTER_0AA5 = *(byte *)CONCAT11(param_3,uVar5) & 0x1f;
+  FUN_CODE_957c();
+  nvme_nop_96a7();
+  G_BUFFER_STATE_0AA6 = *puVar6;
+  G_BUFFER_STATE_0AA7 = puVar6[1];
+  if (BANK0_R5 == '\0') {
+    cVar2 = G_CMD_MODE;
+    if (cVar2 != '\x01') {
+      cmd_setup_delay();
+LAB_CODE_9b54:
+      G_CMD_STATUS = 2;
+      cmd_wait_completion();
+      return;
+    }
+  }
+  else {
+    bVar1 = G_FLASH_CMD_TYPE;
+    if (bVar1 != 0) {
+      if (1 < bVar1) {
+        FUN_CODE_dd0b(bVar1 - 2);
+                    // WARNING: Subroutine does not return
+        cmd_param_setup(2,1);
+      }
+      cVar2 = G_CMD_MODE;
+      if (cVar2 == '\x01') {
+        uVar5 = 4;
+      }
+      else {
+        uVar5 = 0x10;
+      }
+      cmd_trigger_params(0,uVar5);
+      goto LAB_CODE_9b54;
+    }
+    cVar2 = G_STATE_COUNTER_0AA5;
+    if (cVar2 == '\x02') {
+      FUN_CODE_9c0f(0xf,0x23,0);
+      FUN_CODE_ddad();
+    }
+    else if (cVar2 == '\x03') {
+      FUN_CODE_9c1d(0x1f,0x23);
+      usb_buffer_dispatch();
+    }
+    else if (cVar2 == '\x04') {
+      FUN_CODE_9c1d(0x30,0x23);
+      uVar5 = G_STATE_COUNTER_HI;
+      FUN_CODE_b966(uVar5);
+    }
+    else if (cVar2 == '\x05') {
+      uVar3 = G_BUFFER_STATE_0AA6;
+      uVar4 = G_BUFFER_STATE_0AA7;
+      uVar5 = G_STATE_COUNTER_HI;
+      FUN_CODE_ca71(uVar5,uVar3,uVar4);
+    }
+    else if (cVar2 == '\x06') {
+      FUN_CODE_e973();
+    }
+    else if (cVar2 == '\x01') {
+      FUN_CODE_9c0f(1,0x23,0);
+      nvme_cmd_state_handler();
+    }
+    sVar7 = -0x3378;
+    bVar1 = REG_XFER_DMA_CTRL;
+    nvme_cmd_store_clear_cc8a(bVar1 & 0xf8 | 3);
+    nvme_cmd_store_direct(0x50,sVar7 + 1);
+    do {
+      bVar1 = REG_XFER_DMA_CMD;
+    } while ((bVar1 >> 1 & 1) == 0);
+    cmd_write_cc89_02();
+    cVar2 = G_STATE_COUNTER_0AA5;
+    if ((cVar2 != '\x06') && (bVar1 = REG_CMD_CTRL_E40F, (bVar1 & 1) != 1)) {
+      cmd_wait_completion();
+      cVar2 = G_STATE_COUNTER_0AA5;
+      if ((cVar2 == '\x04') || (cVar2 == '\x05')) {
+        cVar2 = G_SYS_FLAGS_07ED;
+        if (cVar2 == '\0') {
+                    // WARNING: Subroutine does not return
+          uart_puts(0x3d,0x23,0xff);
+        }
+        G_SYS_FLAGS_07ED = 0;
+        return;
+      }
+    }
+  }
+  return;
+}
+
+
+
+void pcie_calc_queue_idx(undefined1 *param_1)
+
+{
+  byte bVar1;
+  char cVar2;
+  undefined1 uVar3;
+  undefined1 uVar4;
+  undefined1 uVar5;
+  short sVar6;
+  
+  nvme_nop_96a7();
+  G_BUFFER_STATE_0AA6 = *param_1;
+  G_BUFFER_STATE_0AA7 = param_1[1];
+  if (BANK0_R5 == '\0') {
+    cVar2 = G_CMD_MODE;
+    if (cVar2 != '\x01') {
+      cmd_setup_delay();
+LAB_CODE_9b54:
+      G_CMD_STATUS = 2;
+      cmd_wait_completion();
+      return;
+    }
+  }
+  else {
+    bVar1 = G_FLASH_CMD_TYPE;
+    if (bVar1 != 0) {
+      if (1 < bVar1) {
+        FUN_CODE_dd0b(bVar1 - 2);
+                    // WARNING: Subroutine does not return
+        cmd_param_setup(2,1);
+      }
+      cVar2 = G_CMD_MODE;
+      if (cVar2 == '\x01') {
+        uVar5 = 4;
+      }
+      else {
+        uVar5 = 0x10;
+      }
+      cmd_trigger_params(0,uVar5);
+      goto LAB_CODE_9b54;
+    }
+    cVar2 = G_STATE_COUNTER_0AA5;
+    if (cVar2 == '\x02') {
+      FUN_CODE_9c0f(0xf,0x23,0);
+      FUN_CODE_ddad();
+    }
+    else if (cVar2 == '\x03') {
+      FUN_CODE_9c1d(0x1f,0x23);
+      usb_buffer_dispatch();
+    }
+    else if (cVar2 == '\x04') {
+      FUN_CODE_9c1d(0x30,0x23);
+      uVar5 = G_STATE_COUNTER_HI;
+      FUN_CODE_b966(uVar5);
+    }
+    else if (cVar2 == '\x05') {
+      uVar3 = G_BUFFER_STATE_0AA6;
+      uVar4 = G_BUFFER_STATE_0AA7;
+      uVar5 = G_STATE_COUNTER_HI;
+      FUN_CODE_ca71(uVar5,uVar3,uVar4);
+    }
+    else if (cVar2 == '\x06') {
+      FUN_CODE_e973();
+    }
+    else if (cVar2 == '\x01') {
+      FUN_CODE_9c0f(1,0x23,0);
+      nvme_cmd_state_handler();
+    }
+    sVar6 = -0x3378;
+    bVar1 = REG_XFER_DMA_CTRL;
+    nvme_cmd_store_clear_cc8a(bVar1 & 0xf8 | 3);
+    nvme_cmd_store_direct(0x50,sVar6 + 1);
+    do {
+      bVar1 = REG_XFER_DMA_CMD;
+    } while ((bVar1 >> 1 & 1) == 0);
+    cmd_write_cc89_02();
+    cVar2 = G_STATE_COUNTER_0AA5;
+    if ((cVar2 != '\x06') && (bVar1 = REG_CMD_CTRL_E40F, (bVar1 & 1) != 1)) {
+      cmd_wait_completion();
+      cVar2 = G_STATE_COUNTER_0AA5;
+      if ((cVar2 == '\x04') || (cVar2 == '\x05')) {
+        cVar2 = G_SYS_FLAGS_07ED;
+        if (cVar2 == '\0') {
+                    // WARNING: Subroutine does not return
+          uart_puts(0x3d,0x23,0xff);
+        }
+        G_SYS_FLAGS_07ED = 0;
+        return;
+      }
+    }
+  }
+  return;
+}
+
+
+
+void pcie_store_r7_to_05b7(void)
+
+{
+  FUN_CODE_dd0b();
+                    // WARNING: Subroutine does not return
+  cmd_param_setup(2,1);
+}
+
+
+
+void pcie_set_0a5b_flag(undefined1 *param_1,undefined1 param_2)
+
+{
+  REG_CMD_ISSUE = param_2;
+  REG_CMD_TAG = *param_1;
+  G_CMD_STATUS = 6;
+  cmd_wait_completion();
+  return;
+}
+
+
+
+void cmd_setup_with_params(undefined1 param_1,undefined1 param_2)
+
+{
+  REG_CMD_ISSUE = param_2;
+  REG_CMD_TAG = param_1;
+  G_CMD_STATUS = 6;
+  cmd_wait_completion();
+  return;
+}
+
+
+
+void pcie_inc_0a5b(void)
+
+{
+  char cVar1;
+  undefined1 uVar2;
+  
+  cVar1 = G_CMD_MODE;
+  if (cVar1 == '\x01') {
+    uVar2 = 4;
+  }
+  else {
+    uVar2 = 0x10;
+  }
+  cmd_trigger_params(0,uVar2);
+  G_CMD_STATUS = 2;
+  cmd_wait_completion();
+  return;
+}
+
+
+
+void pcie_write_config_and_trigger(char *param_1)
+
+{
+  char cVar1;
+  undefined1 uVar2;
+  undefined1 uVar3;
+  undefined1 uVar4;
+  byte bVar5;
+  short sVar6;
+  
+  cVar1 = *param_1;
+  if (cVar1 == '\x02') {
+    FUN_CODE_9c0f(0xf,0x23);
+    FUN_CODE_ddad();
+  }
+  else if (cVar1 == '\x03') {
+    FUN_CODE_9c1d(0x1f,0x23);
+    usb_buffer_dispatch();
+  }
+  else if (cVar1 == '\x04') {
+    FUN_CODE_9c1d(0x30,0x23);
+    uVar2 = G_STATE_COUNTER_HI;
+    FUN_CODE_b966(uVar2);
+  }
+  else if (cVar1 == '\x05') {
+    uVar3 = G_BUFFER_STATE_0AA6;
+    uVar4 = G_BUFFER_STATE_0AA7;
+    uVar2 = G_STATE_COUNTER_HI;
+    FUN_CODE_ca71(uVar2,uVar3,uVar4);
+  }
+  else if (cVar1 == '\x06') {
+    FUN_CODE_e973();
+  }
+  else if (cVar1 == '\x01') {
+    FUN_CODE_9c0f(1,0x23);
+    nvme_cmd_state_handler();
+  }
+  sVar6 = -0x3378;
+  bVar5 = REG_XFER_DMA_CTRL;
+  nvme_cmd_store_clear_cc8a(bVar5 & 0xf8 | 3);
+  nvme_cmd_store_direct(0x50,sVar6 + 1);
+  do {
+    bVar5 = REG_XFER_DMA_CMD;
+  } while ((bVar5 >> 1 & 1) == 0);
+  cmd_write_cc89_02();
+  cVar1 = G_STATE_COUNTER_0AA5;
+  if ((cVar1 != '\x06') && (bVar5 = REG_CMD_CTRL_E40F, (bVar5 & 1) != 1)) {
+    cmd_wait_completion();
+    cVar1 = G_STATE_COUNTER_0AA5;
+    if ((cVar1 == '\x04') || (cVar1 == '\x05')) {
+      cVar1 = G_SYS_FLAGS_07ED;
+      if (cVar1 != '\0') {
+        G_SYS_FLAGS_07ED = 0;
+        return;
+      }
+                    // WARNING: Subroutine does not return
+      uart_puts(0x3d,0x23,0xff);
+    }
+  }
+  return;
+}
+
+
+
+void FUN_CODE_9c0f(void)
+
+{
+                    // WARNING: Subroutine does not return
+  uart_puts(0xff);
+}
+
+
+
+void FUN_CODE_9c1d(void)
+
+{
+                    // WARNING: Subroutine does not return
+  uart_puts(0xff);
+}
+
+
+
 void FUN_CODE_9ee5(undefined1 param_1)
 
 {
@@ -17608,6 +20261,66 @@ void FUN_CODE_a3eb(byte param_1)
 {
                     // WARNING: Subroutine does not return
   banked_store_byte(param_1 & 0xf0 | 0xc);
+}
+
+
+
+void pcie_config_init_a3f5(void)
+
+{
+  char cVar1;
+  byte bVar2;
+  
+  bVar2 = G_STATE_FLAG_0AF1;
+  if ((bVar2 & 1) != 0) {
+    bVar2 = REG_LINK_STATUS_E716;
+    REG_LINK_STATUS_E716 = bVar2 & 0xfc | 3;
+    bVar2 = REG_CPU_CTRL_CA81;
+    REG_CPU_CTRL_CA81 = bVar2 & 0xfe;
+    bVar2 = REG_CPU_MODE_NEXT;
+    REG_CPU_MODE_NEXT = bVar2 & 0x1f | 0x60;
+  }
+  helper_dd42(0);
+  helper_e7c1(1);
+  dispatch_event_e0d9(0);
+  cVar1 = DAT_EXTMEM_07ba;
+  if (cVar1 == '\0') {
+    cVar1 = G_VENDOR_CTRL_07B9;
+    if (cVar1 == '\0') {
+      return;
+    }
+    G_EVENT_CTRL_09FA = 0x81;
+    G_FLASH_STATUS_09FB = 2;
+  }
+  else {
+    bVar2 = G_EVENT_FLAGS;
+    G_EVENT_CTRL_09FA = bVar2 & 3;
+    cVar1 = G_FLASH_MODE_1;
+    if (cVar1 == '\x03') {
+      cVar1 = DAT_EXTMEM_07be;
+      if (cVar1 == '\0') {
+        G_EVENT_CTRL_09FA = 2;
+        G_FLASH_STATUS_09FB = 1;
+      }
+      else {
+        G_EVENT_CTRL_09FA = 1;
+        G_FLASH_STATUS_09FB = 2;
+      }
+    }
+    bVar2 = G_EVENT_CTRL_09FA;
+    if ((bVar2 >> 1 & 1) != 0) {
+      bVar2 = REG_LINK_STATUS_E716;
+      REG_LINK_STATUS_E716 = bVar2 & 0xfc;
+      bVar2 = REG_LINK_STATUS_E716;
+      REG_LINK_STATUS_E716 = bVar2 & 0xfc | 3;
+                    // WARNING: Subroutine does not return
+      banked_store_byte(2,0xd8,0x28,2);
+    }
+  }
+  dispatch_0575();
+  bVar2 = reg_read_bank_0200();
+                    // WARNING: Subroutine does not return
+  banked_store_byte(bVar2 & 0xfd | 2);
 }
 
 
@@ -18262,86 +20975,24 @@ void nvme_admin_nop_aa33(void)
 void nvme_cmd_state_handler(char param_1)
 
 {
-  char cVar1;
-  byte bVar2;
-  byte bVar3;
-  undefined1 uVar4;
-  char cVar5;
-  char cVar6;
-  undefined1 *puVar7;
+  undefined1 uVar1;
+  char cVar2;
   
-  cVar6 = cmd_call_e73a_with_params();
-  if (cVar6 != -1 || param_1 != '\0') {
+  cVar2 = cmd_call_e73a_with_params();
+  if (cVar2 != -1 || param_1 != '\0') {
     nvme_admin_call_dd0e_95a0();
     return;
   }
-  cVar6 = G_CMD_MODE;
-  if (cVar6 == '\x02') {
-    uVar4 = 5;
+  cVar2 = G_CMD_MODE;
+  if (cVar2 == '\x02') {
+    uVar1 = 5;
   }
   else {
-    uVar4 = 4;
+    uVar1 = 4;
   }
-  cmd_trigger_params(uVar4,0xf);
+  cmd_trigger_params(uVar1,0xf);
+                    // WARNING: Subroutine does not return
   cmd_param_setup(1,1);
-  REG_CMD_LBA_0 = 0x4c;
-  REG_CMD_LBA_1 = 0x17;
-  cVar6 = G_CMD_MODE;
-  if (cVar6 == '\x02') {
-    REG_CMD_LBA_2 = 0x40;
-  }
-  else {
-    REG_CMD_LBA_2 = 0;
-  }
-  cVar5 = G_FLASH_CMD_TYPE;
-  if ((cVar5 == '\0') && (cVar1 = G_EVENT_FLAGS, cVar1 < '\0')) {
-    REG_CMD_LBA_3 = 0x54;
-  }
-  else {
-    REG_CMD_LBA_3 = 0x50;
-  }
-  puVar7 = &REG_CMD_COUNT_LOW;
-  uVar4 = cmd_clear_5_bytes();
-  *puVar7 = uVar4;
-  uVar4 = G_CMD_CTRL_PARAM;
-  REG_CMD_CTRL = uVar4;
-  uVar4 = G_CMD_TIMEOUT_PARAM;
-  REG_CMD_TIMEOUT = uVar4;
-  if (cVar6 == '\x02') {
-    bVar2 = G_EVENT_FLAGS;
-    uVar4 = 2;
-    if ((bVar2 & 3) != 0) {
-      uVar4 = 3;
-    }
-    G_TLP_COUNT_HI = uVar4;
-    if ((char)bVar2 < '\0') {
-      bVar3 = G_TLP_COUNT_HI;
-      G_TLP_COUNT_HI = bVar3 | 8;
-    }
-    if (cVar5 == '\0') {
-      uVar4 = G_TLP_COUNT_HI;
-      REG_CMD_PARAM_L = uVar4;
-    }
-    else {
-      REG_CMD_PARAM_L = 2;
-    }
-    REG_CMD_PARAM_H = 0;
-    REG_CMD_EXT_PARAM_0 = 0x80;
-    cVar6 = G_FLASH_CMD_TYPE;
-    if ((cVar6 == '\0') && ((bVar2 & 3) != 0)) {
-      REG_CMD_EXT_PARAM_1 = 0x6d;
-      nvme_admin_set_state_07c4();
-      return;
-    }
-    REG_CMD_EXT_PARAM_1 = 0x65;
-  }
-  cVar6 = G_CMD_MODE;
-  if (cVar6 == '\x02') {
-    G_CMD_STATUS = 0x16;
-    return;
-  }
-  G_CMD_STATUS = 0x12;
-  return;
 }
 
 
@@ -18349,148 +21000,18 @@ void nvme_cmd_state_handler(char param_1)
 void FUN_CODE_aa4f(void)
 
 {
-  char cVar1;
-  byte bVar2;
-  byte bVar3;
-  char cVar4;
-  char cVar5;
-  undefined1 uVar6;
-  undefined1 *puVar7;
-  
   cmd_trigger_params();
+                    // WARNING: Subroutine does not return
   cmd_param_setup(1,1);
-  REG_CMD_LBA_0 = 0x4c;
-  REG_CMD_LBA_1 = 0x17;
-  cVar5 = G_CMD_MODE;
-  if (cVar5 == '\x02') {
-    REG_CMD_LBA_2 = 0x40;
-  }
-  else {
-    REG_CMD_LBA_2 = 0;
-  }
-  cVar4 = G_FLASH_CMD_TYPE;
-  if ((cVar4 == '\0') && (cVar1 = G_EVENT_FLAGS, cVar1 < '\0')) {
-    REG_CMD_LBA_3 = 0x54;
-  }
-  else {
-    REG_CMD_LBA_3 = 0x50;
-  }
-  puVar7 = &REG_CMD_COUNT_LOW;
-  uVar6 = cmd_clear_5_bytes();
-  *puVar7 = uVar6;
-  uVar6 = G_CMD_CTRL_PARAM;
-  REG_CMD_CTRL = uVar6;
-  uVar6 = G_CMD_TIMEOUT_PARAM;
-  REG_CMD_TIMEOUT = uVar6;
-  if (cVar5 == '\x02') {
-    bVar2 = G_EVENT_FLAGS;
-    uVar6 = 2;
-    if ((bVar2 & 3) != 0) {
-      uVar6 = 3;
-    }
-    G_TLP_COUNT_HI = uVar6;
-    if ((char)bVar2 < '\0') {
-      bVar3 = G_TLP_COUNT_HI;
-      G_TLP_COUNT_HI = bVar3 | 8;
-    }
-    if (cVar4 == '\0') {
-      uVar6 = G_TLP_COUNT_HI;
-      REG_CMD_PARAM_L = uVar6;
-    }
-    else {
-      REG_CMD_PARAM_L = 2;
-    }
-    REG_CMD_PARAM_H = 0;
-    REG_CMD_EXT_PARAM_0 = 0x80;
-    cVar5 = G_FLASH_CMD_TYPE;
-    if ((cVar5 == '\0') && ((bVar2 & 3) != 0)) {
-      REG_CMD_EXT_PARAM_1 = 0x6d;
-      nvme_admin_set_state_07c4();
-      return;
-    }
-    REG_CMD_EXT_PARAM_1 = 0x65;
-  }
-  cVar5 = G_CMD_MODE;
-  if (cVar5 == '\x02') {
-    G_CMD_STATUS = 0x16;
-    return;
-  }
-  G_CMD_STATUS = 0x12;
-  return;
 }
 
 
 
-void FUN_CODE_aa56(void)
+void cmd_param_setup(void)
 
 {
-  char cVar1;
-  byte bVar2;
-  byte bVar3;
-  char cVar4;
-  char cVar5;
-  undefined1 uVar6;
-  undefined1 *puVar7;
-  
+                    // WARNING: Subroutine does not return
   cmd_param_setup();
-  REG_CMD_LBA_0 = 0x4c;
-  REG_CMD_LBA_1 = 0x17;
-  cVar5 = G_CMD_MODE;
-  if (cVar5 == '\x02') {
-    REG_CMD_LBA_2 = 0x40;
-  }
-  else {
-    REG_CMD_LBA_2 = 0;
-  }
-  cVar4 = G_FLASH_CMD_TYPE;
-  if ((cVar4 == '\0') && (cVar1 = G_EVENT_FLAGS, cVar1 < '\0')) {
-    REG_CMD_LBA_3 = 0x54;
-  }
-  else {
-    REG_CMD_LBA_3 = 0x50;
-  }
-  puVar7 = &REG_CMD_COUNT_LOW;
-  uVar6 = cmd_clear_5_bytes();
-  *puVar7 = uVar6;
-  uVar6 = G_CMD_CTRL_PARAM;
-  REG_CMD_CTRL = uVar6;
-  uVar6 = G_CMD_TIMEOUT_PARAM;
-  REG_CMD_TIMEOUT = uVar6;
-  if (cVar5 == '\x02') {
-    bVar2 = G_EVENT_FLAGS;
-    uVar6 = 2;
-    if ((bVar2 & 3) != 0) {
-      uVar6 = 3;
-    }
-    G_TLP_COUNT_HI = uVar6;
-    if ((char)bVar2 < '\0') {
-      bVar3 = G_TLP_COUNT_HI;
-      G_TLP_COUNT_HI = bVar3 | 8;
-    }
-    if (cVar4 == '\0') {
-      uVar6 = G_TLP_COUNT_HI;
-      REG_CMD_PARAM_L = uVar6;
-    }
-    else {
-      REG_CMD_PARAM_L = 2;
-    }
-    REG_CMD_PARAM_H = 0;
-    REG_CMD_EXT_PARAM_0 = 0x80;
-    cVar5 = G_FLASH_CMD_TYPE;
-    if ((cVar5 == '\0') && ((bVar2 & 3) != 0)) {
-      REG_CMD_EXT_PARAM_1 = 0x6d;
-      nvme_admin_set_state_07c4();
-      return;
-    }
-    REG_CMD_EXT_PARAM_1 = 0x65;
-  }
-  cVar5 = G_CMD_MODE;
-  if (cVar5 == '\x02') {
-    G_CMD_STATUS = 0x16;
-    return;
-  }
-  G_CMD_STATUS = 0x12;
-  return;
 }
 
 
@@ -19229,6 +21750,24 @@ void nvme_admin_abe9(void)
 {
   xdata_store_dword(0xb220,0);
   FUN_CODE_e902();
+  return;
+}
+
+
+
+void timer0_wait_done(char param_1)
+
+{
+  byte bVar1;
+  
+  do {
+    bVar1 = REG_TIMER0_CSR;
+  } while ((bVar1 >> 1 & 1) == 0);
+  REG_TIMER0_CSR = 2;
+  cmd_wait_completion();
+  if (param_1 != '\0') {
+    FUN_CODE_e81b(2,0x30);
+  }
   return;
 }
 
@@ -20383,6 +22922,45 @@ void handler_b8c3(void)
 
 
 
+void FUN_CODE_b966(undefined1 param_1,undefined1 param_2,undefined1 param_3)
+
+{
+  char cVar1;
+  undefined1 uVar2;
+  undefined1 uVar3;
+  byte bVar4;
+  
+  G_TLP_COUNT_HI = param_2;
+  G_TLP_COUNT_LO = param_3;
+  G_TLP_STATUS = param_1;
+  uVar2 = cmd_calc_slot_addr();
+  uVar3 = cmd_read_indexed(uVar2);
+  uVar3 = FUN_CODE_95f2(uVar3);
+  DAT_EXTMEM_07cd = uVar3;
+  bVar4 = cmd_read_indexed(uVar2);
+  cmd_extract_bits67_write(0x7ce,bVar4 & 0x40);
+  FUN_CODE_957c();
+  bVar4 = cmd_read_indexed();
+  G_VENDOR_MODE_07CF = bVar4 & 7;
+  FUN_CODE_dd0b();
+  bVar4 = G_TLP_COUNT_HI;
+  bVar4 = bVar4 ^ 0x87;
+  if (bVar4 == 0) {
+    bVar4 = G_TLP_COUNT_LO;
+    bVar4 = bVar4 ^ 0x80;
+  }
+  if ((((bVar4 == 0) && (cVar1 = G_TLP_STATUS, cVar1 == '\x01')) &&
+      (cVar1 = G_EVENT_FLAGS, cVar1 < '\0')) && (cVar1 = G_FLASH_CMD_TYPE, cVar1 == '\0')) {
+    cpu_dma_channel_91_trigger_e93a();
+                    // WARNING: Subroutine does not return
+    cmd_param_setup(1,4);
+  }
+                    // WARNING: Subroutine does not return
+  cmd_param_setup(2,4);
+}
+
+
+
 char nvme_completion_poll(void)
 
 {
@@ -21273,6 +23851,17 @@ void reg_delay_param_setup(void)
 
 
 
+byte reg_read_phy_lanes(void)
+
+{
+  byte bVar1;
+  
+  bVar1 = REG_PHY_MODE_E302;
+  return (bVar1 & 0x30) >> 4;
+}
+
+
+
 void FUN_CODE_bf0f(void)
 
 {
@@ -21517,6 +24106,34 @@ char FUN_CODE_c089(undefined1 param_1)
     bVar1 = G_TLP_STATUS;
   } while ((bVar1 < 4) << 7 < '\0');
   return bVar1 - 4;
+}
+
+
+
+void pcie_event_handler(void)
+
+{
+  byte bVar1;
+  
+  bVar1 = reg_read_bank_1407();
+  if ((bVar1 & 1) != 0) {
+    pcie_interrupt_handler();
+  }
+  bVar1 = reg_read_bank_1407();
+  if ((bVar1 >> 3 & 1) != 0) {
+    dispatch_0543();
+  }
+  bVar1 = reg_read_bank_1603();
+  if ((bVar1 & 1) != 0) {
+                    // WARNING: Subroutine does not return
+    banked_store_byte(1);
+  }
+  bVar1 = reg_read_bank_1603();
+  if ((bVar1 >> 1 & 1) != 0) {
+                    // WARNING: Subroutine does not return
+    banked_store_byte(2);
+  }
+  return;
 }
 
 
@@ -22233,6 +24850,19 @@ char FUN_CODE_c451(char param_1)
 
 
 
+undefined1 FUN_CODE_c45f(undefined1 param_1)
+
+{
+  undefined1 uVar1;
+  
+  REG_PCIE_STATUS = 4;
+  REG_PCIE_DOORBELL_CMD = param_1;
+  uVar1 = G_SYS_STATUS_PRIMARY;
+  return uVar1;
+}
+
+
+
 void FUN_CODE_c472(void)
 
 {
@@ -22732,6 +25362,27 @@ void power_state_handler(void)
 
 
 
+void FUN_CODE_ca71(undefined1 param_1,undefined1 param_2,undefined1 param_3)
+
+{
+  char cVar1;
+  
+  G_TLP_COUNT_HI = param_2;
+  G_TLP_COUNT_LO = param_3;
+  G_TLP_STATUS = param_1;
+  FUN_CODE_dd0b();
+  cVar1 = G_TLP_COUNT_HI;
+  if ((((cVar1 == -0x79) && (cVar1 = G_TLP_COUNT_LO, cVar1 == -0x80)) &&
+      (cVar1 = G_TLP_STATUS, cVar1 == '\x01')) && (cVar1 = G_VENDOR_CTRL_07B9, cVar1 != '\0')) {
+                    // WARNING: Subroutine does not return
+    cmd_param_setup(1,5);
+  }
+                    // WARNING: Subroutine does not return
+  cmd_param_setup(2,5);
+}
+
+
+
 void FUN_CODE_cad5(undefined1 param_1,undefined1 *param_2)
 
 {
@@ -22930,6 +25581,42 @@ void power_clear_suspended(void)
 {
   G_INTERFACE_READY_0B2F = 0;
   G_SYS_FLAGS_07EB = 0;
+  return;
+}
+
+
+
+void power_config_init(void)
+
+{
+  byte bVar1;
+  
+  REG_POWER_CTRL_92C6 = 5;
+  REG_POWER_CTRL_92C7 = 0;
+  bVar1 = REG_USB_CTRL_9201;
+  REG_USB_CTRL_9201 = bVar1 & 0xfe;
+  bVar1 = REG_USB_CTRL_9201;
+  REG_USB_CTRL_9201 = bVar1 & 0xfd;
+  bVar1 = REG_CLOCK_ENABLE;
+  REG_CLOCK_ENABLE = bVar1 & 0xfd | 2;
+  bVar1 = REG_USB_CTRL_920C;
+  REG_USB_CTRL_920C = bVar1 & 0xfd;
+  bVar1 = REG_USB_CTRL_920C;
+  REG_USB_CTRL_920C = bVar1 & 0xfe;
+  bVar1 = REG_PHY_LINK_CONFIG_C20C;
+  REG_PHY_LINK_CONFIG_C20C = bVar1 & 0xbf | 0x40;
+  bVar1 = REG_PHY_LINK_CTRL_C208;
+  REG_PHY_LINK_CTRL_C208 = bVar1 & 0xef;
+  bVar1 = REG_POWER_ENABLE;
+  REG_POWER_ENABLE = bVar1 & 0xfe | 1;
+  bVar1 = REG_CLOCK_ENABLE;
+  REG_CLOCK_ENABLE = bVar1 & 0xfe | 1;
+  bVar1 = REG_PHY_POWER;
+  REG_PHY_POWER = bVar1 & 0xfb | 4;
+  bVar1 = REG_USB_PHY_CONFIG_9241;
+  REG_USB_PHY_CONFIG_9241 = bVar1 & 0xef | 0x10;
+  bVar1 = REG_USB_PHY_CONFIG_9241;
+  REG_USB_PHY_CONFIG_9241 = bVar1 & 0x3f | 0xc0;
   return;
 }
 
@@ -23197,6 +25884,17 @@ void FUN_CODE_ccb3(void)
   bVar1 = pcie_read_link_state();
                     // WARNING: Subroutine does not return
   banked_store_byte(bVar1 & 0xf0 | 0xe);
+}
+
+
+
+void pcie_tunnel_setup(void)
+
+{
+  FUN_CODE_cb08();
+  do {
+                    // WARNING: Do nothing block with infinite loop
+  } while( true );
 }
 
 
@@ -24171,6 +26869,29 @@ void usb_buffer_handler(void)
 
 
 
+void usb_buffer_dispatch(byte param_1)
+
+{
+  char cVar1;
+  byte bVar2;
+  
+  bVar2 = cmd_call_e73a_with_params();
+  bVar2 = bVar2 ^ 0x80;
+  if (bVar2 == 0) {
+    bVar2 = param_1 ^ 0x87;
+  }
+  if ((bVar2 == 0) && (cVar1 = G_EVENT_FLAGS, cVar1 < '\0')) {
+    cmd_call_dd12_config();
+                    // WARNING: Subroutine does not return
+    cmd_param_setup(3);
+  }
+  cmd_trigger_default();
+  nvme_cmd_issue_alternate(2,3);
+  return;
+}
+
+
+
 void phy_register_config(void)
 
 {
@@ -24605,6 +27326,30 @@ void FUN_CODE_dcd4(char param_1)
 
 
 
+void FUN_CODE_dd0b(void)
+
+{
+  byte bVar1;
+  byte bVar2;
+  undefined2 uVar3;
+  
+  cmd_engine_clear();
+  bVar1 = G_CMD_MODE;
+  if ((bVar1 == 2) || (bVar1 == 3)) {
+    REG_CMD_TRIGGER = 0x80;
+  }
+  else {
+    REG_CMD_TRIGGER = 0x40;
+  }
+  uVar3 = 0xe420;
+  cmd_config_e405_e421(1,0xf);
+  bVar2 = cmd_read_state_shift();
+  cmd_clear_trigger_bits(bVar1 | bVar2,uVar3);
+  return;
+}
+
+
+
 void cmd_trigger_default(void)
 
 {
@@ -24674,6 +27419,24 @@ void helper_dd42(char param_1)
       return;
     }
   }
+  return;
+}
+
+
+
+void FUN_CODE_ddad(char param_1)
+
+{
+  char cVar1;
+  
+  cVar1 = cmd_call_e73a_with_params();
+  if ((cVar1 == -1 && param_1 == '\0') && (cVar1 = G_EVENT_FLAGS, cVar1 < '\0')) {
+    cmd_call_dd12_config();
+                    // WARNING: Subroutine does not return
+    cmd_param_setup(2);
+  }
+  cmd_trigger_default();
+  cmd_call_e120_setup(2);
   return;
 }
 
@@ -25462,6 +28225,28 @@ void FUN_CODE_e5fe(void)
 
 
 
+void helper_0412(undefined1 *param_1)
+
+{
+  byte bVar1;
+  char cVar2;
+  
+  cVar2 = FUN_CODE_c45f();
+  if (cVar2 == '\0') {
+    *param_1 = 1;
+  }
+  else {
+    *param_1 = 2;
+  }
+  do {
+    bVar1 = REG_PCIE_STATUS;
+  } while ((bVar1 >> 2 & 1) == 0);
+  error_log_set_status();
+  return;
+}
+
+
+
 void FUN_CODE_e677(void)
 
 {
@@ -26006,6 +28791,15 @@ void FUN_CODE_e933(void)
 
 
 
+void cpu_dma_channel_91_trigger_e93a(void)
+
+{
+  timer0_csr_ack(0xcc91);
+  return;
+}
+
+
+
 void FUN_CODE_e957(void)
 
 {
@@ -26043,6 +28837,14 @@ void thunk_FUN_CODE_de16(void)
   DAT_EXTMEM_cc2c = 199;
   DAT_EXTMEM_cc2d = 199;
   FUN_CODE_c35b();
+  return;
+}
+
+
+
+void FUN_CODE_e973(void)
+
+{
   return;
 }
 
@@ -36409,7 +39211,147 @@ LAB_CODE_0104:
 
 
 
-void FUN_CODE_BANK1__851b(char param_1,undefined1 *param_2,undefined1 param_3)
+// WARNING: Instruction at (CODE,0x83c0) overlaps instruction at (CODE,0x83bf)
+// 
+
+void pcie_addr_store_839c(byte param_1,byte *param_2,char param_3)
+
+{
+  undefined1 uVar1;
+  byte bVar2;
+  char cVar3;
+  
+  if (param_1 == 0x25) {
+    bVar2 = *(byte *)CONCAT11('\n' - (((param_1 < 0x25) << 7) >> 7),0x25);
+    if ((bVar2 >> 1 & 1) != 0) {
+                    // WARNING: Subroutine does not return
+      thunk_FUN_CODE_BANK1__91f5();
+    }
+    if ((bVar2 & 1) == 0) {
+      cVar3 = FUN_CODE_BANK1__99d1();
+      if (cVar3 == '\0') {
+        uVar1 = 0x6a;
+      }
+      else {
+        uVar1 = 0x6c;
+      }
+      flash_write_word(DAT_INTMEM_23,DAT_INTMEM_24,uVar1);
+                    // WARNING: Subroutine does not return
+      thunk_FUN_CODE_BANK1__91f5();
+    }
+  }
+  else {
+    bVar2 = *param_2;
+    param_3 = param_3 + -1;
+  }
+                    // WARNING: Subroutine does not return
+  thunk_FUN_CODE_BANK1__91f5(bVar2,param_3);
+}
+
+
+
+void pcie_addr_store_83b9(undefined1 param_1,byte param_2)
+
+{
+  undefined1 uVar1;
+  char cVar2;
+  
+  DAT_INTMEM_23 = 0;
+  DAT_INTMEM_24 = param_1;
+  if ((param_2 & 1) != 0) {
+                    // WARNING: Subroutine does not return
+    thunk_FUN_CODE_BANK1__91f5();
+  }
+  cVar2 = FUN_CODE_BANK1__99d1();
+  if (cVar2 == '\0') {
+    uVar1 = 0x6a;
+  }
+  else {
+    uVar1 = 0x6c;
+  }
+  flash_write_word(DAT_INTMEM_23,DAT_INTMEM_24,uVar1);
+                    // WARNING: Subroutine does not return
+  thunk_FUN_CODE_BANK1__91f5();
+}
+
+
+
+void FUN_CODE_BANK1__850b(char param_1)
+
+{
+  char cVar1;
+  
+  cVar1 = DAT_EXTMEM_0779;
+  DAT_INTMEM_70 = param_1;
+  if (cVar1 == '\0') {
+    FUN_CODE_BANK1__86e8();
+    return;
+  }
+  FUN_CODE_BANK1__8522(param_1 + '\x01');
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__851b(char param_1,undefined1 *param_2)
+
+{
+  if (param_1 != '\x02') {
+    FUN_CODE_BANK1__86fb();
+    return;
+  }
+  func_0xd1f2();
+  *param_2 = 0x20;
+  FUN_CODE_BANK1__86fb();
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__8522(undefined1 *param_1)
+
+{
+  func_0xd1f2();
+  *param_1 = 0x20;
+  FUN_CODE_BANK1__86fb();
+  return;
+}
+
+
+
+byte FUN_CODE_BANK1__86e8(byte *param_1,byte param_2,char *param_3,char param_4)
+
+{
+  char cVar1;
+  byte bVar2;
+  
+  if (param_4 == 'p') {
+    bVar2 = *(byte *)(ushort)param_2 >> 1 | *(byte *)(ushort)param_2 << 7;
+  }
+  else {
+    *param_3 = *param_3 + '\x01';
+    bVar2 = *param_1;
+    if ((bVar2 == 0) && (bVar2 = param_1[1], bVar2 == 0)) {
+      cVar1 = DAT_EXTMEM_0767;
+      if (cVar1 != '\0') {
+        DAT_INTMEM_21 = 0;
+        bVar2 = func_0xd20d();
+        return bVar2;
+      }
+      bVar2 = func_0xd211(0x21ad);
+      if ((bVar2 & 1) != 0) {
+        usb_desc_setup_8992(0x86);
+      }
+      bVar2 = func_0xd20d();
+      return bVar2;
+    }
+  }
+  return bVar2;
+}
+
+
+
+void FUN_CODE_BANK1__86fb(undefined1 param_1)
 
 {
   byte bVar1;
@@ -36417,26 +39359,298 @@ void FUN_CODE_BANK1__851b(char param_1,undefined1 *param_2,undefined1 param_3)
   byte bVar3;
   byte *pbVar4;
   
-  if (param_1 == '\x02') {
-    func_0xd1f2();
-    *param_2 = 0x20;
-  }
   pbVar4 = &DAT_EXTMEM_21ae;
   bVar3 = DAT_CODE_21ae;
   bVar1 = DAT_INTMEM_21;
-  DAT_INTMEM_70 = param_3;
-  bVar2 = func_0xd26c(DAT_CODE_21ae,CARRY1(DAT_CODE_21ae,DAT_INTMEM_21),
-                      DAT_CODE_21ae + DAT_INTMEM_21);
+  DAT_INTMEM_70 = param_1;
+  bVar2 = FUN_CODE_BANK1__d26c
+                    (DAT_CODE_21ae,CARRY1(DAT_CODE_21ae,DAT_INTMEM_21),DAT_CODE_21ae + DAT_INTMEM_21
+                    );
   *pbVar4 = bVar2 & 0xef;
-  bVar2 = func_0xd26c();
+  bVar2 = FUN_CODE_BANK1__d26c();
   *pbVar4 = bVar2 & 0x7f;
   bVar3 = func_0xd24b(bVar3 + bVar1);
   *pbVar4 = bVar3 & 0xdf;
-  func_0xd229();
+  FUN_CODE_BANK1__d229();
   *pbVar4 = 0;
-  func_0xd1e6();
-  *pbVar4 = 0x20;
-  *pbVar4 = bVar1;
+  FUN_CODE_BANK1__8773();
+  return;
+}
+
+
+
+void flash_dispatch_stub_873a(char param_1,undefined1 *param_2,undefined1 param_3)
+
+{
+  char cVar1;
+  undefined1 uVar2;
+  
+  DAT_SFR_bf = param_3;
+  if (param_1 != '\0') {
+    if (DAT_INTMEM_22 != '\x02') {
+      FUN_CODE_BANK1__8970();
+      return;
+    }
+    FUN_CODE_BANK1__d1e6();
+    *param_2 = 0x20;
+    FUN_CODE_BANK1__8970();
+    return;
+  }
+  FUN_CODE_BANK1__ed23();
+  if (*(char *)CONCAT11('\v' - (((0xd7 < DAT_INTMEM_21) << 7) >> 7),DAT_INTMEM_21 + 0x28) < '\0') {
+    cVar1 = FUN_CODE_BANK1__d265();
+    if (cVar1 == '\0') {
+      uVar2 = 1;
+    }
+    else {
+      uVar2 = 2;
+    }
+                    // WARNING: Subroutine does not return
+    banked_store_byte(uVar2,0x40);
+  }
+  FUN_CODE_BANK1__8773();
+  return;
+}
+
+
+
+void flash_dispatch_stub_8743(byte param_1)
+
+{
+  char cVar1;
+  undefined1 uVar2;
+  
+  if (*(char *)CONCAT11('\v' - ((CARRY1(param_1,DAT_INTMEM_21) << 7) >> 7),param_1 + DAT_INTMEM_21)
+      < '\0') {
+    cVar1 = FUN_CODE_BANK1__d265();
+    if (cVar1 == '\0') {
+      uVar2 = 1;
+    }
+    else {
+      uVar2 = 2;
+    }
+                    // WARNING: Subroutine does not return
+    banked_store_byte(uVar2,0x40);
+  }
+  FUN_CODE_BANK1__8773();
+  return;
+}
+
+
+
+void flash_dispatch_stub_874c(char *param_1)
+
+{
+  char cVar1;
+  undefined1 uVar2;
+  
+  if (*param_1 < '\0') {
+    cVar1 = FUN_CODE_BANK1__d265();
+    if (cVar1 == '\0') {
+      uVar2 = 1;
+    }
+    else {
+      uVar2 = 2;
+    }
+                    // WARNING: Subroutine does not return
+    banked_store_byte(uVar2,0x40);
+  }
+  FUN_CODE_BANK1__8773();
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__8773(undefined1 *param_1)
+
+{
+  FUN_CODE_BANK1__d1e6();
+  *param_1 = 0x20;
+  FUN_CODE_BANK1__8970();
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__8970(undefined1 *param_1,undefined1 param_2)
+
+{
+  *param_1 = param_2;
+                    // WARNING: Subroutine does not return
+  dma_transfer_state_dispatch(6);
+}
+
+
+
+void usb_desc_setup_897d(char param_1)
+
+{
+  undefined1 uVar1;
+  undefined1 uVar2;
+  char cVar3;
+  byte bVar4;
+  byte *pbVar5;
+  undefined1 *puVar6;
+  
+  thunk_FUN_CODE_BANK1__ad88();
+  cVar3 = G_STATE_0AE8;
+  if (cVar3 == '\0') {
+    DAT_INTMEM_25 = cVar3;
+                    // WARNING: Subroutine does not return
+    thunk_FUN_CODE_BANK1__a890(0x18);
+  }
+  DAT_INTMEM_27 = DAT_EXTMEM_f04d;
+  pbVar5 = &DAT_EXTMEM_05d4;
+  mul_add_index(DAT_INTMEM_28,0x22);
+  if ((*pbVar5 >> 1 & 1) == 0) {
+    if ((4 < DAT_INTMEM_27) || (DAT_INTMEM_27 == 0)) {
+      DAT_INTMEM_27 = 4;
+    }
+  }
+  else if ((5 < DAT_INTMEM_27) || (DAT_INTMEM_27 == 0)) {
+    DAT_INTMEM_27 = 5;
+  }
+  if (DAT_INTMEM_27 < 2) {
+    return;
+  }
+  cVar3 = FUN_CODE_BANK1__ab2e(DAT_INTMEM_27 - 2);
+  while (param_1 = param_1 + -1, param_1 != '\0') {
+    cVar3 = cVar3 << 1;
+  }
+  DAT_EXTMEM_0aff = cVar3;
+  cVar3 = G_EP_CFG_FLAG_0A5B;
+  *(byte *)CONCAT11('\x05' - (((0x80U < (byte)(cVar3 * '\n')) << 7) >> 7),cVar3 * '\n' + 0x7f) =
+       DAT_INTMEM_27;
+  uVar1 = DAT_EXTMEM_f204;
+  *(undefined1 *)CONCAT11('\x05' - (((0x7fU < (byte)(cVar3 * '\n')) << 7) >> 7),cVar3 * '\n' + 0x80)
+       = uVar1;
+  uVar2 = DAT_EXTMEM_f208;
+  puVar6 = &G_EP_CFG_FLAG_0A5B;
+  uVar1 = G_EP_CFG_FLAG_0A5B;
+  FUN_CODE_BANK1__aa94(uVar1);
+  *puVar6 = uVar2;
+  bVar4 = func_0xab45();
+  *(undefined1 *)CONCAT11('\x05' - (((0x7d < bVar4) << 7) >> 7),bVar4 + 0x82) = uVar2;
+  bVar4 = DAT_EXTMEM_f20d;
+                    // WARNING: Subroutine does not return
+  FUN_CODE_BANK1__aaed(uVar1,bVar4 & 1);
+}
+
+
+
+void usb_desc_setup_8992(byte param_1,undefined1 param_2,undefined1 param_3)
+
+{
+  byte bVar1;
+  char cVar2;
+  
+  bVar1 = TXFLG;
+  cVar2 = TXFLG;
+  *(undefined1 *)
+   CONCAT11(param_1 + cVar2 +
+            ('\x01' - ((char)((CARRY1(param_1,bVar1) & param_1 + cVar2 >> 4 & 1) << 7) >> 7)),
+            param_2) = param_3;
+  DAT_INTMEM_25 = DAT_INTMEM_25 + '\x01';
+  if (DAT_INTMEM_25 == '\b') {
+    DAT_INTMEM_25 = 0;
+                    // WARNING: Subroutine does not return
+    thunk_FUN_CODE_BANK1__a890(0x20);
+  }
+                    // WARNING: Subroutine does not return
+  thunk_FUN_CODE_BANK1__a890(0x18);
+}
+
+
+
+void usb_desc_setup_89ad(undefined1 param_1)
+
+{
+  *(undefined1 *)CONCAT11('\x01' - (((0x3a < DAT_INTMEM_25) << 7) >> 7),DAT_INTMEM_25 - 0x3b) =
+       param_1;
+  DAT_INTMEM_25 = DAT_INTMEM_25 + 1;
+  if (DAT_INTMEM_25 == '\x10') {
+    DAT_INTMEM_25 = 0;
+                    // WARNING: Subroutine does not return
+    thunk_FUN_CODE_BANK1__a890(4);
+  }
+                    // WARNING: Subroutine does not return
+  thunk_FUN_CODE_BANK1__a890(0x20);
+}
+
+
+
+void usb_desc_setup_89c6(void)
+
+{
+                    // WARNING: Subroutine does not return
+  thunk_FUN_CODE_BANK1__a890();
+}
+
+
+
+void usb_xfer_nop_8a3a(byte param_1,char param_2)
+
+{
+  undefined1 uVar1;
+  undefined1 uVar2;
+  byte bVar3;
+  undefined1 *puVar4;
+  
+  *(undefined1 *)CONCAT11('\x05' - (((0x80 < param_1) << 7) >> 7),param_1 + 0x7f) = DAT_INTMEM_27;
+  uVar1 = DAT_EXTMEM_f204;
+  *(undefined1 *)
+   CONCAT11('\x05' - (((0x7fU < (byte)(param_2 * '\n')) << 7) >> 7),param_2 * '\n' + 0x80) = uVar1;
+  uVar2 = DAT_EXTMEM_f208;
+  puVar4 = &G_EP_CFG_FLAG_0A5B;
+  uVar1 = G_EP_CFG_FLAG_0A5B;
+  FUN_CODE_BANK1__aa94(uVar1);
+  *puVar4 = uVar2;
+  bVar3 = func_0xab45();
+  *(undefined1 *)CONCAT11('\x05' - (((0x7d < bVar3) << 7) >> 7),bVar3 + 0x82) = uVar2;
+  bVar3 = DAT_EXTMEM_f20d;
+                    // WARNING: Subroutine does not return
+  FUN_CODE_BANK1__aaed(uVar1,bVar3 & 1);
+}
+
+
+
+void usb_xfer_setup_8a7e(undefined1 param_1)
+
+{
+  byte bVar1;
+  
+  bVar1 = DAT_EXTMEM_f20d;
+                    // WARNING: Subroutine does not return
+  FUN_CODE_BANK1__aaed(param_1,bVar1 & 1);
+}
+
+
+
+void usb_xfer_flash_dispatch_8a89(undefined1 *param_1,undefined1 param_2,undefined1 param_3)
+
+{
+  undefined1 uVar1;
+  byte bVar2;
+  undefined1 uVar3;
+  undefined1 *puVar4;
+  
+  *param_1 = param_3;
+  bVar2 = FUN_CODE_BANK1__ab44(0xf107);
+  *(undefined1 *)CONCAT11('\x05' - (((0x7b < bVar2) << 7) >> 7),bVar2 + 0x84) = param_3;
+  bVar2 = FUN_CODE_BANK1__ab44(0xf100);
+  *(undefined1 *)CONCAT11('\x05' - (((0x7a < bVar2) << 7) >> 7),bVar2 + 0x85) = param_3;
+  bVar2 = FUN_CODE_BANK1__ab44(0xf101);
+  *(undefined1 *)CONCAT11('\x05' - (((0x79 < bVar2) << 7) >> 7),bVar2 + 0x86) = param_3;
+  G_SYS_STATUS_PRIMARY = param_2;
+  uVar1 = DAT_EXTMEM_0579;
+  G_SYS_STATUS_SECONDARY = uVar1;
+  DAT_INTMEM_26 = 0;
+  uVar3 = 1;
+  uVar1 = DAT_EXTMEM_0579;
+  puVar4 = &G_SCSI_CMD_TYPE;
+  FUN_CODE_BANK1__aa2e(uVar1);
+  *puVar4 = uVar3;
+  G_LOG_PROCESS_STATE = 0;
                     // WARNING: Subroutine does not return
   dma_transfer_state_dispatch(6);
 }
@@ -36490,7 +39704,7 @@ void FUN_CODE_BANK1__8bc8(char param_1,undefined1 param_2,byte param_3)
     bVar1 = (0xf3 < DAT_INTMEM_27 ^ 0x80U) <
             0x80U - (((DAT_INTMEM_27 + 0xc < cVar2 + 1U) << 7) >> 7);
     if (!bVar1) {
-      cVar2 = func_0xab33(cVar8 - (cVar2 - ((bVar1 << 7) >> 7)));
+      cVar2 = FUN_CODE_BANK1__ab2e(cVar8 - (cVar2 - ((bVar1 << 7) >> 7)));
       while (cVar3 = cVar3 + -1, cVar3 != '\0') {
         cVar2 = cVar2 << 1;
       }
@@ -36557,7 +39771,7 @@ void FUN_CODE_BANK1__8bc8(char param_1,undefined1 param_2,byte param_3)
     DAT_EXTMEM_0579 = cVar2 + '\x01';
     DAT_INTMEM_26 = DAT_INTMEM_26 + '\x01';
     if (DAT_INTMEM_26 != '\0') {
-      func_0x8e27(7);
+      FUN_CODE_BANK1__8e27(7);
       G_LOG_PROCESS_STATE = 8;
                     // WARNING: Subroutine does not return
       dma_transfer_state_dispatch(9);
@@ -36590,7 +39804,7 @@ void FUN_CODE_BANK1__8bc8(char param_1,undefined1 param_2,byte param_3)
     param_3 = *pbVar10 - 9;
     func_0xaaa2(param_2);
     *pbVar10 = param_3;
-    param_1 = func_0xab2e();
+    param_1 = FUN_CODE_BANK1__ab2e();
     while (cVar2 = cVar2 + -1, cVar2 != '\0') {
       param_1 = param_1 << 1;
     }
@@ -36639,7 +39853,7 @@ void FUN_CODE_BANK1__8be6(byte param_1,char param_2,undefined1 param_3)
     bVar1 = (0xf3 < DAT_INTMEM_27 ^ 0x80U) <
             0x80U - (((DAT_INTMEM_27 + 0xc < cVar2 + 1U) << 7) >> 7);
     if (!bVar1) {
-      cVar2 = func_0xab33(param_2 - (cVar2 - ((bVar1 << 7) >> 7)));
+      cVar2 = FUN_CODE_BANK1__ab2e(param_2 - (cVar2 - ((bVar1 << 7) >> 7)));
       while (cVar3 = cVar3 + -1, cVar3 != '\0') {
         cVar2 = cVar2 << 1;
       }
@@ -36706,7 +39920,7 @@ void FUN_CODE_BANK1__8be6(byte param_1,char param_2,undefined1 param_3)
     DAT_EXTMEM_0579 = cVar2 + '\x01';
     DAT_INTMEM_26 = DAT_INTMEM_26 + '\x01';
     if (DAT_INTMEM_26 != '\0') {
-      func_0x8e27(7);
+      FUN_CODE_BANK1__8e27(7);
       G_LOG_PROCESS_STATE = 8;
                     // WARNING: Subroutine does not return
       dma_transfer_state_dispatch(9);
@@ -36739,7 +39953,7 @@ void FUN_CODE_BANK1__8be6(byte param_1,char param_2,undefined1 param_3)
     bVar8 = *pbVar9 - 9;
     func_0xaaa2(param_3);
     *pbVar9 = bVar8;
-    cVar3 = func_0xab2e();
+    cVar3 = FUN_CODE_BANK1__ab2e();
     while (cVar2 = cVar2 + -1, cVar2 != '\0') {
       cVar3 = cVar3 << 1;
     }
@@ -36761,7 +39975,7 @@ void FUN_CODE_BANK1__8be6(byte param_1,char param_2,undefined1 param_3)
 void FUN_CODE_BANK1__8d33(void)
 
 {
-  func_0x8e27();
+  FUN_CODE_BANK1__8e27();
   G_LOG_PROCESS_STATE = 8;
                     // WARNING: Subroutine does not return
   dma_transfer_state_dispatch(9);
@@ -36836,6 +40050,84 @@ void FUN_CODE_BANK1__8dd1(void)
 
 
 
+void FUN_CODE_BANK1__8e27(byte param_1,byte *param_2)
+
+{
+  byte bVar1;
+  byte *pbVar2;
+  
+  *param_2 = param_1 | 0x1c;
+  bVar1 = DAT_EXTMEM_c2c9;
+  DAT_EXTMEM_c2c9 = bVar1 & 0x80 | 0x41;
+  func_0xc335(0xc2a5);
+  FUN_CODE_BANK1__c30e(0xc2ca);
+  func_0xc358(0xc287);
+  FUN_CODE_BANK1__c34a(0xc294);
+  func_0xc358(0xc2a2);
+  FUN_CODE_BANK1__c2f1(0xc2c5);
+  FUN_CODE_BANK1__c2ff(0xc293);
+  pbVar2 = &DAT_EXTMEM_c2ce;
+  FUN_CODE_BANK1__c2bf();
+  bVar1 = FUN_CODE_BANK1__c32d(*pbVar2 & 0xe3 | 0x14);
+  *pbVar2 = bVar1 | 0x40;
+  FUN_CODE_BANK1__c34a(0xc345);
+  bVar1 = DAT_EXTMEM_c321;
+  DAT_EXTMEM_c321 = bVar1 & 0x9f | 0x60;
+  FUN_CODE_BANK1__c2f8(0xc30c);
+  FUN_CODE_BANK1__c2f8(0xc31c);
+  FUN_CODE_BANK1__c2f8(0xc32c);
+  bVar1 = DAT_EXTMEM_c33c;
+  DAT_EXTMEM_c33c = bVar1 & 0xfe;
+  bVar1 = DAT_EXTMEM_c30c;
+  DAT_EXTMEM_c30c = bVar1 & 0xfd;
+  FUN_CODE_BANK1__c351(0xc31c);
+  FUN_CODE_BANK1__c351(0xc32c);
+  bVar1 = DAT_EXTMEM_c33c;
+  DAT_EXTMEM_c33c = bVar1 & 0xfd;
+  bVar1 = REG_VENDOR_CTRL_C343;
+  REG_VENDOR_CTRL_C343 = bVar1 & 0xc3 | 0x1c;
+  bVar1 = DAT_EXTMEM_c349;
+  DAT_EXTMEM_c349 = bVar1 & 0x80 | 0x41;
+  func_0xc335(0xc325);
+  FUN_CODE_BANK1__c30e(FUN_CODE_BANK1__c34a);
+  func_0xc358(0xc307);
+  FUN_CODE_BANK1__c34a(0xc314);
+  func_0xc358(0xc322);
+  FUN_CODE_BANK1__c2f1(0xc345);
+  FUN_CODE_BANK1__c2ff(0xc313);
+  FUN_CODE_BANK1__c2bf(0xc34e);
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__9002(byte param_1,byte *param_2)
+
+{
+  byte bVar1;
+  
+  FUN_CODE_BANK1__c366(param_1 ^ *param_2,0xc320);
+  func_0xc36d(0xc311);
+  func_0xc36d(0xc321);
+  bVar1 = DAT_EXTMEM_c35b;
+  DAT_EXTMEM_c35b = bVar1 & 0xe0 | 0x1b;
+  bVar1 = DAT_EXTMEM_c304;
+  DAT_EXTMEM_c304 = bVar1 & 0xf0 | 5;
+  func_0xc2e0(0xc314);
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__91f5(void)
+
+{
+                    // WARNING: Subroutine does not return
+  banked_load_byte(0x36);
+}
+
+
+
 void FUN_CODE_BANK1__9267(undefined1 *param_1)
 
 {
@@ -36872,6 +40164,33 @@ void FUN_CODE_BANK1__9661(char param_1,char param_2)
 
 
 
+void FUN_CODE_BANK1__9695(void)
+
+{
+                    // WARNING: Subroutine does not return
+  banked_store_byte(0x28,2);
+}
+
+
+
+void banked_store_byte(void)
+
+{
+                    // WARNING: Subroutine does not return
+  banked_store_byte();
+}
+
+
+
+void FUN_CODE_BANK1__96c2(char param_1)
+
+{
+                    // WARNING: Subroutine does not return
+  banked_store_byte(8,param_1 + '\x01');
+}
+
+
+
 void FUN_CODE_BANK1__96f5(byte *param_1,char *param_2)
 
 {
@@ -36883,11 +40202,3850 @@ void FUN_CODE_BANK1__96f5(byte *param_1,char *param_2)
 
 
 
+void FUN_CODE_BANK1__9704(void)
+
+{
+                    // WARNING: Subroutine does not return
+  banked_store_byte(0x2c,0x28);
+}
+
+
+
+undefined1 FUN_CODE_BANK1__9718(void)
+
+{
+  return 2;
+}
+
+
+
+char FUN_CODE_BANK1__9721(byte param_1,char param_2)
+
+{
+  char in_PSW;
+  
+  return '\x02' - ((CARRY1(param_1,param_2 - (in_PSW >> 7)) << 7) >> 7);
+}
+
+
+
+char FUN_CODE_BANK1__9728(void)
+
+{
+  return '\a' - (((0xa0 < DAT_INTMEM_21) << 7) >> 7);
+}
+
+
+
+// WARNING: Control flow encountered bad instruction data
+
+void thunk_FUN_CODE_BANK1__f022(void)
+
+{
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+                    // WARNING: Bad instruction - Truncating control flow here
+  halt_baddata();
+}
+
+
+
+void FUN_CODE_BANK1__9782(char param_1,char param_2)
+
+{
+                    // WARNING: Subroutine does not return
+  banked_load_byte(param_1 + param_2);
+}
+
+
+
+void thunk_FUN_CODE_BANK1__91f5(void)
+
+{
+                    // WARNING: Subroutine does not return
+  banked_load_byte(0x36);
+}
+
+
+
 undefined1 FUN_CODE_BANK1__9900(undefined1 *param_1,undefined1 *param_2)
 
 {
   *param_1 = *param_2;
   return DAT_CODE_21ae;
+}
+
+
+
+void FUN_CODE_BANK1__99d1(char param_1,char param_2)
+
+{
+  char in_PSW;
+  
+                    // WARNING: Subroutine does not return
+  FUN_CODE_BANK1__9403(param_1 - ('\n' - (in_PSW >> 7)),0x12,param_2 + '\x01');
 }
 
 
@@ -36904,12 +44062,52 @@ void FUN_CODE_BANK1__99d8(void)
 
 
 
+void FUN_CODE_BANK1__9a06(byte param_1,char param_2)
+
+{
+                    // WARNING: Subroutine does not return
+  FUN_CODE_BANK1__9403(param_1 | 0x20,param_2 + -1);
+}
+
+
+
+void thunk_FUN_CODE_BANK1__9403(void)
+
+{
+                    // WARNING: Subroutine does not return
+  FUN_CODE_BANK1__9403();
+}
+
+
+
+void thunk_FUN_CODE_BANK1__9403(void)
+
+{
+                    // WARNING: Subroutine does not return
+  FUN_CODE_BANK1__9403();
+}
+
+
+
 void FUN_CODE_BANK1__9a4c(byte param_1,short param_2,undefined1 param_3,char param_4)
 
 {
   DAT_INTMEM_54 = param_3;
                     // WARNING: Subroutine does not return
   FUN_CODE_BANK1__9403(*(undefined1 *)(param_2 + (ushort)param_1),param_4 + '\x01');
+}
+
+
+
+void error_handler_pcie_bit5(char param_1,byte param_2,char param_3)
+
+{
+  byte bVar1;
+  char in_PSW;
+  
+  bVar1 = func_0x96c7(param_1 - (param_3 - (in_PSW >> 7)) & param_2);
+                    // WARNING: Subroutine does not return
+  banked_store_byte(bVar1 & 0xfd);
 }
 
 
@@ -36951,7 +44149,7 @@ void FUN_CODE_BANK1__a3f7(short param_1,undefined1 *param_2,undefined1 param_3,b
   uVar5 = func_0x976c();
   G_PCIE_LANE_STATE_0A9E = uVar5;
   if (cVar3 == '\b') {
-    func_0xd283();
+    FUN_CODE_BANK1__d283();
   }
   bVar2 = DAT_EXTMEM_0aa0;
   DAT_EXTMEM_0aa0 = bVar2 & 0x7f;
@@ -36980,6 +44178,1115 @@ void FUN_CODE_BANK1__a3f7(short param_1,undefined1 *param_2,undefined1 param_3,b
 
 
 
+void FUN_CODE_BANK1__a890(byte param_1)
+
+{
+  undefined1 uVar1;
+  undefined1 uVar2;
+  char cVar3;
+  byte bVar4;
+  
+  if ((param_1 >> 2 & 1) != 0) {
+    DAT_EXTMEM_0764 = 1;
+  }
+  uVar1 = DAT_EXTMEM_0763;
+  uVar2 = DAT_EXTMEM_0764;
+  dispatch_05e3(uVar2,uVar1);
+  cVar3 = FUN_CODE_BANK1__9a06();
+  if (cVar3 != '\0') {
+                    // WARNING: Subroutine does not return
+    banked_load_byte();
+  }
+  bVar4 = FUN_CODE_BANK1__96c2(0x65,0x28,2);
+                    // WARNING: Subroutine does not return
+  banked_store_byte(bVar4 & 0x7f);
+}
+
+
+
+void FUN_CODE_BANK1__a8f0(void)
+
+{
+  byte bVar1;
+  
+  bVar1 = FUN_CODE_BANK1__96c2();
+                    // WARNING: Subroutine does not return
+  banked_store_byte(bVar1 & 0x7f);
+}
+
+
+
+char FUN_CODE_BANK1__a9f9(char param_1)
+
+{
+  char cVar1;
+  
+  cVar1 = func_0xae90(param_1 + '\x01');
+  return '\x05' - (((0x7e < (cVar1 + 1U ^ 0xe0) * '\n') << 7) >> 7);
+}
+
+
+
+char FUN_CODE_BANK1__aa02(char param_1,char param_2)
+
+{
+  return '\x05' - (((0x7eU < (byte)(param_1 * param_2)) << 7) >> 7);
+}
+
+
+
+void FUN_CODE_BANK1__aa1d(void)
+
+{
+  return;
+}
+
+
+
+char FUN_CODE_BANK1__aa2e(char param_1)
+
+{
+  char in_PSW;
+  
+  return param_1 + (-1 - (in_PSW >> 7));
+}
+
+
+
+void FUN_CODE_BANK1__aa34(undefined1 param_1)
+
+{
+  mul_add_index(param_1,0x14);
+  return;
+}
+
+
+
+char FUN_CODE_BANK1__aa4b(byte param_1)
+
+{
+  byte bVar1;
+  char cVar2;
+  
+  bVar1 = TXFLG;
+  cVar2 = TXFLG;
+  return param_1 + cVar2 +
+         (-0x10 - ((char)((CARRY1(param_1,bVar1) & param_1 + cVar2 >> 4 & 1) << 7) >> 7));
+}
+
+
+
+undefined1 FUN_CODE_BANK1__aa7f(byte param_1)
+
+{
+  byte bVar1;
+  char in_PSW;
+  
+  bVar1 = DAT_INTMEM_3b - (in_PSW >> 7);
+  return *(undefined1 *)CONCAT11((((param_1 < bVar1) << 7) >> 7) + 'p',param_1 - bVar1);
+}
+
+
+
+void FUN_CODE_BANK1__aa94(void)
+
+{
+  return;
+}
+
+
+
+void thunk_FUN_CODE_BANK1__a890(byte param_1)
+
+{
+  undefined1 uVar1;
+  undefined1 uVar2;
+  char cVar3;
+  byte bVar4;
+  
+  if ((param_1 >> 2 & 1) != 0) {
+    DAT_EXTMEM_0764 = 1;
+  }
+  uVar1 = DAT_EXTMEM_0763;
+  uVar2 = DAT_EXTMEM_0764;
+  dispatch_05e3(uVar2,uVar1);
+  cVar3 = FUN_CODE_BANK1__9a06();
+  if (cVar3 != '\0') {
+                    // WARNING: Subroutine does not return
+    banked_load_byte();
+  }
+  bVar4 = FUN_CODE_BANK1__96c2(0x65,0x28,2);
+                    // WARNING: Subroutine does not return
+  banked_store_byte(bVar4 & 0x7f);
+}
+
+
+
+void FUN_CODE_BANK1__aaed(void)
+
+{
+  byte bVar1;
+  
+  bVar1 = FUN_CODE_BANK1__96c2();
+                    // WARNING: Subroutine does not return
+  banked_store_byte(bVar1 & 0x7f);
+}
+
+
+
+void FUN_CODE_BANK1__ab27(undefined1 param_1)
+
+{
+                    // WARNING: Subroutine does not return
+  idata_store_dword(0x6f,param_1);
+}
+
+
+
+void FUN_CODE_BANK1__ab2e(void)
+
+{
+  return;
+}
+
+
+
+// WARNING: Instruction at (CODE,0xad5d) overlaps instruction at (CODE,0xad5c)
+// 
+
+byte FUN_CODE_BANK1__ab44(char *param_1,undefined1 param_2,char param_3,byte param_4)
+
+{
+  bool bVar1;
+  byte bVar2;
+  byte bVar3;
+  char cVar4;
+  byte bVar5;
+  undefined1 uVar6;
+  undefined1 *puVar7;
+  short sVar8;
+  byte *pbVar9;
+  char *pcVar10;
+  
+  puVar7 = (undefined1 *)0x0;
+  xdata_store_triple(0x9e8,0x10,2);
+  bVar5 = G_LOOP_STATE_0991;
+  DAT_EXTMEM_09e4 = bVar5 * '\x04';
+  if (bVar5 == 0) {
+    return bVar5;
+  }
+  bVar3 = DAT_EXTMEM_0993;
+  cVar4 = (bVar3 < 2) << 7;
+  if (bVar3 == 2) {
+    bVar3 = FUN_CODE_BANK1__c20f();
+    cVar4 = ((bVar3 < 0x20U - (cVar4 >> 7)) << 7) >> 7;
+    bVar3 = param_4 + cVar4;
+    if ((param_4 < (byte)-cVar4) ||
+       (cVar4 = ((bVar5 < 0x3a) << 7) >> 7, bVar3 = param_4 + cVar4, (byte)-cVar4 <= param_4))
+    goto LAB_CODE_BANK1__ad8d;
+code_c0xad89:
+    bVar3 = DAT_INTMEM_55 + 0xbb;
+LAB_CODE_BANK1__ad8d:
+    puVar7['\x01'] = 0x90;
+    puVar7['\x02'] = 0xad;
+    FUN_CODE_BANK1__b6cb(bVar3);
+    puVar7['\x01'] = 0x96;
+    puVar7['\x02'] = 0xad;
+    func_0xb781(0xc2c3);
+    bVar5 = DAT_EXTMEM_c2c0;
+    DAT_EXTMEM_c2c0 = bVar5 & 0xef | 0x10;
+    pbVar9 = &DAT_EXTMEM_c2c3;
+  }
+  else {
+    bVar3 = bVar3 ^ 1;
+    if (bVar3 == 0) {
+      sVar8 = 0x992;
+      bVar5 = DAT_EXTMEM_0992;
+      if (bVar5 == 0) {
+        bVar3 = 0x11;
+        G_EVENT_CHECK_09EF = 0x11;
+      }
+      else {
+        if (bVar5 != 1) {
+          if (*param_1 == 'c') {
+            param_3 = param_3 + '\x01';
+            sVar8 = 0x816;
+            FUN_CODE_BANK1__b67c(0x816,param_1 + '\x01');
+            puVar7 = &BANK0_R4;
+          }
+          puVar7['\x01'] = 0x2d;
+          puVar7['\x02'] = 0xad;
+          shl32();
+          BANK0_R3 = *puVar7;
+          BANK0_R2 = puVar7[-1];
+          BANK0_R1 = puVar7[-2];
+          BANK0_R0 = puVar7[-3];
+          puVar7[-3] = 0x38;
+          puVar7[-2] = 0xad;
+          or32();
+          puVar7[-3] = BANK0_R4;
+          puVar7[-2] = BANK0_R5;
+          puVar7[-1] = BANK0_R6;
+          *puVar7 = BANK0_R7;
+          puVar7['\x01'] = 0x44;
+          puVar7['\x02'] = 0xad;
+          FUN_CODE_BANK1__b67c(sVar8 + 1);
+LAB_CODE_BANK1__ad44:
+          puVar7['\x01'] = 0x49;
+          puVar7['\x02'] = 0xad;
+          shl32(0x18);
+          BANK0_R3 = *puVar7;
+          BANK0_R2 = puVar7[-1];
+          BANK0_R1 = puVar7[-2];
+          BANK0_R0 = puVar7[-3];
+          puVar7[-3] = 0x54;
+          puVar7[-2] = 0xad;
+          or32();
+          DAT_INTMEM_57 = param_2;
+          DAT_INTMEM_58 = param_3;
+          DAT_INTMEM_59 = param_4;
+          DAT_INTMEM_5a = bVar5;
+          puVar7[-3] = 0x5f;
+          puVar7[-2] = 0xad;
+          FUN_CODE_BANK1__b6f0();
+          puVar7 = puVar7 + -4;
+code_c0xad60:
+          bVar3 = 0;
+          DAT_INTMEM_54 = bVar5;
+          goto LAB_CODE_BANK1__ad62;
+        }
+        bVar3 = FUN_CODE_BANK1__c20f();
+        bVar3 = -(((bVar3 < 0x40U - (cVar4 >> 7)) << 7) >> 7);
+        bVar1 = param_4 < bVar3;
+        if (!bVar1) {
+          bVar3 = -(((bVar5 < 0x48) << 7) >> 7);
+          bVar1 = param_4 < bVar3;
+          if (bVar1) {
+            cVar4 = 'D';
+            thunk_FUN_CODE_BANK1__e012(1,0);
+            if (cVar4 == '\0') {
+              bVar3 = 0;
+            }
+            else {
+              bVar3 = G_VENDOR_ACTIVE_0750;
+              bVar3 = bVar3 ^ 2;
+              if (bVar3 == 0) {
+                bVar3 = G_LOG_PROCESSED_INDEX;
+                bVar3 = bVar3 ^ 0x12;
+                if (bVar3 == 0) {
+                  bVar3 = FUN_CODE_BANK1__e949();
+                }
+              }
+            }
+            goto LAB_CODE_BANK1__ad8d;
+          }
+        }
+        cVar4 = bVar1 << 7;
+        bVar3 = FUN_CODE_BANK1__c20f(param_4 - bVar3);
+        bVar3 = -(((bVar3 < 0x80U - (cVar4 >> 7)) << 7) >> 7);
+        bVar1 = param_4 < bVar3;
+        if (!bVar1) {
+          bVar3 = -(((bVar5 < 0x83) << 7) >> 7);
+          bVar1 = param_4 < bVar3;
+          if (bVar1) {
+            cVar4 = FUN_CODE_BANK1__ad93();
+            if (cVar4 != '\0') {
+              cVar4 = G_LOG_PROCESSED_INDEX;
+              if (cVar4 == '\t') {
+                thunk_FUN_CODE_BANK1__eb12(1);
+              }
+              cVar4 = G_LOG_PROCESSED_INDEX;
+              if ((cVar4 == '\x11') && (bVar5 = FUN_CODE_BANK1__c261(), (bVar5 >> 4 & 1) != 0)) {
+                FUN_CODE_BANK1__dfc0();
+              }
+            }
+            cVar4 = FUN_CODE_BANK1__ad9e();
+            if (cVar4 == '\0') {
+              bVar3 = 0;
+            }
+            else {
+              bVar3 = FUN_CODE_BANK1__c2ac();
+              if (bVar3 == 0) {
+                bVar5 = 0;
+                if (*param_1 != -0x10) goto LAB_CODE_BANK1__ad44;
+                goto code_c0xad60;
+              }
+            }
+            goto LAB_CODE_BANK1__ad8d;
+          }
+        }
+        cVar4 = bVar1 << 7;
+        bVar3 = FUN_CODE_BANK1__c20f(param_4 - bVar3);
+        cVar4 = ((bVar3 < 0xc0U - (cVar4 >> 7)) << 7) >> 7;
+        bVar3 = param_4 + cVar4;
+        if (((byte)-cVar4 <= param_4) &&
+           (cVar4 = ((bVar5 < 0xd4) << 7) >> 7, bVar3 = param_4 + cVar4,
+           (param_4 < (byte)-cVar4) << 7 < '\0')) {
+          param_4 = param_4 + (-1 - (((0xbf < bVar5) << 7) >> 7));
+          cVar4 = '\x02';
+          bVar5 = bVar5 + 0x40;
+          do {
+            bVar3 = bVar5 * '\x02';
+            param_4 = param_4 << 1 | bVar5 >> 7;
+            cVar4 = cVar4 + -1;
+            bVar5 = bVar3;
+          } while (cVar4 != '\0');
+          xdata_store_triple(0x9e5,bVar3 + 0x94,(param_4 - (((0x6b < bVar3) << 7) >> 7)) + '\t',1);
+          G_EVENT_CHECK_09EF = 0xe;
+          bVar3 = FUN_CODE_BANK1__c2ac();
+          if (bVar3 == 0) {
+            FUN_CODE_BANK1__ecbe(0,0xd3);
+            bVar5 = G_EVENT_CHECK_09EF;
+            return bVar5;
+          }
+        }
+      }
+      goto LAB_CODE_BANK1__ad8d;
+    }
+LAB_CODE_BANK1__ad62:
+    bVar2 = DAT_INTMEM_5a;
+    bVar5 = DAT_INTMEM_59;
+    cVar4 = DAT_INTMEM_58;
+    uVar6 = DAT_INTMEM_57;
+    puVar7['\x01'] = 0x6d;
+    puVar7['\x02'] = 0xad;
+    FUN_CODE_BANK1__b759(bVar3,uVar6,cVar4,bVar5);
+    DAT_INTMEM_55 = bVar2;
+    if ((DAT_INTMEM_54 != 0) && (DAT_INTMEM_54 != 1)) {
+      bVar5 = FUN_CODE_BANK1__af1a();
+      return bVar5;
+    }
+    if (DAT_INTMEM_54 == 0) {
+      DAT_INTMEM_56 = DAT_INTMEM_54;
+    }
+    else {
+      DAT_INTMEM_56 = 1;
+    }
+    if (DAT_INTMEM_56 == 0) goto code_c0xad89;
+    puVar7['\x01'] = 0xab;
+    puVar7['\x02'] = 0xad;
+    FUN_CODE_BANK1__b6cb();
+    puVar7['\x01'] = 0xb1;
+    puVar7['\x02'] = 0xad;
+    func_0xb781(FUN_CODE_BANK1__c343);
+    bVar5 = DAT_EXTMEM_c340;
+    DAT_EXTMEM_c340 = bVar5 & 0xef | 0x10;
+    pbVar9 = &REG_VENDOR_CTRL_C343;
+  }
+  *pbVar9 = *pbVar9 & 0xfe;
+  *pbVar9 = *pbVar9 & 0xfe | 1;
+  bVar5 = REG_TIMER0_DIV;
+  REG_TIMER0_DIV = bVar5 & 0xf8 | 4;
+  REG_TIMER0_THRESHOLD = 0;
+  REG_TIMER0_THRESHOLD_LO = 0xf0;
+  bVar5 = REG_PHY_VENDOR_CTRL_C6DB;
+  if ((bVar5 & 1) == 1) {
+    if (DAT_INTMEM_54 == 0) {
+      pcVar10 = &DAT_EXTMEM_0819;
+      bVar5 = DAT_EXTMEM_0819;
+      if ((bVar5 & 2) != 0) {
+        puVar7['\x01'] = 0x46;
+        puVar7['\x02'] = 0xae;
+        cVar4 = FUN_CODE_BANK1__b6a8(2,0x40,0x28,2);
+        *pcVar10 = cVar4 + -1;
+        do {
+          cVar4 = '\x01';
+          puVar7['\x01'] = 0x4d;
+          puVar7['\x02'] = 0xae;
+          FUN_CODE_BANK1__ee6e();
+          if (cVar4 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar5 = REG_TIMER0_CSR;
+        } while ((bVar5 >> 1 & 1) == 0);
+        goto LAB_CODE_BANK1__ae7c;
+      }
+    }
+    if (DAT_INTMEM_54 == 1) {
+      pcVar10 = &DAT_EXTMEM_0819;
+      bVar5 = DAT_EXTMEM_0819;
+      if ((bVar5 & 1) != 0) {
+        puVar7['\x01'] = 0x6b;
+        puVar7['\x02'] = 0xae;
+        cVar4 = FUN_CODE_BANK1__b6a0();
+        *pcVar10 = cVar4 + -1;
+        do {
+          cVar4 = '\0';
+          puVar7['\x01'] = 0x72;
+          puVar7['\x02'] = 0xae;
+          FUN_CODE_BANK1__ee6e();
+          if (cVar4 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar5 = REG_TIMER0_CSR;
+        } while ((bVar5 >> 1 & 1) == 0);
+        goto LAB_CODE_BANK1__ae7c;
+      }
+    }
+  }
+  else {
+    if (DAT_INTMEM_54 == 0) {
+      pcVar10 = &DAT_EXTMEM_0819;
+      bVar5 = DAT_EXTMEM_0819;
+      if ((bVar5 & 1) != 0) {
+        puVar7['\x01'] = 0xee;
+        puVar7['\x02'] = 0xad;
+        cVar4 = FUN_CODE_BANK1__b6a0();
+        *pcVar10 = cVar4 + -1;
+        do {
+          cVar4 = '\0';
+          puVar7['\x01'] = 0xf5;
+          puVar7['\x02'] = 0xad;
+          FUN_CODE_BANK1__ee6e();
+          if (cVar4 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar5 = REG_TIMER0_CSR;
+        } while ((bVar5 >> 1 & 1) == 0);
+        goto LAB_CODE_BANK1__ae7c;
+      }
+    }
+    if (DAT_INTMEM_54 == 1) {
+      pcVar10 = &DAT_EXTMEM_0819;
+      bVar5 = DAT_EXTMEM_0819;
+      if ((bVar5 & 2) != 0) {
+        puVar7['\x01'] = 0x16;
+        puVar7['\x02'] = 0xae;
+        cVar4 = FUN_CODE_BANK1__b6a2(2);
+        *pcVar10 = cVar4 + -1;
+        do {
+          cVar4 = '\x01';
+          puVar7['\x01'] = 0x1d;
+          puVar7['\x02'] = 0xae;
+          FUN_CODE_BANK1__ee6e();
+          if (cVar4 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar5 = REG_TIMER0_CSR;
+        } while ((bVar5 >> 1 & 1) == 0);
+LAB_CODE_BANK1__ae7c:
+        puVar7['\x01'] = 0x7f;
+        puVar7['\x02'] = 0xae;
+        bVar5 = func_0xb6ae();
+        return bVar5;
+      }
+    }
+  }
+  puVar7['\x01'] = 0x88;
+  puVar7['\x02'] = 0xae;
+  uVar6 = FUN_CODE_BANK1__b6d4();
+LAB_CODE_BANK1__ae9f:
+  puVar7['\x01'] = 0xa2;
+  puVar7['\x02'] = 0xae;
+  bVar5 = FUN_CODE_BANK1__b6fa(uVar6);
+  return bVar5;
+LAB_CODE_BANK1__ae80:
+  puVar7['\x01'] = 0x83;
+  puVar7['\x02'] = 0xae;
+  func_0xb6ab();
+  if (DAT_INTMEM_56 == 0) {
+    pbVar9 = &DAT_EXTMEM_c2c0;
+  }
+  else {
+    pbVar9 = &DAT_EXTMEM_c340;
+  }
+  *pbVar9 = *pbVar9 & 0xef;
+  uVar6 = 0;
+  goto LAB_CODE_BANK1__ae9f;
+}
+
+
+
+void thunk_FUN_CODE_BANK1__ad88(char param_1)
+
+{
+  byte bVar1;
+  char cVar2;
+  undefined1 uVar3;
+  char *pcVar4;
+  byte *pbVar5;
+  
+  FUN_CODE_BANK1__b6cb(param_1 + -1);
+  func_0xb781(0xc2c3);
+  bVar1 = DAT_EXTMEM_c2c0;
+  DAT_EXTMEM_c2c0 = bVar1 & 0xef | 0x10;
+  bVar1 = DAT_EXTMEM_c2c3;
+  DAT_EXTMEM_c2c3 = bVar1 & 0xfe;
+  bVar1 = DAT_EXTMEM_c2c3;
+  DAT_EXTMEM_c2c3 = bVar1 & 0xfe | 1;
+  bVar1 = REG_TIMER0_DIV;
+  REG_TIMER0_DIV = bVar1 & 0xf8 | 4;
+  REG_TIMER0_THRESHOLD = 0;
+  REG_TIMER0_THRESHOLD_LO = 0xf0;
+  bVar1 = REG_PHY_VENDOR_CTRL_C6DB;
+  if ((bVar1 & 1) == 1) {
+    if (DAT_INTMEM_54 == '\0') {
+      pcVar4 = &DAT_EXTMEM_0819;
+      bVar1 = DAT_EXTMEM_0819;
+      if ((bVar1 & 2) != 0) {
+        cVar2 = FUN_CODE_BANK1__b6a8(2,0x40,0x28,2);
+        *pcVar4 = cVar2 + -1;
+        do {
+          cVar2 = '\x01';
+          FUN_CODE_BANK1__ee6e();
+          if (cVar2 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar1 = REG_TIMER0_CSR;
+        } while ((bVar1 >> 1 & 1) == 0);
+        goto LAB_CODE_BANK1__ae7c;
+      }
+    }
+    if (DAT_INTMEM_54 == '\x01') {
+      pcVar4 = &DAT_EXTMEM_0819;
+      bVar1 = DAT_EXTMEM_0819;
+      if ((bVar1 & 1) != 0) {
+        cVar2 = FUN_CODE_BANK1__b6a0();
+        *pcVar4 = cVar2 + -1;
+        do {
+          cVar2 = '\0';
+          FUN_CODE_BANK1__ee6e();
+          if (cVar2 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar1 = REG_TIMER0_CSR;
+        } while ((bVar1 >> 1 & 1) == 0);
+        goto LAB_CODE_BANK1__ae7c;
+      }
+    }
+  }
+  else {
+    if (DAT_INTMEM_54 == '\0') {
+      pcVar4 = &DAT_EXTMEM_0819;
+      bVar1 = DAT_EXTMEM_0819;
+      if ((bVar1 & 1) != 0) {
+        cVar2 = FUN_CODE_BANK1__b6a0();
+        *pcVar4 = cVar2 + -1;
+        do {
+          cVar2 = '\0';
+          FUN_CODE_BANK1__ee6e();
+          if (cVar2 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar1 = REG_TIMER0_CSR;
+        } while ((bVar1 >> 1 & 1) == 0);
+        goto LAB_CODE_BANK1__ae7c;
+      }
+    }
+    if (DAT_INTMEM_54 == '\x01') {
+      pcVar4 = &DAT_EXTMEM_0819;
+      bVar1 = DAT_EXTMEM_0819;
+      if ((bVar1 & 2) != 0) {
+        cVar2 = FUN_CODE_BANK1__b6a2(2);
+        *pcVar4 = cVar2 + -1;
+        do {
+          cVar2 = '\x01';
+          FUN_CODE_BANK1__ee6e();
+          if (cVar2 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar1 = REG_TIMER0_CSR;
+        } while ((bVar1 >> 1 & 1) == 0);
+LAB_CODE_BANK1__ae7c:
+        func_0xb6ae();
+        return;
+      }
+    }
+  }
+  uVar3 = FUN_CODE_BANK1__b6d4();
+  goto LAB_CODE_BANK1__ae9f;
+LAB_CODE_BANK1__ae80:
+  func_0xb6ab();
+  if (DAT_INTMEM_56 == '\0') {
+    pbVar5 = &DAT_EXTMEM_c2c0;
+  }
+  else {
+    pbVar5 = &DAT_EXTMEM_c340;
+  }
+  *pbVar5 = *pbVar5 & 0xef;
+  uVar3 = 0;
+LAB_CODE_BANK1__ae9f:
+  FUN_CODE_BANK1__b6fa(uVar3);
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__ad88(char param_1)
+
+{
+  byte bVar1;
+  char cVar2;
+  undefined1 uVar3;
+  char *pcVar4;
+  byte *pbVar5;
+  
+  FUN_CODE_BANK1__b6cb(param_1 + -1);
+  func_0xb781(0xc2c3);
+  bVar1 = DAT_EXTMEM_c2c0;
+  DAT_EXTMEM_c2c0 = bVar1 & 0xef | 0x10;
+  bVar1 = DAT_EXTMEM_c2c3;
+  DAT_EXTMEM_c2c3 = bVar1 & 0xfe;
+  bVar1 = DAT_EXTMEM_c2c3;
+  DAT_EXTMEM_c2c3 = bVar1 & 0xfe | 1;
+  bVar1 = REG_TIMER0_DIV;
+  REG_TIMER0_DIV = bVar1 & 0xf8 | 4;
+  REG_TIMER0_THRESHOLD = 0;
+  REG_TIMER0_THRESHOLD_LO = 0xf0;
+  bVar1 = REG_PHY_VENDOR_CTRL_C6DB;
+  if ((bVar1 & 1) == 1) {
+    if (DAT_INTMEM_54 == '\0') {
+      pcVar4 = &DAT_EXTMEM_0819;
+      bVar1 = DAT_EXTMEM_0819;
+      if ((bVar1 & 2) != 0) {
+        cVar2 = FUN_CODE_BANK1__b6a8(2,0x40,0x28,2);
+        *pcVar4 = cVar2 + -1;
+        do {
+          cVar2 = '\x01';
+          FUN_CODE_BANK1__ee6e();
+          if (cVar2 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar1 = REG_TIMER0_CSR;
+        } while ((bVar1 >> 1 & 1) == 0);
+        goto LAB_CODE_BANK1__ae7c;
+      }
+    }
+    if (DAT_INTMEM_54 == '\x01') {
+      pcVar4 = &DAT_EXTMEM_0819;
+      bVar1 = DAT_EXTMEM_0819;
+      if ((bVar1 & 1) != 0) {
+        cVar2 = FUN_CODE_BANK1__b6a0();
+        *pcVar4 = cVar2 + -1;
+        do {
+          cVar2 = '\0';
+          FUN_CODE_BANK1__ee6e();
+          if (cVar2 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar1 = REG_TIMER0_CSR;
+        } while ((bVar1 >> 1 & 1) == 0);
+        goto LAB_CODE_BANK1__ae7c;
+      }
+    }
+  }
+  else {
+    if (DAT_INTMEM_54 == '\0') {
+      pcVar4 = &DAT_EXTMEM_0819;
+      bVar1 = DAT_EXTMEM_0819;
+      if ((bVar1 & 1) != 0) {
+        cVar2 = FUN_CODE_BANK1__b6a0();
+        *pcVar4 = cVar2 + -1;
+        do {
+          cVar2 = '\0';
+          FUN_CODE_BANK1__ee6e();
+          if (cVar2 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar1 = REG_TIMER0_CSR;
+        } while ((bVar1 >> 1 & 1) == 0);
+        goto LAB_CODE_BANK1__ae7c;
+      }
+    }
+    if (DAT_INTMEM_54 == '\x01') {
+      pcVar4 = &DAT_EXTMEM_0819;
+      bVar1 = DAT_EXTMEM_0819;
+      if ((bVar1 & 2) != 0) {
+        cVar2 = FUN_CODE_BANK1__b6a2(2);
+        *pcVar4 = cVar2 + -1;
+        do {
+          cVar2 = '\x01';
+          FUN_CODE_BANK1__ee6e();
+          if (cVar2 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar1 = REG_TIMER0_CSR;
+        } while ((bVar1 >> 1 & 1) == 0);
+LAB_CODE_BANK1__ae7c:
+        func_0xb6ae();
+        return;
+      }
+    }
+  }
+  uVar3 = FUN_CODE_BANK1__b6d4();
+  goto LAB_CODE_BANK1__ae9f;
+LAB_CODE_BANK1__ae80:
+  func_0xb6ab();
+  if (DAT_INTMEM_56 == '\0') {
+    pbVar5 = &DAT_EXTMEM_c2c0;
+  }
+  else {
+    pbVar5 = &DAT_EXTMEM_c340;
+  }
+  *pbVar5 = *pbVar5 & 0xef;
+  uVar3 = 0;
+LAB_CODE_BANK1__ae9f:
+  FUN_CODE_BANK1__b6fa(uVar3);
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__ad93(void)
+
+{
+  byte bVar1;
+  char cVar2;
+  undefined1 uVar3;
+  char *pcVar4;
+  byte *pbVar5;
+  
+  func_0xb781();
+  bVar1 = DAT_EXTMEM_c2c0;
+  DAT_EXTMEM_c2c0 = bVar1 & 0xef | 0x10;
+  bVar1 = DAT_EXTMEM_c2c3;
+  DAT_EXTMEM_c2c3 = bVar1 & 0xfe;
+  bVar1 = DAT_EXTMEM_c2c3;
+  DAT_EXTMEM_c2c3 = bVar1 & 0xfe | 1;
+  bVar1 = REG_TIMER0_DIV;
+  REG_TIMER0_DIV = bVar1 & 0xf8 | 4;
+  REG_TIMER0_THRESHOLD = 0;
+  REG_TIMER0_THRESHOLD_LO = 0xf0;
+  bVar1 = REG_PHY_VENDOR_CTRL_C6DB;
+  if ((bVar1 & 1) == 1) {
+    if (DAT_INTMEM_54 == '\0') {
+      pcVar4 = &DAT_EXTMEM_0819;
+      bVar1 = DAT_EXTMEM_0819;
+      if ((bVar1 & 2) != 0) {
+        cVar2 = FUN_CODE_BANK1__b6a8(2,0x40,0x28,2);
+        *pcVar4 = cVar2 + -1;
+        do {
+          cVar2 = '\x01';
+          FUN_CODE_BANK1__ee6e();
+          if (cVar2 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar1 = REG_TIMER0_CSR;
+        } while ((bVar1 >> 1 & 1) == 0);
+        goto LAB_CODE_BANK1__ae7c;
+      }
+    }
+    if (DAT_INTMEM_54 == '\x01') {
+      pcVar4 = &DAT_EXTMEM_0819;
+      bVar1 = DAT_EXTMEM_0819;
+      if ((bVar1 & 1) != 0) {
+        cVar2 = FUN_CODE_BANK1__b6a0();
+        *pcVar4 = cVar2 + -1;
+        do {
+          cVar2 = '\0';
+          FUN_CODE_BANK1__ee6e();
+          if (cVar2 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar1 = REG_TIMER0_CSR;
+        } while ((bVar1 >> 1 & 1) == 0);
+        goto LAB_CODE_BANK1__ae7c;
+      }
+    }
+  }
+  else {
+    if (DAT_INTMEM_54 == '\0') {
+      pcVar4 = &DAT_EXTMEM_0819;
+      bVar1 = DAT_EXTMEM_0819;
+      if ((bVar1 & 1) != 0) {
+        cVar2 = FUN_CODE_BANK1__b6a0();
+        *pcVar4 = cVar2 + -1;
+        do {
+          cVar2 = '\0';
+          FUN_CODE_BANK1__ee6e();
+          if (cVar2 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar1 = REG_TIMER0_CSR;
+        } while ((bVar1 >> 1 & 1) == 0);
+        goto LAB_CODE_BANK1__ae7c;
+      }
+    }
+    if (DAT_INTMEM_54 == '\x01') {
+      pcVar4 = &DAT_EXTMEM_0819;
+      bVar1 = DAT_EXTMEM_0819;
+      if ((bVar1 & 2) != 0) {
+        cVar2 = FUN_CODE_BANK1__b6a2(2);
+        *pcVar4 = cVar2 + -1;
+        do {
+          cVar2 = '\x01';
+          FUN_CODE_BANK1__ee6e();
+          if (cVar2 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar1 = REG_TIMER0_CSR;
+        } while ((bVar1 >> 1 & 1) == 0);
+LAB_CODE_BANK1__ae7c:
+        func_0xb6ae();
+        return;
+      }
+    }
+  }
+  uVar3 = FUN_CODE_BANK1__b6d4();
+  goto LAB_CODE_BANK1__ae9f;
+LAB_CODE_BANK1__ae80:
+  func_0xb6ab();
+  if (DAT_INTMEM_56 == '\0') {
+    pbVar5 = &DAT_EXTMEM_c2c0;
+  }
+  else {
+    pbVar5 = &DAT_EXTMEM_c340;
+  }
+  *pbVar5 = *pbVar5 & 0xef;
+  uVar3 = 0;
+LAB_CODE_BANK1__ae9f:
+  FUN_CODE_BANK1__b6fa(uVar3);
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__ad9e(undefined1 param_1,undefined1 *param_2)
+
+{
+  byte bVar1;
+  char cVar2;
+  undefined1 uVar3;
+  char *pcVar4;
+  byte *pbVar5;
+  
+  *param_2 = param_1;
+  bVar1 = DAT_EXTMEM_c2c3;
+  DAT_EXTMEM_c2c3 = bVar1 & 0xfe;
+  bVar1 = DAT_EXTMEM_c2c3;
+  DAT_EXTMEM_c2c3 = bVar1 & 0xfe | 1;
+  bVar1 = REG_TIMER0_DIV;
+  REG_TIMER0_DIV = bVar1 & 0xf8 | 4;
+  REG_TIMER0_THRESHOLD = 0;
+  REG_TIMER0_THRESHOLD_LO = 0xf0;
+  bVar1 = REG_PHY_VENDOR_CTRL_C6DB;
+  if ((bVar1 & 1) == 1) {
+    if (DAT_INTMEM_54 == '\0') {
+      pcVar4 = &DAT_EXTMEM_0819;
+      bVar1 = DAT_EXTMEM_0819;
+      if ((bVar1 & 2) != 0) {
+        cVar2 = FUN_CODE_BANK1__b6a8(2,0x40,0x28,2);
+        *pcVar4 = cVar2 + -1;
+        do {
+          cVar2 = '\x01';
+          FUN_CODE_BANK1__ee6e();
+          if (cVar2 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar1 = REG_TIMER0_CSR;
+        } while ((bVar1 >> 1 & 1) == 0);
+        goto LAB_CODE_BANK1__ae7c;
+      }
+    }
+    if (DAT_INTMEM_54 == '\x01') {
+      pcVar4 = &DAT_EXTMEM_0819;
+      bVar1 = DAT_EXTMEM_0819;
+      if ((bVar1 & 1) != 0) {
+        cVar2 = FUN_CODE_BANK1__b6a0();
+        *pcVar4 = cVar2 + -1;
+        do {
+          cVar2 = '\0';
+          FUN_CODE_BANK1__ee6e();
+          if (cVar2 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar1 = REG_TIMER0_CSR;
+        } while ((bVar1 >> 1 & 1) == 0);
+        goto LAB_CODE_BANK1__ae7c;
+      }
+    }
+  }
+  else {
+    if (DAT_INTMEM_54 == '\0') {
+      pcVar4 = &DAT_EXTMEM_0819;
+      bVar1 = DAT_EXTMEM_0819;
+      if ((bVar1 & 1) != 0) {
+        cVar2 = FUN_CODE_BANK1__b6a0();
+        *pcVar4 = cVar2 + -1;
+        do {
+          cVar2 = '\0';
+          FUN_CODE_BANK1__ee6e();
+          if (cVar2 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar1 = REG_TIMER0_CSR;
+        } while ((bVar1 >> 1 & 1) == 0);
+        goto LAB_CODE_BANK1__ae7c;
+      }
+    }
+    if (DAT_INTMEM_54 == '\x01') {
+      pcVar4 = &DAT_EXTMEM_0819;
+      bVar1 = DAT_EXTMEM_0819;
+      if ((bVar1 & 2) != 0) {
+        cVar2 = FUN_CODE_BANK1__b6a2(2);
+        *pcVar4 = cVar2 + -1;
+        do {
+          cVar2 = '\x01';
+          FUN_CODE_BANK1__ee6e();
+          if (cVar2 != '\0') goto LAB_CODE_BANK1__ae80;
+          bVar1 = REG_TIMER0_CSR;
+        } while ((bVar1 >> 1 & 1) == 0);
+LAB_CODE_BANK1__ae7c:
+        func_0xb6ae();
+        return;
+      }
+    }
+  }
+  uVar3 = FUN_CODE_BANK1__b6d4();
+  goto LAB_CODE_BANK1__ae9f;
+LAB_CODE_BANK1__ae80:
+  func_0xb6ab();
+  if (DAT_INTMEM_56 == '\0') {
+    pbVar5 = &DAT_EXTMEM_c2c0;
+  }
+  else {
+    pbVar5 = &DAT_EXTMEM_c340;
+  }
+  *pbVar5 = *pbVar5 & 0xef;
+  uVar3 = 0;
+LAB_CODE_BANK1__ae9f:
+  FUN_CODE_BANK1__b6fa(uVar3);
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__af1a(void)
+
+{
+                    // WARNING: Subroutine does not return
+  banked_load_byte(0xe,0x28);
+}
+
+
+
+void uart_newline(byte param_1)
+
+{
+  char cVar1;
+  byte bVar2;
+  char in_PSW;
+  
+  if (param_1 < (byte)(DAT_INTMEM_51 - (in_PSW >> 7))) {
+                    // WARNING: Subroutine does not return
+    thunk_FUN_CODE_BANK1__9403(0xfd < DAT_INTMEM_4f,DAT_INTMEM_4f + 2);
+  }
+  if (DAT_INTMEM_50 == '\b') {
+    FUN_CODE_BANK1__d283();
+  }
+  bVar2 = FUN_CODE_BANK1__9695();
+  cVar1 = DAT_EXTMEM_0754;
+                    // WARNING: Subroutine does not return
+  banked_store_byte(cVar1 + 8U | bVar2 & 0x80);
+}
+
+
+
+void error_handler_recovery(byte param_1)
+
+{
+                    // WARNING: Subroutine does not return
+  banked_store_byte(param_1 & 0xef | 0x10);
+}
+
+
+
+byte vendor_cmd_e4_xdata_read(undefined1 param_1,undefined1 param_2,undefined1 param_3,byte param_4)
+
+{
+  undefined1 uVar1;
+  undefined1 uVar2;
+  undefined1 uVar3;
+  undefined1 uVar4;
+  char cVar5;
+  byte bVar6;
+  short sVar7;
+  undefined2 uVar8;
+  undefined1 *puVar9;
+  code *pcVar10;
+  
+  FUN_CODE_BANK1__b663();
+  or32();
+  uVar3 = BANK0_R7;
+  uVar2 = BANK0_R6;
+  uVar4 = BANK0_R5;
+  uVar1 = BANK0_R4;
+  sVar7 = 0x816;
+  FUN_CODE_BANK1__b67c(0x816);
+  shl32(0x10);
+  BANK0_R3 = uVar3;
+  BANK0_R2 = uVar2;
+  BANK0_R1 = uVar4;
+  BANK0_R0 = uVar1;
+  or32();
+  uVar3 = BANK0_R7;
+  uVar2 = BANK0_R6;
+  uVar4 = BANK0_R5;
+  uVar1 = BANK0_R4;
+  FUN_CODE_BANK1__b67c(sVar7 + 1);
+  shl32(0x18);
+  BANK0_R3 = uVar3;
+  BANK0_R2 = uVar2;
+  BANK0_R1 = uVar4;
+  BANK0_R0 = uVar1;
+  or32();
+  DAT_INTMEM_57 = param_1;
+  DAT_INTMEM_58 = param_2;
+  DAT_INTMEM_59 = param_3;
+  DAT_INTMEM_5a = param_4;
+  FUN_CODE_BANK1__b6f0();
+  DAT_INTMEM_55 = param_4;
+  if ((param_4 != 0) && (param_4 != 1)) {
+    FUN_CODE_BANK1__b6d4();
+    return param_4 & 7;
+  }
+  DAT_INTMEM_56 = param_4 != 0;
+  if ((bool)DAT_INTMEM_56) {
+    uVar8 = 0xc362;
+  }
+  else {
+    uVar8 = 0xc2e2;
+  }
+  xdata_load_dword(uVar8);
+  xdata_store_dword(0xaac);
+  if (DAT_INTMEM_56 == '\0') {
+    puVar9 = &REG_PHY_VENDOR_CTRL_C2E0;
+  }
+  else {
+    puVar9 = &REG_VENDOR_CTRL_C360;
+  }
+  G_FLASH_ADDR_3 = *puVar9;
+  G_FLASH_LEN_LO = puVar9[1];
+  uVar1 = G_STATE_COUNTER_0AAC;
+  uVar4 = FUN_CODE_BANK1__b734(uVar1);
+  uVar1 = G_FLASH_LEN_LO;
+  FUN_CODE_BANK1__b74a(uVar1,0xab0,uVar4);
+  xdata_load_dword(0xaac);
+  shl32(1);
+  xdata_store_dword(0xaac);
+  uVar1 = G_FLASH_ADDR_2;
+  DAT_EXTMEM_0824 = uVar1;
+  uVar1 = G_FLASH_ADDR_1;
+  DAT_EXTMEM_0825 = uVar1;
+  uVar1 = G_FLASH_ADDR_0;
+  DAT_EXTMEM_0826 = uVar1;
+  uVar1 = G_STATE_COUNTER_0AAC;
+  DAT_EXTMEM_0827 = uVar1;
+  uVar1 = G_FLASH_LEN_LO;
+  DAT_EXTMEM_0828 = uVar1;
+  uVar1 = G_FLASH_ADDR_3;
+  DAT_EXTMEM_0829 = uVar1;
+  DAT_INTMEM_54 = '\0';
+  do {
+    FUN_CODE_BANK1__b6dd(1);
+    func_0xb700(DAT_INTMEM_54);
+    DAT_INTMEM_54 = DAT_INTMEM_54 + '\x01';
+  } while (DAT_INTMEM_54 != '\x02');
+  DAT_INTMEM_54 = '\0';
+  do {
+    FUN_CODE_BANK1__b6dd(3);
+    FUN_CODE_BANK1__b702(DAT_INTMEM_54 + ',');
+    DAT_INTMEM_54 = DAT_INTMEM_54 + '\x01';
+  } while (DAT_INTMEM_54 != '\x04');
+  cVar5 = FUN_CODE_BANK1__b78c(0x42,0x42,0x45,0x52);
+  if (cVar5 == '\0') {
+    if (DAT_INTMEM_56 == '\0') {
+      pcVar10 = (code *)0xc2c3;
+    }
+    else {
+      if (DAT_INTMEM_56 != '\x01') goto LAB_CODE_BANK1__b5c5;
+      pcVar10 = FUN_CODE_BANK1__c343;
+    }
+    func_0xb763(pcVar10);
+  }
+LAB_CODE_BANK1__b5c5:
+  bVar6 = FUN_CODE_BANK1__b6fa(0,0,0,0);
+  return bVar6;
+}
+
+
+
+void FUN_CODE_BANK1__b663(void)
+
+{
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__b67c(byte *param_1)
+
+{
+  *param_1 = *param_1 & 0xfd;
+  *param_1 = *param_1 & 0xc3 | 0x1c;
+  *param_1 = *param_1 & 0xbf;
+  return;
+}
+
+
+
 void FUN_CODE_BANK1__b683(byte param_1,byte *param_2)
 
 {
@@ -37003,11 +45310,48 @@ undefined1 FUN_CODE_BANK1__b693(undefined1 param_1,undefined1 *param_2)
 
 
 
+byte FUN_CODE_BANK1__b6a0(byte param_1)
+
+{
+  return param_1 >> 3 & 1;
+}
+
+
+
+byte FUN_CODE_BANK1__b6a2(byte param_1)
+
+{
+  return param_1 >> 1 & 1;
+}
+
+
+
+void FUN_CODE_BANK1__b6a8(byte *param_1)
+
+{
+  byte bVar1;
+  
+  *param_1 = *param_1 & 0x7f;
+  bVar1 = REG_VENDOR_CTRL_C343;
+  REG_VENDOR_CTRL_C343 = bVar1 & 0x7f;
+  return;
+}
+
+
+
 void FUN_CODE_BANK1__b6b5(byte param_1,byte *param_2,byte param_3)
 
 {
   *param_2 = *param_2 << 1 | CARRY1(param_1,param_1);
   param_2[1] = param_1 * '\x02' | param_3;
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__b6cb(void)
+
+{
   return;
 }
 
@@ -37025,6 +45369,16 @@ void FUN_CODE_BANK1__b6d4(undefined1 param_1,undefined1 *param_2)
 void FUN_CODE_BANK1__b6dd(void)
 
 {
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__b6e0(void)
+
+{
+  DAT_EXTMEM_074e = 0;
+  DAT_EXTMEM_074f = 0;
   return;
 }
 
@@ -37053,6 +45407,14 @@ void FUN_CODE_BANK1__b702(byte param_1,byte *param_2)
 
 {
   *param_2 = param_1 & 0xbf | 0x40;
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__b70d(void)
+
+{
   return;
 }
 
@@ -37198,6 +45560,37 @@ void FUN_CODE_BANK1__b78c(char param_1,char param_2)
 
 
 
+void FUN_CODE_BANK1__b796(byte param_1,byte *param_2)
+
+{
+  byte bVar1;
+  char cVar2;
+  
+  *param_2 = param_1 & 0xdf;
+  cVar2 = G_FLASH_MODE_3;
+  if (cVar2 == '\0') {
+    bVar1 = G_VENDOR_STATUS_081A;
+    G_VENDOR_STATUS_081A = bVar1 & 0xed;
+  }
+  G_VENDOR_ACTIVE_0750 = 1;
+  G_VENDOR_STATE_0775 = 0;
+  G_VENDOR_STATE_0765 = 0;
+  DAT_EXTMEM_0766 = 0;
+  DAT_EXTMEM_0767 = 0;
+  DAT_EXTMEM_06ed = 0;
+  DAT_EXTMEM_0758 = 0;
+  DAT_EXTMEM_075d = 0xf;
+  DAT_EXTMEM_075e = 0xf;
+  DAT_EXTMEM_0776 = 1;
+  DAT_EXTMEM_072a = 0;
+  DAT_EXTMEM_072d = 0;
+  FUN_CODE_BANK1__96f5(4);
+                    // WARNING: Subroutine does not return
+  banked_store_byte(8,0x28);
+}
+
+
+
 void FUN_CODE_BANK1__b79d(char param_1)
 
 {
@@ -37226,10 +45619,461 @@ void FUN_CODE_BANK1__b79d(char param_1)
 
 
 
+void FUN_CODE_BANK1__ba0e(undefined1 param_1,char param_2)
+
+{
+  undefined1 uVar1;
+  undefined1 uVar2;
+  code *pcVar3;
+  
+  uVar2 = FUN_CODE_BANK1__b734(param_2 + '\x01',param_1);
+  uVar1 = G_FLASH_LEN_LO;
+  FUN_CODE_BANK1__b74a(uVar1,0xab0,uVar2);
+  xdata_load_dword(0xaac);
+  shl32(1);
+  xdata_store_dword(0xaac);
+  uVar1 = G_FLASH_ADDR_2;
+  DAT_EXTMEM_0824 = uVar1;
+  uVar1 = G_FLASH_ADDR_1;
+  DAT_EXTMEM_0825 = uVar1;
+  uVar1 = G_FLASH_ADDR_0;
+  DAT_EXTMEM_0826 = uVar1;
+  uVar1 = G_STATE_COUNTER_0AAC;
+  DAT_EXTMEM_0827 = uVar1;
+  uVar1 = G_FLASH_LEN_LO;
+  DAT_EXTMEM_0828 = uVar1;
+  uVar1 = G_FLASH_ADDR_3;
+  DAT_EXTMEM_0829 = uVar1;
+  DAT_INTMEM_54 = '\0';
+  do {
+    FUN_CODE_BANK1__b6e0('\x03' - DAT_INTMEM_54);
+    func_0xb700(DAT_INTMEM_54);
+    DAT_INTMEM_54 = DAT_INTMEM_54 + '\x01';
+  } while (DAT_INTMEM_54 != '\x02');
+  if (DAT_INTMEM_56 == '\0') {
+    pcVar3 = (code *)0xc2c3;
+  }
+  else {
+    if (DAT_INTMEM_56 != '\x01') goto LAB_CODE_BANK1__ba99;
+    pcVar3 = FUN_CODE_BANK1__c343;
+  }
+  func_0xb763(pcVar3);
+LAB_CODE_BANK1__ba99:
+  FUN_CODE_BANK1__b6fa(0,0,0,0);
+  return;
+}
+
+
+
+char FUN_CODE_BANK1__bf9a(char param_1,undefined1 param_2,undefined1 param_3)
+
+{
+  *(undefined1 *)CONCAT11(param_1 + '\"',param_2) = param_3;
+  DAT_INTMEM_28 = DAT_INTMEM_28 + '\x01';
+  return DAT_INTMEM_28;
+}
+
+
+
+undefined1 FUN_CODE_BANK1__bfb5(byte param_1,byte param_2)
+
+{
+  return *(undefined1 *)CONCAT11('\n' - ((CARRY1(param_1,param_2) << 7) >> 7),param_1 + param_2);
+}
+
+
+
+undefined1 FUN_CODE_BANK1__bfb7(byte param_1,undefined1 param_2)
+
+{
+  byte in_PSW;
+  
+  return *(undefined1 *)
+          CONCAT11(param_1 + ('\n' - ((char)((in_PSW >> 7 & param_1 >> 4 & 1) << 7) >> 7)),param_2);
+}
+
+
+
+void FUN_CODE_BANK1__c074(undefined1 param_1,byte param_2)
+
+{
+  FUN_CODE_BANK1__c1a2(param_2 >> 1 | param_2 << 7,DAT_INTMEM_70,param_1);
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__c07b(void)
+
+{
+  DAT_EXTMEM_0b02 = 1;
+  FUN_CODE_BANK1__c1a2();
+  return;
+}
+
+
+
+char FUN_CODE_BANK1__c1a2(char param_1,byte param_2,char param_3,byte param_4)
+
+{
+  return param_1 - ((param_3 - (((0xfe < param_4) << 7) >> 7)) -
+                   (((param_2 < param_4 + 2) << 7) >> 7));
+}
+
+
+
+void FUN_CODE_BANK1__c20f(void)
+
+{
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__c244(byte *param_1)
+
+{
+  *param_1 = *param_1 & 0xf | 0x60;
+  param_1[1] = param_1[1] & 0xf0 | 7;
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__c247(byte param_1,byte *param_2)
+
+{
+  *param_2 = param_1 | 0x60;
+  param_2[1] = param_2[1] & 0xf0 | 7;
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__c25a(byte *param_1,char *param_2)
+
+{
+  *param_2 = *param_2 + -1;
+  *param_1 = *param_1 & 0xf0 | 0xb;
+  return;
+}
+
+
+
 void FUN_CODE_BANK1__c25f(byte param_1,byte *param_2)
 
 {
   *param_2 = param_1 | 0xb;
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__c261(undefined1 param_1,undefined1 *param_2)
+
+{
+  *param_2 = param_1;
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__c2ac(undefined1 param_1,undefined1 *param_2)
+
+{
+  *param_2 = param_1;
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__c2bf(byte param_1,byte *param_2)
+
+{
+  *param_2 = param_1 | 2;
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__c2f1(undefined1 param_1,undefined1 *param_2)
+
+{
+  *param_2 = param_1;
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__c2f8(undefined1 param_1,undefined1 *param_2)
+
+{
+  char in_PSW;
+  
+  if (-1 < in_PSW) {
+    return;
+  }
+  *param_2 = param_1;
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__c2ff(char param_1,char *param_2)
+
+{
+  *param_2 = param_1 + '\x01';
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__c30e(short param_1)
+
+{
+  *(undefined1 *)(param_1 + 1) = 0;
+  return;
+}
+
+
+
+byte FUN_CODE_BANK1__c31f(byte *param_1,char *param_2,char param_3)
+
+{
+  char cVar1;
+  byte bVar2;
+  
+  if (param_3 != '\x01') {
+    return *param_1 & 0x3f;
+  }
+  *param_2 = *param_2 + '\x01';
+  cVar1 = FUN_CODE_BANK1__c7e0();
+  if (cVar1 == '\x01') {
+    DAT_INTMEM_4e = FUN_CODE_BANK1__9721(0x21);
+                    // WARNING: Subroutine does not return
+    banked_load_byte(0x23);
+  }
+  if (cVar1 == '\x02') {
+    DAT_INTMEM_4e = thunk_FUN_CODE_BANK1__f022(0xa4);
+                    // WARNING: Subroutine does not return
+    banked_load_byte(0xa6);
+  }
+  if (cVar1 == '\x03') {
+    DAT_INTMEM_4e = FUN_CODE_BANK1__9782(0xa5);
+                    // WARNING: Subroutine does not return
+    banked_load_byte(0xa7);
+  }
+  if (cVar1 == '\0') {
+    DAT_INTMEM_4e = FUN_CODE_BANK1__9718(0x20);
+                    // WARNING: Subroutine does not return
+    banked_load_byte(0x22);
+  }
+  if (~DAT_INTMEM_4f != DAT_INTMEM_4e) {
+                    // WARNING: Subroutine does not return
+    uart_puts(0xed,0x1f,0xff);
+  }
+  bVar2 = DAT_INTMEM_4e & 0xf;
+  if (bVar2 == 1) {
+LAB_CODE_BANK1__c40e:
+    DAT_EXTMEM_0766 = 1;
+    return 1;
+  }
+  if (bVar2 == 3) {
+    cVar1 = G_PCIE_STATUS_0B1C;
+    if (cVar1 != '\0') {
+                    // WARNING: Subroutine does not return
+      banked_store_byte(0x40,0x50);
+    }
+    FUN_CODE_BANK1__9704(0x83,0x15,0x28,2);
+    FUN_CODE_BANK1__d5da();
+  }
+  else {
+    if (bVar2 == 5) goto LAB_CODE_BANK1__c40e;
+    if (bVar2 != 0) {
+      return bVar2;
+    }
+    cVar1 = DAT_EXTMEM_06ed;
+    if (cVar1 == '\x03') {
+      cVar1 = G_CMD_DEBUG_FF;
+      if (cVar1 == 'i') {
+        return 0;
+      }
+      bVar2 = dispatch_059d();
+      return bVar2;
+    }
+    if (DAT_INTMEM_50 != '\0') {
+      FUN_CODE_BANK1__9728(0x40);
+                    // WARNING: Subroutine does not return
+      thunk_FUN_CODE_BANK1__9403();
+    }
+  }
+  bVar2 = FUN_CODE_BANK1__da9f();
+  return bVar2;
+}
+
+
+
+void FUN_CODE_BANK1__c32d(char param_1)
+
+{
+  char cVar1;
+  byte bVar2;
+  
+  if (param_1 == -3) {
+    DAT_INTMEM_4e = FUN_CODE_BANK1__9718(0x20);
+                    // WARNING: Subroutine does not return
+    banked_load_byte(0x22);
+  }
+  if (~DAT_INTMEM_4f != DAT_INTMEM_4e) {
+                    // WARNING: Subroutine does not return
+    uart_puts(0xed,0x1f,0xff);
+  }
+  bVar2 = DAT_INTMEM_4e & 0xf;
+  if (bVar2 == 1) {
+LAB_CODE_BANK1__c40e:
+    DAT_EXTMEM_0766 = 1;
+    return;
+  }
+  if (bVar2 == 3) {
+    cVar1 = G_PCIE_STATUS_0B1C;
+    if (cVar1 != '\0') {
+                    // WARNING: Subroutine does not return
+      banked_store_byte(0x40,0x50);
+    }
+    FUN_CODE_BANK1__9704(0x83,0x15,0x28,2);
+    FUN_CODE_BANK1__d5da();
+  }
+  else {
+    if (bVar2 == 5) goto LAB_CODE_BANK1__c40e;
+    if (bVar2 != 0) {
+      return;
+    }
+    cVar1 = DAT_EXTMEM_06ed;
+    if (cVar1 == '\x03') {
+      cVar1 = G_CMD_DEBUG_FF;
+      if (cVar1 == 'i') {
+        return;
+      }
+      dispatch_059d();
+      return;
+    }
+    if (DAT_INTMEM_50 != '\0') {
+      FUN_CODE_BANK1__9728(0x40);
+                    // WARNING: Subroutine does not return
+      thunk_FUN_CODE_BANK1__9403();
+    }
+  }
+  FUN_CODE_BANK1__da9f();
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__c343(void)
+
+{
+  DAT_INTMEM_4e = FUN_CODE_BANK1__9721(0x21);
+                    // WARNING: Subroutine does not return
+  banked_load_byte(0x23);
+}
+
+
+
+void FUN_CODE_BANK1__c34a(void)
+
+{
+                    // WARNING: Subroutine does not return
+  banked_load_byte(0x23);
+}
+
+
+
+void FUN_CODE_BANK1__c351(void)
+
+{
+                    // WARNING: Subroutine does not return
+  banked_load_byte(0x21);
+}
+
+
+
+void FUN_CODE_BANK1__c366(short param_1)
+
+{
+  if (_f_1 != '\0') {
+    _f_1 = 0;
+    *(undefined1 *)(param_1 + 1) = 0;
+    return;
+  }
+  DAT_INTMEM_4e = FUN_CODE_BANK1__9782();
+                    // WARNING: Subroutine does not return
+  banked_load_byte(0xa7);
+}
+
+
+
+void banked_load_byte(void)
+
+{
+                    // WARNING: Subroutine does not return
+  banked_load_byte();
+}
+
+
+
+// WARNING: Instruction at (CODE,0xc7e2) overlaps instruction at (CODE,0xc7e1)
+// 
+
+void FUN_CODE_BANK1__c7e0(byte param_1,byte *param_2,char param_3)
+
+{
+  byte bVar1;
+  undefined1 uVar2;
+  byte bVar3;
+  
+  bVar3 = *param_2;
+  *param_2 = param_1;
+  if (param_3 == '\x01') {
+code_c0xc7e3:
+    uVar2 = 1;
+    if ((bVar3 & 1) != 1) {
+      uVar2 = 2;
+    }
+  }
+  else {
+    DAT_INTMEM_54 = DAT_INTMEM_58 & 7;
+    if (DAT_INTMEM_54 != 0) {
+      if (DAT_INTMEM_54 != 1) {
+        if (DAT_INTMEM_54 != 7) {
+          FUN_CODE_BANK1__b6d4();
+          xdata_store_dword(0x810);
+          return;
+        }
+        G_STATE_0AB6 = 3;
+        goto LAB_CODE_BANK1__c807;
+      }
+      bVar3 = REG_PHY_VENDOR_CTRL_C6DB;
+      goto code_c0xc7e3;
+    }
+    bVar3 = REG_PHY_VENDOR_CTRL_C6DB;
+    uVar2 = 2;
+    if ((bVar3 & 1) != 1) {
+      uVar2 = 1;
+    }
+  }
+  G_STATE_0AB6 = uVar2;
+LAB_CODE_BANK1__c807:
+  xdata_load_dword(0x814);
+  xdata_store_dword(0x824);
+  bVar3 = G_STATE_0AB6;
+  if ((bVar3 & 1) != 0) {
+    bVar1 = DAT_EXTMEM_c2c4;
+    DAT_EXTMEM_c2c4 = bVar1 & 0x7f | 0x80;
+  }
+  if ((bVar3 >> 1 & 1) != 0) {
+    bVar3 = DAT_EXTMEM_c344;
+    DAT_EXTMEM_c344 = bVar3 & 0x7f | 0x80;
+  }
   return;
 }
 
@@ -37242,6 +46086,195 @@ void FUN_CODE_BANK1__d052(char param_1,char *param_2,byte *param_3)
   
                     // WARNING: Subroutine does not return
   banked_store_byte(param_1 - (*param_2 - (in_PSW >> 7)) & *param_3,0x12);
+}
+
+
+
+undefined1 FUN_CODE_BANK1__d185(undefined1 *param_1)
+
+{
+  return *param_1;
+}
+
+
+
+void FUN_CODE_BANK1__d1a8(void)
+
+{
+  return;
+}
+
+
+
+undefined1 FUN_CODE_BANK1__d1dd(char param_1,undefined1 param_2,char param_3)
+
+{
+  char in_PSW;
+  
+  return *(undefined1 *)CONCAT11(param_1 + (param_3 - (in_PSW >> 7)),param_2);
+}
+
+
+
+undefined1 FUN_CODE_BANK1__d1e6(void)
+
+{
+  return 1;
+}
+
+
+
+void FUN_CODE_BANK1__d221
+               (byte param_1,byte param_2,byte *param_3,char param_4,byte param_5,byte param_6,
+               byte param_7)
+
+{
+  char cVar1;
+  byte bVar2;
+  byte bVar3;
+  char *pcVar4;
+  byte *pbVar5;
+  byte *pbVar6;
+  
+  bVar2 = (param_1 | param_6) & DAT_INTMEM_4d;
+  DAT_INTMEM_4c = DAT_INTMEM_4c + '\x01';
+  DAT_INTMEM_45 = DAT_INTMEM_45 & 0x4e;
+  F8_7 = 1;
+  DAT_INTMEM_42 = DAT_INTMEM_42 & bVar2;
+  bVar2 = bVar2 | DAT_INTMEM_52;
+  DAT_INTMEM_50 = DAT_INTMEM_50 | 0xd3;
+  bVar3 = bVar2 - 1;
+  DAT_INTMEM_44 = DAT_INTMEM_44 & bVar2 & bVar3;
+  DAT_INTMEM_57 = DAT_INTMEM_57 & 0xd3;
+  DAT_INTMEM_48 = DAT_INTMEM_48 & bVar3;
+  pcVar4 = (char *)FUN_CODE_BANK1__d052(bVar3 | param_5 | *param_3,param_4 + '\x01',param_6 + 1);
+  DAT_INTMEM_58 = DAT_INTMEM_58 & (byte)pcVar4;
+  DAT_INTMEM_4d = DAT_INTMEM_4d & 0x47 | 0xd2;
+  DAT_INTMEM_42 = DAT_INTMEM_42 & 0x45;
+  bVar2 = SOFL;
+  SOFL = bVar2 & (byte)pcVar4;
+  *(char **)ZEXT12(pcVar4) = pcVar4;
+  nop();
+  *pcVar4 = *pcVar4 + -1;
+  func_0xb75b(param_2 | 0x40);
+  bVar2 = DAT_INTMEM_5e;
+  DAT_INTMEM_57 = param_7;
+  reg_read_word(0,0x12,DAT_INTMEM_5b,DAT_INTMEM_5c,DAT_INTMEM_5d);
+  if ((bVar2 & 1) == 0) {
+    pbVar5 = &DAT_EXTMEM_073e;
+  }
+  else {
+    pbVar5 = (byte *)CONCAT11('\a' - (((0xc1 < DAT_INTMEM_57) << 7) >> 7),DAT_INTMEM_57 + 0x3e);
+  }
+  DAT_INTMEM_59 = (undefined1)((ushort)*pbVar5 * 0x20 >> 8);
+  if ((bVar2 >> 1 & 1) == 0) {
+    pbVar6 = &DAT_EXTMEM_072e;
+  }
+  else {
+    pbVar6 = (byte *)CONCAT11('\a' - (((0xd1 < DAT_INTMEM_57) << 7) >> 7),DAT_INTMEM_57 + 0x2e);
+  }
+  DAT_INTMEM_5a = (byte)((ushort)*pbVar5 * 0x20) | *pbVar6;
+  DAT_INTMEM_58 = bVar2;
+  if ((DAT_INTMEM_55 & 1) != 0) {
+    bVar2 = FUN_CODE_BANK1__b720(0x6a);
+    cVar1 = (bVar2 & 1) == 1;
+    FUN_CODE_BANK1__ea7c(DAT_INTMEM_57);
+    FUN_CODE_BANK1__b6b5();
+    FUN_CODE_BANK1__b683(0xc2c3);
+    FUN_CODE_BANK1__b79d();
+    if (cVar1 != '\0') {
+      DAT_EXTMEM_0ab4 = DAT_INTMEM_58;
+    }
+  }
+  if ((DAT_INTMEM_55 >> 1 & 1) != 0) {
+    bVar2 = FUN_CODE_BANK1__b720(0x6c);
+    bVar2 = (bVar2 & 1) != 1;
+    FUN_CODE_BANK1__ea7c(DAT_INTMEM_57);
+    FUN_CODE_BANK1__b6b5();
+    FUN_CODE_BANK1__b683(FUN_CODE_BANK1__c343);
+    if ((bVar2 & 1) != 0) {
+      G_VENDOR_DATA_0AB5 = DAT_INTMEM_58;
+    }
+  }
+  func_0xb775();
+  FUN_CODE_BANK1__b6fa();
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__d229
+               (byte param_1,byte param_2,byte *param_3,char param_4,byte param_5,byte param_6,
+               byte param_7)
+
+{
+  char cVar1;
+  byte bVar2;
+  byte bVar3;
+  char *pcVar4;
+  byte *pbVar5;
+  byte *pbVar6;
+  
+  F8_7 = 1;
+  DAT_INTMEM_42 = DAT_INTMEM_42 & (param_1 | param_6);
+  bVar2 = param_1 | param_6 | DAT_INTMEM_52;
+  DAT_INTMEM_50 = DAT_INTMEM_50 | 0xd3;
+  bVar3 = bVar2 - 1;
+  DAT_INTMEM_44 = DAT_INTMEM_44 & bVar2 & bVar3;
+  DAT_INTMEM_57 = DAT_INTMEM_57 & 0xd3;
+  DAT_INTMEM_48 = DAT_INTMEM_48 & bVar3;
+  pcVar4 = (char *)FUN_CODE_BANK1__d052(bVar3 | param_5 | *param_3,param_4 + '\x01',param_6 + 1);
+  DAT_INTMEM_58 = DAT_INTMEM_58 & (byte)pcVar4;
+  DAT_INTMEM_4d = DAT_INTMEM_4d & 0x47 | 0xd2;
+  DAT_INTMEM_42 = DAT_INTMEM_42 & 0x45;
+  bVar2 = SOFL;
+  SOFL = bVar2 & (byte)pcVar4;
+  *(char **)ZEXT12(pcVar4) = pcVar4;
+  nop();
+  *pcVar4 = *pcVar4 + -1;
+  func_0xb75b(param_2 | 0x40);
+  bVar2 = DAT_INTMEM_5e;
+  DAT_INTMEM_57 = param_7;
+  reg_read_word(0,0x12,DAT_INTMEM_5b,DAT_INTMEM_5c,DAT_INTMEM_5d);
+  if ((bVar2 & 1) == 0) {
+    pbVar5 = &DAT_EXTMEM_073e;
+  }
+  else {
+    pbVar5 = (byte *)CONCAT11('\a' - (((0xc1 < DAT_INTMEM_57) << 7) >> 7),DAT_INTMEM_57 + 0x3e);
+  }
+  DAT_INTMEM_59 = (undefined1)((ushort)*pbVar5 * 0x20 >> 8);
+  if ((bVar2 >> 1 & 1) == 0) {
+    pbVar6 = &DAT_EXTMEM_072e;
+  }
+  else {
+    pbVar6 = (byte *)CONCAT11('\a' - (((0xd1 < DAT_INTMEM_57) << 7) >> 7),DAT_INTMEM_57 + 0x2e);
+  }
+  DAT_INTMEM_5a = (byte)((ushort)*pbVar5 * 0x20) | *pbVar6;
+  DAT_INTMEM_58 = bVar2;
+  if ((DAT_INTMEM_55 & 1) != 0) {
+    bVar2 = FUN_CODE_BANK1__b720(0x6a);
+    cVar1 = (bVar2 & 1) == 1;
+    FUN_CODE_BANK1__ea7c(DAT_INTMEM_57);
+    FUN_CODE_BANK1__b6b5();
+    FUN_CODE_BANK1__b683(0xc2c3);
+    FUN_CODE_BANK1__b79d();
+    if (cVar1 != '\0') {
+      DAT_EXTMEM_0ab4 = DAT_INTMEM_58;
+    }
+  }
+  if ((DAT_INTMEM_55 >> 1 & 1) != 0) {
+    bVar2 = FUN_CODE_BANK1__b720(0x6c);
+    bVar2 = (bVar2 & 1) != 1;
+    FUN_CODE_BANK1__ea7c(DAT_INTMEM_57);
+    FUN_CODE_BANK1__b6b5();
+    FUN_CODE_BANK1__b683(FUN_CODE_BANK1__c343);
+    if ((bVar2 & 1) != 0) {
+      G_VENDOR_DATA_0AB5 = DAT_INTMEM_58;
+    }
+  }
+  func_0xb775();
+  FUN_CODE_BANK1__b6fa();
+  return;
 }
 
 
@@ -37301,13 +46334,88 @@ void FUN_CODE_BANK1__d23c
     bVar2 = (bVar2 & 1) != 1;
     FUN_CODE_BANK1__ea7c(DAT_INTMEM_57);
     FUN_CODE_BANK1__b6b5();
-    FUN_CODE_BANK1__b683(&SUB_CODE_BANK1__c343);
+    FUN_CODE_BANK1__b683(FUN_CODE_BANK1__c343);
     if ((bVar2 & 1) != 0) {
       G_VENDOR_DATA_0AB5 = DAT_INTMEM_58;
     }
   }
   func_0xb775();
   FUN_CODE_BANK1__b6fa();
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__d265(void)
+
+{
+  undefined1 uVar1;
+  
+  uVar1 = SADDR;
+  FUN_CODE_BANK1__ba0e(uVar1);
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__d26c(char param_1)
+
+{
+  thunk_FUN_CODE_BANK1__9002(param_1 + '\x01');
+  return;
+}
+
+
+
+// WARNING: Instruction at (CODE,0xd2ab) overlaps instruction at (CODE,0xd2aa)
+// 
+
+void FUN_CODE_BANK1__d283
+               (undefined1 param_1,undefined1 *param_2,char *param_3,char *param_4,byte param_5,
+               byte param_6,byte param_7)
+
+{
+  undefined1 uVar1;
+  char cVar2;
+  byte bVar3;
+  
+  if (*param_4 == 'l') {
+    if (*param_3 != -6) goto code_c0xd2ac;
+    param_6 = 0xff;
+    FUN_CODE_BANK1__c07b(0xff,0xff,0xff);
+    param_1 = DAT_EXTMEM_024e;
+    param_2 = &G_FLASH_ADDR_0;
+  }
+  *param_2 = param_1;
+  G_STATE_COUNTER_0AAC = 0;
+  while( true ) {
+    bVar3 = G_FLASH_ADDR_0;
+    param_7 = G_STATE_COUNTER_0AAC;
+    if (bVar3 <= param_7) break;
+code_c0xd2ac:
+    bVar3 = G_STATE_HELPER_0AAB;
+    mul_add_index(bVar3 ^ *(byte *)CONCAT11('\x02' - (((0xb2 < param_7) << 7) >> 7),param_7 + 0x4d),
+                  0x5466,4);
+    code_load_dword();
+    uVar1 = BANK0_R0;
+    xdata_load_dword(0xaa8);
+    reg_read_word(8);
+    BANK0_R0 = uVar1;
+    xor32();
+    func_0xc07c();
+    cVar2 = G_STATE_COUNTER_0AAC;
+    G_STATE_COUNTER_0AAC = cVar2 + '\x01';
+  }
+  xdata_load_dword(param_7 - bVar3,0xaa8);
+  FUN_CODE_BANK1__c07b(~param_5,~param_6,~param_7,~bVar3);
+  uVar1 = G_STATE_HELPER_0AAB;
+  DAT_EXTMEM_0249 = uVar1;
+  uVar1 = G_TLP_STATUS;
+  DAT_EXTMEM_024a = uVar1;
+  uVar1 = G_TLP_COUNT_LO;
+  DAT_EXTMEM_024b = uVar1;
+  uVar1 = G_TLP_COUNT_HI;
+  DAT_EXTMEM_024c = uVar1;
   return;
 }
 
@@ -37326,12 +46434,682 @@ void FUN_CODE_BANK1__d38d(byte param_1)
 
 
 
+void FUN_CODE_BANK1__d5da(short param_1)
+
+{
+  char cVar1;
+  char cVar2;
+  
+  cVar2 = *(char *)(param_1 + 1) + '\x01';
+  cVar1 = '\x02';
+  do {
+    cVar2 = cVar2 << 1;
+    cVar1 = cVar1 + -1;
+  } while (cVar1 != '\0');
+                    // WARNING: Subroutine does not return
+  idata_store_dword(9,0,0,cVar2);
+}
+
+
+
+void FUN_CODE_BANK1__d75b(undefined1 param_1)
+
+{
+  byte bVar1;
+  undefined1 uVar2;
+  undefined1 uVar3;
+  byte bVar4;
+  
+  G_LOG_PROCESSED_INDEX = param_1;
+  bVar1 = DAT_EXTMEM_0442;
+  bVar4 = G_LOG_PROCESSED_INDEX;
+  if (bVar4 < bVar1) {
+    FUN_CODE_BANK1__bf9a(bVar4 - bVar1);
+    FUN_CODE_BANK1__bfb7(bVar4 + 9);
+    uVar2 = G_STATE_PARAM_0AA2;
+    uVar3 = G_STATE_COUNTER_HI;
+                    // WARNING: Subroutine does not return
+    banked_store_byte(*(undefined1 *)CONCAT11(uVar2,uVar3),0x3c,uVar3);
+  }
+  thunk_FUN_CODE_7a12(bVar4,0);
+  return;
+}
+
+
+
+void thunk_FUN_CODE_BANK1__9002(void)
+
+{
+  FUN_CODE_BANK1__9002();
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__da9f(byte param_1)
+
+{
+                    // WARNING: Subroutine does not return
+  banked_store_byte(param_1 & 0xbf | 0x40);
+}
+
+
+
+void FUN_CODE_BANK1__df30(void)
+
+{
+  char cVar1;
+  byte bVar2;
+  
+  bVar2 = G_STATE_PARAM_0AA2;
+  if (bVar2 < 2) {
+    bVar2 = FUN_CODE_BANK1__c25a(bVar2 - 2,0x35);
+                    // WARNING: Subroutine does not return
+    banked_store_byte(bVar2 & 0x3f | 0x40);
+  }
+  cVar1 = G_STATE_COUNTER_HI;
+  if ((cVar1 == '\x03') && (cVar1 = G_STATE_COUNTER_LO, cVar1 == '\x03')) {
+    bVar2 = FUN_CODE_BANK1__c261(bVar2);
+                    // WARNING: Subroutine does not return
+    banked_store_byte(bVar2 & 0xef);
+  }
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__df61(byte *param_1,undefined1 param_2)
+
+{
+  char cVar1;
+  
+  *(undefined1 *)CONCAT11('\n' - (((0x5c < *param_1) << 7) >> 7),*param_1 + 0xa3) = param_2;
+  cVar1 = G_STATE_PARAM_0AA2;
+  G_STATE_PARAM_0AA2 = cVar1 + '\x01';
+  FUN_CODE_BANK1__df30();
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__dfc0(void)
+
+{
+  undefined1 uVar1;
+  byte bVar2;
+  
+  if (DAT_INTMEM_3b == '\0') {
+    uVar1 = G_LINK_CFG_0AEF;
+    FUN_CODE_3578(uVar1);
+    G_SYS_FLAGS_07E8 = 0;
+    G_INTERFACE_READY_0B2F = 1;
+    bVar2 = G_STATE_FLAG_0AF1;
+    if ((bVar2 & 1) != 0) {
+      G_SYS_FLAGS_07EB = 1;
+    }
+  }
+  FUN_CODE_BANK1__aa1d();
+  return;
+}
+
+
+/*
+Unable to decompile 'get_pcie_status_flags_e00c'
+Cause: Start and end addresses must be in same address space!  Start CODE:7ff4   end = CODE_BANK1::8001
+*/
+
+
+void FUN_CODE_BANK1__e012(undefined1 param_1,byte param_2,char param_3)
+
+{
+                    // WARNING: Subroutine does not return
+  banked_store_byte(param_2 | 0x10,param_1,param_3 + '\x01');
+}
+
+
+
+void pcie_channel_setup_e19e(byte param_1,byte param_2)
+
+{
+  undefined1 uVar1;
+  
+  if ((param_1 | param_2) != 0x51) {
+    return;
+  }
+  if (DAT_INTMEM_4d == 'Q') {
+    uVar1 = DAT_EXTMEM_ea81;
+                    // WARNING: Subroutine does not return
+    banked_store_byte(BANK0_R7,BANK0_R7,BANK0_R6,BANK0_R5,DAT_INTMEM_4f | 2,DAT_INTMEM_50,
+                      DAT_INTMEM_51);
+  }
+  uVar1 = DAT_EXTMEM_ea81;
+  *(undefined1 *)CONCAT11(DAT_INTMEM_50,DAT_INTMEM_51) = uVar1;
+  return;
+}
+
+
+
 void FUN_CODE_BANK1__e26a(undefined1 param_1,undefined1 *param_2)
 
 {
   *param_2 = param_1;
   DAT_EXTMEM_0719 = param_1;
   return;
+}
+
+
+
+void FUN_CODE_BANK1__e2b9(undefined1 param_1,undefined1 *param_2)
+
+{
+  byte bVar1;
+  
+  *param_2 = param_1;
+  param_2[1] = 3;
+  param_2[2] = 3;
+  param_2[3] = 0;
+  FUN_CODE_BANK1__b70d(0xc2c3);
+  bVar1 = DAT_EXTMEM_c2cb;
+  DAT_EXTMEM_c2cb = bVar1 & 0xfb;
+  FUN_CODE_BANK1__b70d(FUN_CODE_BANK1__c343);
+  bVar1 = DAT_EXTMEM_c34b;
+  DAT_EXTMEM_c34b = bVar1 & 0xfb;
+  FUN_CODE_BANK1__b796(0xc21c);
+  bVar1 = REG_PHY_LINK_CTRL_C208;
+  REG_PHY_LINK_CTRL_C208 = bVar1 & 0xbf;
+  func_0xb73b();
+                    // WARNING: Subroutine does not return
+  banked_load_byte(0x1d,0x28,2);
+}
+
+
+
+void pcie_dma_config_e330(undefined1 *param_1)
+
+{
+  do {
+    FUN_CODE_BANK1__d221(DAT_INTMEM_23 + '&');
+    *param_1 = 0;
+    DAT_INTMEM_23 = DAT_INTMEM_23 + '\x01';
+  } while (DAT_INTMEM_23 != '\b');
+  return;
+}
+
+
+
+void delay_function(void)
+
+{
+                    // WARNING: Subroutine does not return
+  banked_store_byte(0x80,3);
+}
+
+
+
+void event_state_machine_e56f(byte *param_1,byte *param_2)
+
+{
+  byte bVar1;
+  char cVar2;
+  
+  if ((*param_1 >> 3 & 1) != 0) {
+    FUN_CODE_BANK1__e6f0(1);
+  }
+  bVar1 = G_EVENT_CHECK_09EF;
+  if ((bVar1 & 1) != 0) {
+    cVar2 = FUN_CODE_BANK1__b78c(bVar1 | *param_2,0x52,0x48,0x4d);
+    if (cVar2 == '\0') {
+      FUN_CODE_BANK1__d75b();
+    }
+    return;
+  }
+  G_EVENT_INIT_097A = 0x84;
+  return;
+}
+
+
+
+// WARNING: Removing unreachable block (CODE,0x8348)
+
+void pcie_channel_disable_e5fe(char *param_1,undefined1 param_2,byte param_3,char param_4)
+
+{
+  bool bVar1;
+  byte bVar2;
+  char cVar3;
+  byte bVar4;
+  undefined1 *puVar5;
+  
+  cVar3 = DAT_EXTMEM_075c;
+  if ((cVar3 == '\0') && (cVar3 = DAT_EXTMEM_075a, cVar3 == '\0')) {
+    do {
+      bVar4 = DAT_EXTMEM_c350;
+    } while ((bVar4 & 0x20) == 0);
+    return;
+  }
+  bVar4 = DAT_EXTMEM_0718;
+  bVar1 = bVar4 < 4;
+  if (bVar4 != 4) {
+    FUN_CODE_BANK1__850b();
+    return;
+  }
+  bVar4 = 4;
+  while( true ) {
+    bVar2 = *param_1 - ((bVar1 << 7) >> 7);
+    bVar1 = bVar4 < bVar2;
+    bVar4 = bVar4 - bVar2;
+    cVar3 = RXCON;
+    RXCON = cVar3 + -1;
+    cVar3 = RXCON;
+    if (cVar3 == '\0') break;
+    nop();
+    nop();
+    nop();
+    nop();
+    nop();
+    nop();
+    nop();
+    nop();
+    nop();
+    nop();
+    nop();
+    nop();
+  }
+  DAT_EXTMEM_0719 = bVar4;
+  puVar5 = &DAT_EXTMEM_21ae;
+  bVar4 = func_0x96a7((&DAT_CODE_21ae)[bVar4] + DAT_INTMEM_21);
+  func_0x96d6(bVar4 | 0x20);
+  *puVar5 = 0x40;
+  if (param_4 < '\0') {
+    bVar4 = func_0x982b();
+                    // WARNING: Subroutine does not return
+    thunk_FUN_CODE_BANK1__91f5(bVar4 & 0xf);
+  }
+  func_0x9731();
+  *puVar5 = 0x20;
+  BANK2_R2 = BANK2_R2 + '\x01';
+  DAT_INTMEM_70 = param_2;
+  func_0xd1f2(param_3 << 1 | param_3 >> 7);
+  *puVar5 = 0x20;
+  FUN_CODE_BANK1__86fb();
+  return;
+}
+
+
+
+void power_check_status_e647(void)
+
+{
+  dispatch_05c5();
+  FUN_CODE_BANK1__bf9a();
+  FUN_CODE_BANK1__bfb5();
+  FUN_CODE_BANK1__c074();
+  dispatch_05c5();
+  thunk_FUN_CODE_7a12(0);
+  return;
+}
+
+
+
+void status_update_handler_e677(char param_1)
+
+{
+  if (param_1 == '\x04') {
+    FUN_CODE_BANK1__c244();
+                    // WARNING: Subroutine does not return
+    banked_store_byte(0);
+  }
+  FUN_CODE_BANK1__c247(0x9e5);
+                    // WARNING: Subroutine does not return
+  banked_load_byte();
+}
+
+
+
+void dma_buffer_store_result_e68f(undefined1 param_1)
+
+{
+  _8_7 = 0;
+                    // WARNING: Subroutine does not return
+  banked_store_byte(param_1);
+}
+
+
+
+void FUN_CODE_BANK1__e6f0(byte *param_1)
+
+{
+  byte bVar1;
+  
+  if ((*param_1 & 1) != 1) {
+    bVar1 = FUN_CODE_BANK1__d185();
+    *param_1 = bVar1;
+    func_0xeec7(1);
+    bVar1 = FUN_CODE_BANK1__d185();
+    *param_1 = bVar1 | 1;
+  }
+  dispatch_0485();
+  FUN_CODE_BANK1__ef03();
+                    // WARNING: Subroutine does not return
+  uart_puts(0x29,0x38,0xff);
+}
+
+
+
+void thunk_FUN_CODE_BANK1__e012(undefined1 param_1,byte param_2,char param_3)
+
+{
+                    // WARNING: Subroutine does not return
+  banked_store_byte(param_2 | 0x10,param_1,param_3 + '\x01');
+}
+
+
+
+void dma_poll_link_ready(undefined1 param_1,byte *param_2,undefined1 *param_3)
+
+{
+  undefined1 uVar1;
+  byte bVar2;
+  
+  uVar1 = *param_3;
+  *param_3 = param_1;
+  bVar2 = FUN_CODE_BANK1__d185(uVar1);
+  *param_2 = bVar2 | 1;
+  dispatch_0485();
+  FUN_CODE_BANK1__ef03();
+                    // WARNING: Subroutine does not return
+  uart_puts(0x29,0x38,0xff);
+}
+
+
+
+void timer_wait(undefined1 param_1)
+
+{
+  char cVar1;
+  
+  FUN_CODE_BANK1__e2b9(param_1);
+  cVar1 = DAT_EXTMEM_0718;
+  if (cVar1 == '\0') {
+                    // WARNING: Subroutine does not return
+    banked_load_byte(0,1,2);
+  }
+  return;
+}
+
+
+
+char FUN_CODE_BANK1__e75e(void)
+
+{
+  byte bVar1;
+  byte bVar2;
+  char cVar3;
+  char cVar4;
+  
+  bVar1 = G_STATE_COUNTER_LO;
+  bVar2 = G_STATE_COUNTER_0AA5;
+  if (bVar1 <= bVar2) {
+    return bVar2 - bVar1;
+  }
+  bVar1 = G_STATE_COUNTER_HI;
+  cVar3 = bVar1 + bVar2;
+  cVar4 = G_STATE_PARAM_0AA2;
+  FUN_CODE_BANK1__ea19(cVar4 - ((CARRY1(bVar1,bVar2) << 7) >> 7));
+  if (cVar3 != '\0') {
+    return cVar3;
+  }
+  cVar4 = G_STATE_COUNTER_0AA5;
+  G_STATE_COUNTER_0AA5 = cVar4 + '\x01';
+  cVar4 = FUN_CODE_BANK1__e75e();
+  return cVar4;
+}
+
+
+
+char event_queue_process_e762(byte param_1,short param_2)
+
+{
+  byte bVar1;
+  byte bVar2;
+  char cVar3;
+  char cVar4;
+  
+  bVar1 = *(byte *)(param_2 + 1);
+  if (param_1 <= bVar1) {
+    return bVar1 - param_1;
+  }
+  bVar2 = G_STATE_COUNTER_HI;
+  cVar3 = bVar2 + bVar1;
+  cVar4 = G_STATE_PARAM_0AA2;
+  FUN_CODE_BANK1__ea19(cVar4 - ((CARRY1(bVar2,bVar1) << 7) >> 7));
+  if (cVar3 != '\0') {
+    return cVar3;
+  }
+  cVar4 = G_STATE_COUNTER_0AA5;
+  G_STATE_COUNTER_0AA5 = cVar4 + '\x01';
+  cVar4 = FUN_CODE_BANK1__e75e();
+  return cVar4;
+}
+
+
+
+void pcie_txn_setup_e775(char *param_1,char param_2)
+
+{
+  char cVar1;
+  char in_PSW;
+  
+  FUN_CODE_BANK1__ea19(*param_1 - (in_PSW >> 7));
+  if (param_2 != '\0') {
+    return;
+  }
+  cVar1 = G_STATE_COUNTER_0AA5;
+  G_STATE_COUNTER_0AA5 = cVar1 + '\x01';
+  FUN_CODE_BANK1__e75e();
+  return;
+}
+
+
+
+void thunk_FUN_CODE_BANK1__e012(undefined1 param_1,byte param_2,char param_3)
+
+{
+                    // WARNING: Subroutine does not return
+  banked_store_byte(param_2 | 0x10,param_1,param_3 + '\x01');
+}
+
+
+
+void pcie_wait_and_ack_e80a(char param_1,char param_2)
+
+{
+  byte bVar1;
+  char cVar2;
+  undefined1 uVar3;
+  
+  if ((param_1 != 'P') && (param_2 != 'Q')) {
+    FUN_CODE_BANK1__ab27();
+    usb_dma_transfer_setup();
+    return;
+  }
+  FUN_CODE_BANK1__a9f9();
+  cVar2 = FUN_CODE_BANK1__aa34(4);
+  uVar3 = FUN_CODE_BANK1__aa02(cVar2 + '\x11');
+  G_FLASH_READ_TRIGGER = uVar3;
+  bVar1 = REG_USB_STATUS;
+  if ((bVar1 & 1) != 0) {
+    FUN_CODE_BANK1__aa7f(0,0x80);
+  }
+  FUN_CODE_BANK1__aa4b();
+  return;
+}
+
+
+
+void cpu_dma_setup_e81b(void)
+
+{
+  return;
+}
+
+
+
+void pcie_save_ctrl_state(undefined1 param_1)
+
+{
+                    // WARNING: Subroutine does not return
+  banked_store_byte(0,param_1);
+}
+
+
+
+void pcie_restore_ctrl_state(void)
+
+{
+  DAT_EXTMEM_0995 = 6;
+  DAT_EXTMEM_09dd = 0x20;
+  DAT_EXTMEM_09dc = 0x10;
+  DAT_EXTMEM_09e2 = 4;
+  DAT_EXTMEM_09e0 = 6;
+  return;
+}
+
+
+
+void timer_pcie_async_event(void)
+
+{
+  byte bVar1;
+  
+  bVar1 = REG_SYS_CTRL_E763;
+  if ((bVar1 >> 2 & 1) != 0) {
+    REG_SYS_CTRL_E763 = 4;
+    FUN_CODE_BANK1__ef03();
+                    // WARNING: Subroutine does not return
+    uart_puts(0xb4,0x38,0xff);
+  }
+  bVar1 = REG_SYS_CTRL_E763;
+  if ((bVar1 >> 3 & 1) != 0) {
+    REG_SYS_CTRL_E763 = 8;
+    FUN_CODE_BANK1__ef03();
+                    // WARNING: Subroutine does not return
+    uart_puts(0xc0,0x38,0xff);
+  }
+  return;
+}
+
+
+
+void pcie_handler_e890(void)
+
+{
+                    // WARNING: Subroutine does not return
+  uart_puts(0xb4,0x38,0xff);
+}
+
+
+
+void clear_pcie_status_bytes_e8cd
+               (char param_1,undefined1 param_2,char param_3,char param_4,byte param_5)
+
+{
+  byte bVar1;
+  
+  bVar1 = param_3 + 1;
+  xdata_load_triple(param_2,bVar1);
+                    // WARNING: Subroutine does not return
+  banked_load_byte(bVar1 + param_5,param_4 + (param_1 - ((CARRY1(bVar1,param_5) << 7) >> 7)));
+}
+
+
+
+void pcie_trigger_cc11_e8ef(char param_1,char *param_2,char param_3)
+
+{
+  *param_2 = param_1 + param_3;
+  thunk_FUN_CODE_BANK1__e8f0();
+                    // WARNING: Subroutine does not return
+  FUN_CODE_BANK1__c343();
+}
+
+
+
+void FUN_CODE_BANK1__e8f0(char param_1,char *param_2,char param_3)
+
+{
+  *param_2 = param_1 + param_3;
+  thunk_FUN_CODE_BANK1__e8f0();
+                    // WARNING: Subroutine does not return
+  FUN_CODE_BANK1__c343();
+}
+
+
+
+void pcie_init_read_e8f9(byte param_1)
+
+{
+  byte bVar1;
+  undefined1 uVar2;
+  undefined1 *puVar3;
+  byte *pbVar4;
+  
+  uVar2 = DAT_EXTMEM_c2ec;
+  puVar3 = &DAT_EXTMEM_c2c9;
+  bVar1 = FUN_CODE_BANK1__c31f(uVar2);
+  uVar2 = FUN_CODE_BANK1__c32d(bVar1 | param_1);
+  *puVar3 = uVar2;
+  uVar2 = DAT_EXTMEM_c36c;
+  pbVar4 = &DAT_EXTMEM_c349;
+  bVar1 = FUN_CODE_BANK1__c31f(uVar2);
+  *pbVar4 = bVar1 | param_1;
+                    // WARNING: Subroutine does not return
+  FUN_CODE_BANK1__c343();
+}
+
+
+
+void error_clear_system_flags(void)
+
+{
+  byte bVar1;
+  
+  FUN_CODE_BANK1__d1a8(0xc808);
+  REG_SYS_CTRL_E761 = 0xff;
+  bVar1 = REG_SYS_CTRL_E760;
+  REG_SYS_CTRL_E760 = bVar1 & 0xfb | 4;
+  bVar1 = REG_SYS_CTRL_E761;
+  REG_SYS_CTRL_E761 = bVar1 & 0xfb;
+  bVar1 = REG_SYS_CTRL_E760;
+  REG_SYS_CTRL_E760 = bVar1 & 0xf7 | 8;
+  bVar1 = REG_SYS_CTRL_E761;
+  REG_SYS_CTRL_E761 = bVar1 & 0xf7;
+  REG_SYS_CTRL_E763 = 4;
+  REG_SYS_CTRL_E763 = 8;
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__e949(undefined1 *param_1,undefined1 *param_2)
+
+{
+  DAT_INTMEM_74 = DAT_INTMEM_74 ^ 4;
+  *param_1 = *param_2;
+  *param_1 = 8;
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__ea19(undefined1 param_1,undefined1 *param_2)
+
+{
+  DAT_INTMEM_74 = 1;
+  *param_2 = param_1;
+  DAT_INTMEM_4f = 0;
+                    // WARNING: Subroutine does not return
+  thunk_FUN_CODE_BANK1__9403();
 }
 
 
@@ -37346,6 +47124,4226 @@ void FUN_CODE_BANK1__ea7c(void)
   FUN_CODE_BANK1__ef03();
                     // WARNING: Subroutine does not return
   uart_puts(0x22,0x38,0xff);
+}
+
+
+
+void FUN_CODE_BANK1__eb12(undefined1 *param_1)
+
+{
+  *param_1 = 0x42;
+  xdata_store_dword(0x810,0,0,0,0);
+  return;
+}
+
+
+
+void thunk_FUN_CODE_BANK1__eb12(undefined1 *param_1)
+
+{
+  *param_1 = 0x42;
+  xdata_store_dword(0x810,0,0,0,0);
+  return;
+}
+
+
+
+void thunk_FUN_CODE_BANK1__e8f0(char param_1,char *param_2,char param_3)
+
+{
+  *param_2 = param_1 + param_3;
+  thunk_FUN_CODE_BANK1__e8f0();
+                    // WARNING: Subroutine does not return
+  FUN_CODE_BANK1__c343();
+}
+
+
+
+void FUN_CODE_BANK1__ecbe(undefined1 param_1,undefined1 *param_2)
+
+{
+  byte *pbVar1;
+  
+  *param_2 = param_1;
+  pbVar1 = param_2 + 1;
+  *pbVar1 = *pbVar1 & 0xf7 | 8;
+  *pbVar1 = *pbVar1 & 0xfd;
+  FUN_CODE_BANK1__df61(param_1);
+  return;
+}
+
+
+
+void pcie_state_clear_ed02(void)
+
+{
+  dispatch_05c5();
+  G_BANK1_STATE_023F = 0;
+  return;
+}
+
+
+
+void pcie_nvme_event_handler(undefined1 *param_1)
+
+{
+  *param_1 = 0;
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__ed23(byte param_1,short param_2)
+
+{
+                    // WARNING: Could not recover jumptable at 0x2281. Too many branches
+                    // WARNING: Treating indirect jump as call
+  (*(code *)(param_2 + (ushort)(param_1 ^ 0x52)))();
+  return;
+}
+
+
+/*
+Unable to decompile 'thunk_FUN_CODE_7a12'
+Cause: Start and end addresses must be in same address space!  Start CODE:7ff4   end = CODE_BANK1::8001
+*/
+
+
+// WARNING: Instruction at (CODE,0xeda0) overlaps instruction at (CODE,0xed9f)
+// 
+
+void pcie_error_dispatch(undefined1 *param_1,undefined1 *param_2)
+
+{
+  char cVar1;
+  undefined1 uVar2;
+  
+  if (_0_2 == '\0') {
+    dispatch_0471(*param_2,0xf);
+    uVar2 = FUN_CODE_BANK1__d185();
+    *param_1 = uVar2;
+    func_0xed44();
+    dispatch_05ac();
+  }
+  else {
+    _0_2 = '\0';
+    cVar1 = DAT_SFR_ac;
+    DAT_SFR_ac = cVar1 + '\x01';
+  }
+  DAT_EXTMEM_0b42 = 0;
+  DAT_EXTMEM_0b43 = 0;
+  return;
+}
+
+
+
+void pcie_event_bit5_handler(void)
+
+{
+  FUN_CODE_BANK1__ee49();
+  dispatch_05ca();
+  FUN_CODE_BANK1__d1dd();
+  return;
+}
+
+
+
+void FUN_CODE_BANK1__ee49(undefined1 param_1)
+
+{
+  dispatch_05c0(param_1);
+  return;
+}
+
+
+
+void pcie_timer_bit4_handler(byte param_1)
+
+{
+  _b_2 = 0;
+                    // WARNING: Subroutine does not return
+  banked_store_byte(param_1 & 0xfe | 1);
+}
+
+
+
+void FUN_CODE_BANK1__ee6e(void)
+
+{
+                    // WARNING: Subroutine does not return
+  uart_puts(0xc3,0x37,0xff);
+}
+
+
+
+// WARNING: Control flow encountered bad instruction data
+
+void pcie_handler_unused_eef9(void)
+
+{
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+                    // WARNING: Bad instruction - Truncating control flow here
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  halt_baddata();
 }
 
 
@@ -38176,6 +52174,7768 @@ void FUN_CODE_BANK1__ef03(void)
   nop();
   nop();
   nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  halt_baddata();
+}
+
+
+
+// WARNING: Control flow encountered bad instruction data
+
+void error_handler_system_timer(void)
+
+{
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+                    // WARNING: Bad instruction - Truncating control flow here
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  halt_baddata();
+}
+
+
+
+// WARNING: Control flow encountered bad instruction data
+
+void FUN_CODE_BANK1__f022(void)
+
+{
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+  nop();
+                    // WARNING: Bad instruction - Truncating control flow here
   nop();
   nop();
   nop();

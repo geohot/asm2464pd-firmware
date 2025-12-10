@@ -20,28 +20,97 @@
  *   0xE8 - Reset/Commit  : System reset or commit flashed firmware
  *
  * ============================================================================
- * ORIGINAL FIRMWARE ADDRESSES
+ * VENDOR COMMAND DISPATCH ADDRESSES (Real Firmware)
  * ============================================================================
  *
- * Bank 1 addresses (file offset = 0x10000 + (addr - 0x8000)):
- *   vendor_cmd_e4_read  : 0xb473 (file 0x13473)
- *   vendor_cmd_e5_write : 0xb43c (file 0x1343c)
- *   helper_b663         : 0xb663 (file 0x13663) - set DPTR=0x0810, store dword
- *   helper_b67c         : 0xb67c (file 0x1367c) - clear bits at DPTR
- *   helper_b683         : 0xb683 (file 0x13683) - set bits, clear bit 6
- *   helper_b6b5         : 0xb6b5 (file 0x136b5) - shift and store
- *   helper_b6f0         : 0xb6ec (file 0x136ec) - shift a*4, merge/store
- *   helper_b6fa         : 0xb6fa (file 0x136fa) - load dword, compare
- *   helper_b720         : 0xb720 (file 0x13720) - loop store, copy params
- *   helper_b775         : 0xb775 (file 0x13775) - check mode/control
+ * Bank 0 addresses are CPU addresses (0x0000-0xFFFF).
+ * Bank 1 file offsets: file_offset = 0x10000 + (bank1_addr - 0x8000)
  *
- * Bank 0 helpers:
- *   helper_0d08         : ORL 32-bit r0-r3 with r4-r7
- *   helper_0d22         : SUBB 32-bit compare
- *   helper_0d46         : Left shift r4-r7 by r0 bits
- *   helper_0d84         : Read XDATA dword at DPTR to r4-r7
- *   helper_0d9d         : Read XDATA dword at DPTR to r0-r3
- *   helper_0dc5         : Store r4-r7 to XDATA at DPTR
+ * E0 (Config Read):
+ *   - Dispatch: 0x1353 (cjne a, #0xe0, jump to 0x12e5)
+ *   - Handler:  0x12e5 (calls 0x1646 for CDB parsing)
+ *   - Alt dispatch: 0x436e, 0x9073 (other entry points)
+ *
+ * E1 (Config Write):
+ *   - Shares dispatch with E0, differentiated by CDB byte (bit 6)
+ *   - Write mode when (opcode & 0x40) in CDB processing
+ *
+ * E2 (Flash Read):
+ *   - Dispatch: 0x140dc (Bank 1, cjne a, #0xe2)
+ *   - Handler:  0xd945 (Bank 0) - Flash read implementation
+ *   - Checks state at 0x0B02, opcode at 0x0B03
+ *
+ * E3 (Firmware Write):
+ *   - Dispatch: 0x140f9 (Bank 1, cjne a, #0xe3)
+ *   - Handler:  0xcf5d (Bank 0) - Flash write implementation
+ *   - State check: 0x0B02 == 0x02 for E3 mode
+ *
+ * E4 (XDATA Read):
+ *   - Dispatch: 0x13473 (Bank 1 file offset)
+ *   - Bank 1 CPU address: 0xb473
+ *
+ * E5 (XDATA Write):
+ *   - Dispatch: 0x1343c (Bank 1 file offset, cjne a, #0xe5)
+ *   - Bank 1 CPU address: 0xb43c
+ *
+ * E6 (NVMe Admin):
+ *   - Dispatch: 0x395b (Bank 0, cjne a, #0xe6)
+ *   - Jump table with sub-commands at 0x03ae-0x040d
+ *   - Trampoline: 0x0311 (sets up Bank 1 calls via ret trick)
+ *   - Sub-handler addresses loaded to DPTR then ajmp 0x0311:
+ *       0x03ae: DPTR=0xef3e    0x03db: DPTR=0xef46
+ *       0x03b3: DPTR=0xa327    0x03e0: DPTR=0xe01f
+ *       0x03b8: DPTR=0xbd76    0x03e5: DPTR=0xca52
+ *       0x03bd: DPTR=0xdde0    0x03ea: DPTR=0xec9b
+ *       0x03c2: DPTR=0xe12b    0x03ef: DPTR=0xc98d
+ *       0x03c7: DPTR=0xef42    0x03f4: DPTR=0xdd1a
+ *       0x03cc: DPTR=0xe632    0x03f9: DPTR=...
+ *       0x03d1: DPTR=0xd440    0x03fe: DPTR=...
+ *       0x03d6: DPTR=0xc65f
+ *   - Also 0x4abf, 0x50a2, 0x53e6, 0x5462 called directly
+ *
+ * E8 (Reset/Commit):
+ *   - Setup at 0x13a66 (Bank 1 file offset)
+ *   - Sets r6=0xC2, r7=0xE8 (addr 0xC2E8) when idata 0x56 == 0
+ *   - Loops calling 0xb6e0, 0xb700 with counter at idata 0x54
+ *   - Register access at 0xC2C3 or 0xC343 based on mode
+ *
+ * ============================================================================
+ * STATE MACHINE (0x0B02 register)
+ * ============================================================================
+ *
+ * The vendor command state machine uses XDATA 0x0B02:
+ *   - State 0: Initial/idle
+ *   - State 1: E2 Flash Read active
+ *   - State 2: E3 Firmware Write active
+ *
+ * Magic check: XDATA 0xEA90 must contain 0x5A for vendor commands to work.
+ *
+ * ============================================================================
+ * BANK 1 HELPER FUNCTIONS (File Offsets)
+ * ============================================================================
+ *
+ *   vendor_cmd_e5_write : 0x1343c-0x13472 - XDATA write handler
+ *   vendor_cmd_e4_read  : 0x13473-0x1351f - XDATA read handler
+ *   helper_13665        : 0x13665-0x1366a - set DPTR=0x0810, ljmp store_dword
+ *   helper_1367c        : 0x1367c-0x1368a - clear bits at DPTR (full sequence)
+ *   helper_13683        : 0x13683-0x1368a - ORL 0x1C, ANL 0xBF (mid-entry)
+ *   helper_136b5        : 0x136b5-0x136c3 - shift and store two bytes
+ *   helper_136ec        : 0x136ec-0x136f6 - shift a*4, merge/store
+ *   helper_136f7        : 0x136f7-0x13700 - load 0x0AB7, compare
+ *   helper_13720        : 0x13720-0x1374d - loop store, copy params
+ *   helper_13775        : 0x13775-0x137xx - check mode/control
+ *
+ * ============================================================================
+ * BANK 0 HELPER FUNCTIONS
+ * ============================================================================
+ *
+ *   helper_0d08         : 0x0d08-0x0d14 - ORL 32-bit r4-r7 |= r0-r3
+ *   helper_0d22         : 0x0d22-0x0d32 - SUBB 32-bit compare
+ *   helper_0d46         : 0x0d46-0x0d58 - Left shift r4-r7 by r0 bits
+ *   helper_0d84         : 0x0d84-0x0d9c - Read XDATA dword to r4-r7
+ *   helper_0d9d         : 0x0d9d-0x0da8 - Read XDATA dword to r0-r3
+ *   helper_0dc5         : 0x0dc5-0x0dd0 - Store r4-r7 to XDATA at DPTR
  *
  * ============================================================================
  */
@@ -197,29 +266,43 @@ void helper_store_dword(__xdata uint8_t *ptr) __naked
 
 /*
  * Bank 1 helper functions for vendor commands
+ * All addresses are FILE OFFSETS (bank 1 starts at 0x10000)
  */
 
 /*
- * helper_b663 - Set DPTR to 0x0810 and store dword
- * Address: 0xb665-0x13668
+ * helper_13665 - Set DPTR to 0x0810 and store dword
+ * File offset: 0x13665-0x1366a
+ *
+ * Disassembly:
+ *   0x13665: mov dptr, #0x0810
+ *   0x13668: ljmp 0x0dc5        ; store r4-r7 to DPTR
  *
  * Sets DPTR = 0x0810 (G_VENDOR_CDB_BASE) and stores r4-r7 there
  */
-static void helper_b663(void)
+static void helper_13665(void)
 {
     __xdata uint8_t *ptr = (__xdata uint8_t *)0x0810;
     helper_store_dword(ptr);
 }
 
 /*
- * helper_b67c - Clear bits at DPTR
- * Address: 0xb67c (file 0x1367c)
+ * helper_1367c - Clear bits at DPTR
+ * File offset: 0x1367c-0x1368a
  *
- * Read DPTR, AND with 0xFD, store
- * Read DPTR, AND with 0xC3, OR with 0x1C, store
- * Read DPTR, AND with 0xBF, store
+ * Disassembly:
+ *   0x1367c: movx a, @dptr
+ *   0x1367d: anl a, #0xfd       ; clear bit 1
+ *   0x1367f: movx @dptr, a
+ *   0x13680: movx a, @dptr
+ *   0x13681: anl a, #0xc3       ; clear bits 2-5
+ *   0x13683: orl a, #0x1c       ; set bits 2-4  <- helper_13683 entry
+ *   0x13685: movx @dptr, a
+ *   0x13686: movx a, @dptr
+ *   0x13687: anl a, #0xbf       ; clear bit 6
+ *   0x13689: movx @dptr, a
+ *   0x1368a: ret
  */
-static void helper_b67c(__xdata uint8_t *ptr)
+static void helper_1367c(__xdata uint8_t *ptr)
 {
     uint8_t val;
 
@@ -241,13 +324,20 @@ static void helper_b67c(__xdata uint8_t *ptr)
 }
 
 /*
- * helper_b683 - OR bits and clear bit 6
- * Address: 0xb683 (file 0x13683)
+ * helper_13683 - OR bits and clear bit 6
+ * File offset: 0x13683-0x1368a (mid-entry into helper_1367c)
  *
- * Entry point for E5 handler
- * ORs 0x1C, then clears bit 6
+ * Disassembly:
+ *   0x13683: orl a, #0x1c       ; set bits 2-4 (assumes ANL 0xC3 already done)
+ *   0x13685: movx @dptr, a
+ *   0x13686: movx a, @dptr
+ *   0x13687: anl a, #0xbf       ; clear bit 6
+ *   0x13689: movx @dptr, a
+ *   0x1368a: ret
+ *
+ * Entry point for E5 handler - expects a already has ANL 0xC3 applied
  */
-static void helper_b683(__xdata uint8_t *ptr)
+static void helper_13683(__xdata uint8_t *ptr)
 {
     uint8_t val;
 
@@ -262,21 +352,26 @@ static void helper_b683(__xdata uint8_t *ptr)
 }
 
 /*
- * helper_b6b5 - Shift and store two bytes
- * Address: 0xb6b5 (file 0x136b5)
+ * helper_136b5 - Shift and store two bytes
+ * File offset: 0x136b5-0x136c3
  *
- * a = a + a (shift left)
- * r7 = a
- * a = *dptr
- * a = rlc(a)  (rotate left through carry)
- * r6 = a
- * a = r7 | r5
- * r7 = a
- * *dptr = r6
- * inc dptr
- * *dptr = r7
+ * Disassembly:
+ *   0x136b5: add a, 0xe0        ; a = a + a (0xe0 is ACC)
+ *   0x136b7: mov r7, a
+ *   0x136b8: movx a, @dptr
+ *   0x136b9: rlc a              ; rotate left through carry
+ *   0x136ba: mov r6, a
+ *   0x136bb: mov a, r7
+ *   0x136bc: orl a, r5
+ *   0x136bd: mov r7, a
+ *   0x136be: mov a, r6
+ *   0x136bf: movx @dptr, a
+ *   0x136c0: inc dptr
+ *   0x136c1: mov a, r7
+ *   0x136c2: movx @dptr, a
+ *   0x136c3: ret
  */
-static void helper_b6b5(__xdata uint8_t *ptr, uint8_t r5_val) __naked
+static void helper_136b5(__xdata uint8_t *ptr, uint8_t r5_val) __naked
 {
     (void)ptr;
     (void)r5_val;
@@ -301,16 +396,20 @@ static void helper_b6b5(__xdata uint8_t *ptr, uint8_t r5_val) __naked
 }
 
 /*
- * helper_b6ec - Shift a*4, merge with DPTR value, store
- * Address: 0xb6ec (file 0x136ec)
+ * helper_136ec - Shift a*4, merge with DPTR value, store
+ * File offset: 0x136ec-0x136f6
  *
- * a = a + a + a  (a * 4)
- * r7 = a
- * val = *dptr & 0xC3
- * val |= r7
- * *dptr = val
+ * Disassembly:
+ *   0x136ec: add a, 0xe0        ; a = a * 2
+ *   0x136ee: add a, 0xe0        ; a = a * 4
+ *   0x136f0: mov r7, a
+ *   0x136f1: movx a, @dptr
+ *   0x136f2: anl a, #0xc3       ; clear bits 2-5
+ *   0x136f4: orl a, r7          ; merge in shifted value
+ *   0x136f5: movx @dptr, a
+ *   0x136f6: ret
  */
-static uint8_t helper_b6ec(__xdata uint8_t *ptr, uint8_t val)
+static uint8_t helper_136ec(__xdata uint8_t *ptr, uint8_t val)
 {
     uint8_t r7;
     uint8_t result;
@@ -326,15 +425,18 @@ static uint8_t helper_b6ec(__xdata uint8_t *ptr, uint8_t val)
 }
 
 /*
- * helper_b6fa - Load from 0x0AB7 and compare
- * Address: 0xb6fa (file 0x136fa)
+ * helper_136f7 - Load from 0x0AB7 and compare
+ * File offset: 0x136f7-0x13700
  *
- * Set DPTR = 0x0AB7
- * Call helper_0d9d (load r0-r3)
- * Clear carry
- * Jump to helper_0d22 (32-bit compare)
+ * Disassembly:
+ *   0x136f7: mov dptr, #0x0ab7
+ *   0x136fa: lcall 0x0d9d       ; load dword to r0-r3
+ *   0x136fd: clr c
+ *   0x136fe: ljmp 0x0d22        ; 32-bit compare
+ *
+ * Note: Function actually starts at 0x136f7, not 0x136fa
  */
-static uint8_t helper_b6fa(void)
+static uint8_t helper_136f7(void)
 {
     __xdata uint8_t *ptr = &G_VENDOR_DATA_0AB7;
 
@@ -345,20 +447,32 @@ static uint8_t helper_b6fa(void)
 }
 
 /*
- * helper_b720 - Loop store, copy params, check flags
- * Address: 0xb720 (file 0x13720)
+ * helper_13720 - Loop store, copy params, check flags
+ * File offset: 0x13720-0x1374d
  *
- * Store r7 to DPTR
- * Inc I_WORK_51
- * If I_WORK_51 != 0x64, branch back to loop entry
- * Copy G_CMD_CTRL_PARAM (0x0A57) -> G_VENDOR_CMD_BUF_0804
- * Copy G_CMD_TIMEOUT_PARAM (0x0A58) -> G_VENDOR_CMD_BUF_0805
- * Check G_EVENT_FLAGS (0x09F9) bit 7
- * If not set, clear bit 1 of G_VENDOR_STATUS_081B
- * Clear I_WORK_51
- * Continue with table lookup and more logic
+ * Disassembly:
+ *   0x13720: mov a, r7
+ *   0x13721: movx @dptr, a      ; store r7 to DPTR
+ *   0x13722: inc 0x51           ; increment loop counter
+ *   0x13724: mov a, 0x51
+ *   0x13726: cjne a, #0x64, 0x3712  ; loop until 100 iterations
+ *   0x13729: mov dptr, #0x0a57  ; G_CMD_CTRL_PARAM
+ *   0x1372c: movx a, @dptr
+ *   0x1372d: mov dptr, #0x0804  ; G_VENDOR_CMD_BUF_0804
+ *   0x13730: movx @dptr, a      ; copy param
+ *   0x13731: mov dptr, #0x0a58  ; G_CMD_TIMEOUT_PARAM
+ *   0x13734: movx a, @dptr
+ *   0x13735: mov dptr, #0x0805  ; G_VENDOR_CMD_BUF_0805
+ *   0x13738: movx @dptr, a      ; copy param
+ *   0x13739: mov dptr, #0x09f9  ; G_EVENT_FLAGS
+ *   0x1373c: movx a, @dptr
+ *   0x1373d: jb 0xe0.7, 0x3747  ; if bit 7 set, skip
+ *   0x13740: mov dptr, #0x081b  ; G_VENDOR_STATUS_081B
+ *   0x13743: movx a, @dptr
+ *   0x13744: anl a, #0xfd       ; clear bit 1
+ *   0x13746: movx @dptr, a
  */
-static uint8_t helper_b720(__xdata uint8_t *ptr, uint8_t r7_val, uint8_t r1_offset)
+static uint8_t helper_13720(__xdata uint8_t *ptr, uint8_t r7_val, uint8_t r1_offset)
 {
     (void)r1_offset;
 
@@ -391,15 +505,14 @@ static uint8_t helper_b720(__xdata uint8_t *ptr, uint8_t r7_val, uint8_t r1_offs
 }
 
 /*
- * helper_b775 - Check mode and control flags
- * Address: 0xb775 (file 0x13775)
+ * helper_13775 - Check mode and control flags
+ * File offset: 0x13775-0x137xx
  *
- * Check G_VENDOR_MODE_07CC >= 3
- * Check G_VENDOR_CTRL_07B9 != 0
- * Check G_VENDOR_MODE_07CF == 1
- * Modify G_VENDOR_STATUS_081A based on checks
+ * Checks vendor mode and control flags, modifies status.
+ * The actual disassembly shows an 'inc r1' which is part of
+ * a larger loop context from the caller.
  */
-static void helper_b775(void)
+static void helper_13775(void)
 {
     uint8_t mode_07cc;
     uint8_t ctrl_07b9;
@@ -428,7 +541,7 @@ static void helper_b775(void)
 
 /*
  * vendor_cmd_e5_xdata_write - Write to XDATA memory space
- * Address: Bank 1 0xb43c-0xb472 (file offset 0x1343c-0x13472)
+ * Bank 1 Address: 0xb43c-0xb472
  *
  * CDB format:
  *   Byte 0: 0xE5
@@ -437,31 +550,31 @@ static void helper_b775(void)
  *   Byte 3: Address bits 8-15
  *   Byte 4: Address bits 0-7
  *
- * Original disassembly:
- *   0x1343c: cjne a, #0xe5, 0x3497    ; check opcode
+ * Disassembly:
+ *   0x1343c: cjne a, #0xe5, 0x3497    ; check opcode (E4 handler)
  *   0x1343f: movx @dptr, a            ; acknowledge
  *   0x13440: mov a, 0x55              ; get state
  *   0x13442: jnb acc.1, 0x346c        ; check mode bit 1
  *   0x13445: mov r1, #0x6c            ; offset
- *   0x13447: lcall 0xb720             ; parse/loop helper
+ *   0x13447: lcall 0xb720             ; helper_13720
  *   0x1344a: mov r7, #0x00
  *   0x1344c: jb acc.0, 0x3451         ; check flag bit 0
  *   0x1344f: mov r7, #0x01
  *   0x13451: mov r5, 0x57             ; get value from CDB
- *   0x13453: lcall 0xea7c             ; execute actual write
- *   0x13456: lcall 0xb6b5             ; shift and store
- *   0x13459: mov dptr, #0xc343        ; vendor control reg
- *   0x1345c: lcall 0xb683             ; set bits, clear bit 6
+ *   0x13453: lcall 0xea7c             ; execute actual write (bank 1: 0x1ea7c)
+ *   0x13456: lcall 0xb6b5             ; helper_136b5
+ *   0x13459: mov dptr, #0xc343        ; REG_VENDOR_CTRL_C343
+ *   0x1345c: lcall 0xb683             ; helper_13683
  *   0x1345f: mov a, r7
  *   0x13460: anl a, #0x01
  *   0x13462: mov r7, a
  *   0x13463: mov a, r7
  *   0x13464: jz 0x346c                ; if zero, skip
- *   0x13466: mov dptr, #0x0ab5        ; vendor data storage
+ *   0x13466: mov dptr, #0x0ab5        ; G_VENDOR_DATA_0AB5
  *   0x13469: mov a, 0x58              ; get value
  *   0x1346b: movx @dptr, a            ; store
- *   0x1346c: lcall 0xb775             ; check mode/control
- *   0x1346f: lcall 0xb6fa             ; load and compare
+ *   0x1346c: lcall 0xb775             ; helper_13775
+ *   0x1346f: lcall 0xb6fa             ; helper_136f7
  *   0x13472: ret
  */
 void vendor_cmd_e5_xdata_write(void)
@@ -512,7 +625,7 @@ void vendor_cmd_e5_xdata_write(void)
 
     /* Set vendor control register */
     ctrl_reg = &REG_VENDOR_CTRL_C343;
-    helper_b683(ctrl_reg);
+    helper_13683(ctrl_reg);
 
     /* Check r7 bit 0 */
     r7 &= 0x01;
@@ -523,13 +636,13 @@ void vendor_cmd_e5_xdata_write(void)
 
 end_helper:
     /* Call end helper functions */
-    helper_b775();
-    helper_b6fa();
+    helper_13775();
+    helper_136f7();
 }
 
 /*
  * vendor_cmd_e4_xdata_read - Read from XDATA memory space
- * Address: Bank 1 0xb473-0xb51f (file offset 0x13473-0x1351f)
+ * Bank 1 Address: 0xb473-0xbd1f
  *
  * CDB format:
  *   Byte 0: 0xE4
@@ -538,24 +651,25 @@ end_helper:
  *   Byte 3: Address bits 8-15
  *   Byte 4: Address bits 0-7
  *
- * Original disassembly:
- *   0x13473: lcall 0xb663             ; set DPTR=0x0810, store dword
- *   0x13476: lcall 0x0d08             ; ORL 32-bit
- *   0x13479: push r4-r7
- *   0x13481: mov dptr, #0x0816        ; response buffer
- *   0x13484: lcall 0xb67c             ; clear bits
- *   0x13487: mov r0, #0x10            ; 16 bytes
- *   0x13489: lcall 0x0d46             ; shift left
- *   0x1348c: pop r0-r3
- *   0x13494: lcall 0x0d08             ; ORL 32-bit
- *   0x13497-0x134b0: repeat for second 24 bytes
- *   0x134b3: mov 0x5a, r7             ; store address bytes
- *   0x134b5: mov 0x59, r6
- *   0x134b7: mov 0x58, r5
- *   0x134b9: mov 0x57, r4
- *   0x134bb: lcall 0xb6f0             ; shift and merge
- *   0x134be: mov 0x55, r7             ; store state
- *   ... state machine with 0xc2e0/c2e2/c360/c362 register access
+ * Disassembly:
+ *   0x13473: lcall 0xb663             ; helper_13665
+ *   0x13476: lcall 0x0d08             ; helper_0d08 - ORL 32-bit
+ *   0x13479: push 0x04                ; push r4
+ *   0x1347b: push 0x05                ; push r5
+ *   0x1347d: push 0x06                ; push r6
+ *   0x1347f: push 0x07                ; push r7
+ *   0x13481: mov dptr, #0x0816        ; G_VENDOR_RESP_BUF
+ *   0x13484: lcall 0xb67c             ; helper_1367c
+ *   0x13487: mov r0, #0x10            ; 16 bits
+ *   0x13489: lcall 0x0d46             ; helper_0d46 - shift left
+ *   0x1348c: pop 0x03                 ; pop to r3
+ *   0x1348e: pop 0x02                 ; pop to r2
+ *   0x13490: pop 0x01                 ; pop to r1
+ *   0x13492: pop 0x00                 ; pop to r0
+ *   0x13494: lcall 0x0d08             ; helper_0d08 - ORL 32-bit
+ *   ... continues with second pass using shift 24 bits
+ *   0x134bb: lcall 0xb6ec             ; helper_136ec
+ *   ... state machine with PHY vendor registers
  */
 void vendor_cmd_e4_xdata_read(void)
 {
@@ -566,8 +680,8 @@ void vendor_cmd_e4_xdata_read(void)
     uint8_t r4, r5, r6, r7;
     uint8_t val;
 
-    /* Call helper_b663 - set DPTR=0x0810 and store CDB dword */
-    helper_b663();
+    /* Call helper_13665 - set DPTR=0x0810 and store CDB dword */
+    helper_13665();
 
     /* ORL 32-bit operation */
     helper_orl_32bit();
@@ -579,7 +693,7 @@ void vendor_cmd_e4_xdata_read(void)
     resp_buf = &G_VENDOR_RESP_BUF;
 
     /* Clear bits in response buffer */
-    helper_b67c(resp_buf);
+    helper_1367c(resp_buf);
 
     /* Shift left 16 bits (r0 = 0x10) */
     helper_shl_32bit(0x10);
@@ -589,7 +703,7 @@ void vendor_cmd_e4_xdata_read(void)
     helper_orl_32bit();
 
     /* Second pass: inc DPTR (0x0817), clear bits, shift 24 (0x18) */
-    helper_b67c(resp_buf + 1);
+    helper_1367c(resp_buf + 1);
     helper_shl_32bit(0x18);
 
     /* Pop and ORL again */
@@ -610,9 +724,9 @@ void vendor_cmd_e4_xdata_read(void)
     I_WORK_58 = r5;
     I_WORK_57 = r4;
 
-    /* Call helper_b6ec - shift and merge to get state */
+    /* Call helper_136ec - shift and merge to get state */
     ptr = &G_VENDOR_CDB_BASE;
-    state = helper_b6ec(ptr, I_WORK_58);
+    state = helper_136ec(ptr, I_WORK_58);
 
     /* Store state to I_WORK_55 */
     I_WORK_55 = state;
