@@ -1,4 +1,0 @@
-b1_handlers.asm
-b1_protocol.asm
-b1_util.asm
-b1_misc.asm

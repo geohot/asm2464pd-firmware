@@ -20,7 +20,6 @@ assert len(dat) == 0x8000 + BANK_LENGTH*2
 # bank0 @ 0x8000 (mapped as bank 0)
 # bank1 @ 0x8000 (always as bank 1)
 
-#with open("base.bin", "wb") as f: f.write(dat[:0x8000])
-with open("bank0.bin", "wb") as f: f.write(dat[:0xff6b])
-with open("bank1.bin", "wb") as f: f.write(dat[0xff6b:])
+with open("../bank0.bin", "wb") as f: f.write(dat[:0xff6b])
+with open("../bank1.bin", "wb") as f: f.write(dat[0xff6b:])
 

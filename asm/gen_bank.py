@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Generate single-file assembly for each bank with real 8051 instructions.
-Uses proper labels for all branches - no raw bytes.
+Generate single assembly file for ASM2464PD firmware with real 8051 instructions.
+Uses proper labels for all branches within each bank.
 """
 
 import os
@@ -62,24 +62,20 @@ def parse_header_labels(src_dir):
 
 
 def find_function_boundaries(data, start_addr, end_addr, call_targets):
-    """Find function boundaries based on RET instructions and call targets."""
+    """Find function boundaries based on call targets."""
     boundaries = set()
-    boundaries.add(start_addr)  # First address is always a boundary
-
-    # All call targets are function starts
+    boundaries.add(start_addr)
     for target in call_targets:
         if start_addr <= target < end_addr:
             boundaries.add(target)
-
     return sorted(boundaries)
 
 
-def collect_targets_for_bank(data, start_file, end_file, base_addr):
-    """Collect all branch targets and instruction addresses for a bank."""
+def collect_targets_for_region(data, start_file, end_file, base_addr):
+    """Collect all branch targets and instruction addresses for a region."""
     region_data = data[start_file:end_file]
     disasm = Disassembler(region_data, base_addr, {}, use_raw_branches=False)
 
-    # Collect both branch targets and all instruction start addresses
     instruction_addrs = set()
     offset = 0
     while offset < len(region_data):
@@ -95,12 +91,10 @@ def generate_labels(branch_targets, call_targets, known_labels, base_addr, end_a
     """Generate label names for all targets."""
     all_labels = {}
 
-    # Add known labels first
     for addr, info in known_labels.items():
         if base_addr <= addr < end_addr:
             all_labels[addr] = info
 
-    # Generate labels for branch targets
     for target in sorted(branch_targets):
         if base_addr <= target < end_addr and target not in all_labels:
             if target in call_targets:
@@ -111,114 +105,83 @@ def generate_labels(branch_targets, call_targets, known_labels, base_addr, end_a
     return all_labels
 
 
-def format_instruction_line(instr, addr, hex_bytes, comment_col=56):
+def format_line(instr, addr, hex_bytes, comment_col=56):
     """Format an instruction line with aligned comments."""
-    # Build the instruction part (with leading tab)
     line = f'\t{instr}'
-    # If instruction already has a comment (from .db raw bytes), append address at end
     if ';' in instr:
         padding = max(1, comment_col - len(line.expandtabs(8)))
         return f'{line}{" " * padding}[{addr:04x}]\n'
     else:
-        # Pad to comment column and add comment
         padding = max(1, comment_col - len(line.expandtabs(8)))
         return f'{line}{" " * padding}; {addr:04x}: {hex_bytes}\n'
 
 
-def generate_bank_asm(data, output_path, start_file, end_file, base_addr, bank_name, known_labels):
-    """Generate a single assembly file for a bank with real instructions."""
-
+def disassemble_region(f, data, start_file, end_file, base_addr, known_labels, region_name):
+    """Disassemble a region and write to file."""
     region_data = data[start_file:end_file]
     region_size = end_file - start_file
     end_addr = base_addr + region_size
 
-    print(f"Generating {bank_name}: 0x{base_addr:04x}-0x{end_addr:04x} ({region_size} bytes)")
+    print(f"  {region_name}: 0x{base_addr:04x}-0x{end_addr:04x} ({region_size} bytes)")
 
-    # First pass: collect all targets and instruction addresses
-    branch_targets, call_targets, instruction_addrs = collect_targets_for_bank(data, start_file, end_file, base_addr)
-    print(f"  Found {len(branch_targets)} branch targets, {len(call_targets)} call targets")
-    print(f"  Found {len(instruction_addrs)} instruction addresses")
+    # First pass: collect targets
+    branch_targets, call_targets, instruction_addrs = collect_targets_for_region(
+        data, start_file, end_file, base_addr)
 
-    # Generate labels - only for valid targets within this bank at instruction boundaries
-    valid_branch_targets = set()
-    for target in branch_targets:
-        if base_addr <= target < end_addr and target in instruction_addrs:
-            valid_branch_targets.add(target)
+    # Generate labels for valid targets
+    valid_branch_targets = {t for t in branch_targets
+                           if base_addr <= t < end_addr and t in instruction_addrs}
     valid_call_targets = call_targets & instruction_addrs
+    all_labels = generate_labels(valid_branch_targets, valid_call_targets,
+                                 known_labels, base_addr, end_addr)
 
-    all_labels = generate_labels(valid_branch_targets, valid_call_targets, known_labels, base_addr, end_addr)
-    print(f"  Total labels: {len(all_labels)}")
-
-    # Find function boundaries for section comments
     func_boundaries = find_function_boundaries(data, base_addr, end_addr, valid_call_targets)
-    print(f"  Found {len(func_boundaries)} function boundaries")
 
-    # Create disassembler with labels, valid targets, and bank end
+    # Create disassembler
     disasm = Disassembler(region_data, base_addr, all_labels, use_raw_branches=False,
                           valid_targets=instruction_addrs, bank_end=end_addr)
 
-    with open(output_path, 'w') as f:
-        f.write(f""";
-; ASM2464PD Firmware - {bank_name}
-; Address range: 0x{base_addr:04x}-0x{end_addr:04x}
-; File offset: 0x{start_file:05x}-0x{end_file:05x}
-;
-; This file is part of the exact fw.bin reconstruction.
-; DO NOT modify unless you verify the build still matches!
-;
+    # Write region header
+    f.write(f'\n; {"=" * 70}\n')
+    f.write(f'; {region_name}: 0x{base_addr:04x}-0x{end_addr:04x}\n')
+    f.write(f'; {"=" * 70}\n\n')
+    f.write(f'\t.area\tCODE_{region_name.upper()}\t(ABS,CODE)\n')
+    f.write(f'\t.org\t0x{base_addr:04x}\n\n')
 
-\t.module\t{bank_name}
-\t.area\tCODE_{bank_name.upper()}\t(ABS,CODE)
-\t.org\t0x{base_addr:04x}
+    # Disassemble
+    offset = 0
+    while offset < len(region_data):
+        addr = base_addr + offset
 
-""")
+        # Function separator
+        if addr in func_boundaries and addr in call_targets:
+            f.write(f'\n; {"=" * 60}\n')
+            f.write(f'; Function: 0x{addr:04x}\n')
+            f.write(f'; {"=" * 60}\n')
 
-        # Track current function for comments
-        current_func_idx = 0
-        last_was_ret = False
-
-        # Disassemble
-        offset = 0
-        while offset < len(region_data):
-            addr = base_addr + offset
-
-            # Check if we're entering a new function
-            while current_func_idx < len(func_boundaries) - 1 and addr >= func_boundaries[current_func_idx + 1]:
-                current_func_idx += 1
-
-            # Add section separator at function boundaries
-            if addr in func_boundaries and addr in call_targets:
-                f.write(f'\n; {"=" * 60}\n')
-                f.write(f'; Function: 0x{addr:04x}\n')
-                f.write(f'; {"=" * 60}\n')
-
-            # Add label if this is a target
-            if addr in all_labels:
-                label = all_labels[addr]
-                if isinstance(label, tuple):
-                    name, desc = label
-                    f.write(f'\n; {desc}\n')
-                    f.write(f'{name}:\n')
-                else:
-                    f.write(f'\n{label}:\n')
-
-            # Disassemble instruction
-            instr, size, _ = disasm.disassemble_instruction(offset)
-
-            if instr:
-                hex_bytes = ' '.join(f'{region_data[offset+i]:02x}' for i in range(size))
-                f.write(format_instruction_line(instr, addr, hex_bytes))
-                # Track if this was a ret/reti for spacing
-                last_was_ret = instr.strip() in ('ret', 'reti')
+        # Label
+        if addr in all_labels:
+            label = all_labels[addr]
+            if isinstance(label, tuple):
+                name, desc = label
+                f.write(f'\n; {desc}\n')
+                f.write(f'{name}:\n')
             else:
-                b = region_data[offset]
-                f.write(format_instruction_line(f'.db\t#0x{b:02x}', addr, f'{b:02x}'))
-                size = 1
-                last_was_ret = False
+                f.write(f'\n{label}:\n')
 
-            offset += size
+        # Instruction
+        instr, size, _ = disasm.disassemble_instruction(offset)
+        if instr:
+            hex_bytes = ' '.join(f'{region_data[offset+i]:02x}' for i in range(size))
+            f.write(format_line(instr, addr, hex_bytes))
+        else:
+            b = region_data[offset]
+            f.write(format_line(f'.db\t#0x{b:02x}', addr, f'{b:02x}'))
+            size = 1
 
-    return region_size, len(all_labels)
+        offset += size
+
+    return len(all_labels)
 
 
 def main():
@@ -227,7 +190,7 @@ def main():
 
     fw_path = os.path.join(project_root, 'fw.bin')
     src_dir = os.path.join(project_root, 'src')
-    output_dir = script_dir
+    output_path = os.path.join(script_dir, 'fw.asm')
 
     if len(sys.argv) > 1:
         fw_path = sys.argv[1]
@@ -235,35 +198,45 @@ def main():
     with open(fw_path, 'rb') as f:
         data = f.read()
 
-    print(f"Firmware size: {len(data)} bytes (0x{len(data):05x})")
+    print(f"Firmware: {len(data)} bytes (0x{len(data):05x})")
 
-    # Parse known labels from C source
+    # Parse known labels
     known_labels = parse_header_labels(src_dir)
-    print(f"Found {len(known_labels)} known labels from headers\n")
+    print(f"Known labels: {len(known_labels)}")
 
-    # Generate Bank 0 (0x0000-0xFFFF in file, 0x0000-0xFFFF in memory)
-    bank0_size = min(0x10000, len(data))
-    bank0_path = os.path.join(output_dir, 'bank0.asm')
-    size0, labels0 = generate_bank_asm(data, bank0_path, 0, bank0_size, 0, 'bank0', known_labels)
+    # Bank 1 labels need address translation
+    bank1_labels = {}
+    for addr, info in known_labels.items():
+        if addr >= 0x10000:
+            mapped = 0x8000 + (addr - 0x10000)
+            bank1_labels[mapped] = info
 
-    # Generate Bank 1 (0x10000+ in file, 0x8000+ in memory)
-    if len(data) > 0x10000:
-        bank1_size = len(data) - 0x10000
-        bank1_path = os.path.join(output_dir, 'bank1.asm')
-        # Bank 1 labels need different handling - addresses are 0x8000+ but file offset is 0x10000+
-        bank1_labels = {}
-        for addr, info in known_labels.items():
-            if addr >= 0x10000:
-                # Convert file address to mapped address
-                mapped = 0x8000 + (addr - 0x10000)
-                bank1_labels[mapped] = info
-        size1, labels1 = generate_bank_asm(data, bank1_path, 0x10000, len(data), 0x8000, 'bank1', bank1_labels)
+    print(f"\nGenerating fw.asm...")
 
-    print(f"\nGenerated: bank0.asm ({size0} bytes, {labels0} labels)")
-    if len(data) > 0x10000:
-        print(f"Generated: bank1.asm ({size1} bytes, {labels1} labels)")
+    with open(output_path, 'w') as f:
+        f.write(""";
+; ASM2464PD Firmware Disassembly
+; Total size: {} bytes (0x{:05x})
+;
+; This file reconstructs fw.bin exactly.
+; Build with: ./build.sh
+;
 
-    print("\nRun ./build.sh to build and verify.")
+\t.module\tfirmware
+""".format(len(data), len(data)))
+
+        # Bank 0: 0x0000-0xFFFF
+        bank0_size = min(0x10000, len(data))
+        labels0 = disassemble_region(f, data, 0, bank0_size, 0, known_labels, "bank0")
+
+        # Bank 1: 0x10000+ in file, maps to 0x8000+ in memory
+        labels1 = 0
+        if len(data) > 0x10000:
+            labels1 = disassemble_region(f, data, 0x10000, len(data), 0x8000,
+                                         bank1_labels, "bank1")
+
+    print(f"\nGenerated: fw.asm ({labels0 + labels1} labels)")
+    print("Run ./build.sh to build and verify.")
 
 
 if __name__ == '__main__':
