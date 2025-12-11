@@ -40,6 +40,10 @@ class Memory:
         end = min(offset + len(data), len(self.code))
         self.code[offset:end] = data[:end - offset]
 
+    # Bank 1 base offset in firmware file
+    # Bank 1 code starts at file offset 0xFF6B, mapped to address space 0x8000-0xFFFF
+    BANK1_FILE_BASE = 0xFF6B
+
     def read_code(self, addr: int) -> int:
         """
         Read from CODE memory with banking.
@@ -48,7 +52,8 @@ class Memory:
         - 0x0000-0x7FFF: Always bank 0 (32KB shared)
         - 0x8000-0xFFFF: Bank 0 or Bank 1 based on DPX register
 
-        Bank 1 is mapped at file offset 0x10000.
+        Bank 0 upper: file offset 0x8000-0xFFFF
+        Bank 1: file offset 0xFF6B + (addr - 0x8000)
         """
         addr &= 0xFFFF
 
@@ -56,8 +61,8 @@ class Memory:
         if addr >= 0x8000:
             dpx = self.sfr[self.SFR_DPX - 0x80]
             if dpx & 1:  # Bank 1
-                # Map 0x8000-0xFFFF to file offset 0x10000-0x17FFF
-                file_addr = addr + 0x8000  # 0x8000 -> 0x10000
+                # Map 0x8000-0xFFFF to file offset 0xFF6B + offset
+                file_addr = self.BANK1_FILE_BASE + (addr - 0x8000)
                 if file_addr < len(self.code):
                     return self.code[file_addr]
                 return 0xFF

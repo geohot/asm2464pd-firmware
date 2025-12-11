@@ -115,9 +115,14 @@ def format_instruction_line(instr, addr, hex_bytes, comment_col=56):
     """Format an instruction line with aligned comments."""
     # Build the instruction part (with leading tab)
     line = f'\t{instr}'
-    # Pad to comment column and add comment
-    padding = max(1, comment_col - len(line.expandtabs(8)))
-    return f'{line}{" " * padding}; {addr:04x}: {hex_bytes}\n'
+    # If instruction already has a comment (from .db raw bytes), append address at end
+    if ';' in instr:
+        padding = max(1, comment_col - len(line.expandtabs(8)))
+        return f'{line}{" " * padding}[{addr:04x}]\n'
+    else:
+        # Pad to comment column and add comment
+        padding = max(1, comment_col - len(line.expandtabs(8)))
+        return f'{line}{" " * padding}; {addr:04x}: {hex_bytes}\n'
 
 
 def generate_bank_asm(data, output_path, start_file, end_file, base_addr, bank_name, known_labels):

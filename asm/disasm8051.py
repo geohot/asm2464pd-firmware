@@ -549,42 +549,47 @@ class Disassembler:
         operands = operand_fmt
 
         if operand_fmt == 'addr16':
+            # ljmp/lcall - 16-bit absolute address, always safe to use mnemonic
             target = (operand_bytes[0] << 8) | operand_bytes[1]
             self.branch_targets.add(target)
             if mnemonic == 'lcall':
                 self.call_targets.add(target)
-            if self.should_use_raw_branch(target):
-                # Output as .db with comment showing target
-                hex_bytes = ', '.join(f'#0x{self.data[offset+i]:02x}' for i in range(size))
-                return f'.db\t{hex_bytes}\t; {mnemonic} 0x{target:04x}', size, []
-            label = self.get_label(target)
-            return f'{mnemonic}\t{label}', size, []
+            if self.is_valid_branch_target(target):
+                label = self.get_label(target)
+                return f'{mnemonic}\t{label}', size, []
+            else:
+                # Use numeric address for cross-bank or invalid targets
+                return f'{mnemonic}\t0x{target:04x}', size, []
 
         elif operand_fmt == 'addr11':
-            # 11-bit address: high 3 bits from opcode, low 8 bits from operand
+            # ajmp/acall - 11-bit address, page-relative (2KB boundary)
             high_bits = (opcode >> 5) & 0x07
             target = ((addr + 2) & 0xF800) | (high_bits << 8) | operand_bytes[0]
             self.branch_targets.add(target)
             if mnemonic == 'acall':
                 self.call_targets.add(target)
-            if self.should_use_raw_branch(target):
-                hex_bytes = ', '.join(f'#0x{self.data[offset+i]:02x}' for i in range(size))
-                return f'.db\t{hex_bytes}\t; {mnemonic} 0x{target:04x}', size, []
-            label = self.get_label(target)
-            return f'{mnemonic}\t{label}', size, []
+            if self.is_valid_branch_target(target):
+                label = self.get_label(target)
+                return f'{mnemonic}\t{label}', size, []
+            else:
+                # Raw bytes - target on different 2KB page or invalid
+                hex_bytes = ', '.join(f'0x{self.data[offset+i]:02x}' for i in range(size))
+                return f'.db\t{hex_bytes:<16}; {mnemonic} 0x{target:04x}', size, []
 
         elif operand_fmt == 'rel':
-            # Relative jump
+            # Relative jump (sjmp, jz, jnz, etc.)
             rel = operand_bytes[0]
             if rel > 127:
                 rel -= 256
             target = addr + size + rel
             self.branch_targets.add(target)
-            if self.should_use_raw_branch(target):
-                hex_bytes = ', '.join(f'#0x{self.data[offset+i]:02x}' for i in range(size))
-                return f'.db\t{hex_bytes}\t; {mnemonic} 0x{target:04x}', size, []
-            label = self.get_label(target)
-            return f'{mnemonic}\t{label}', size, []
+            if self.is_valid_branch_target(target):
+                label = self.get_label(target)
+                return f'{mnemonic}\t{label}', size, []
+            else:
+                # Raw bytes - target out of range or invalid
+                hex_bytes = ', '.join(f'0x{self.data[offset+i]:02x}' for i in range(size))
+                return f'.db\t{hex_bytes:<16}; {mnemonic} 0x{target:04x}', size, []
 
         elif operand_fmt == 'A,#data':
             return f'{mnemonic}\ta, #0x{operand_bytes[0]:02x}', size, []
@@ -624,11 +629,12 @@ class Disassembler:
                 rel -= 256
             target = addr + size + rel
             self.branch_targets.add(target)
-            if self.should_use_raw_branch(target):
-                hex_bytes = ', '.join(f'#0x{self.data[offset+i]:02x}' for i in range(size))
-                return f'.db\t{hex_bytes}\t; {mnemonic} 0x{operand_bytes[0]:02x}, 0x{target:04x}', size, []
-            label = self.get_label(target)
-            return f'{mnemonic}\t{self.format_direct(operand_bytes[0])}, {label}', size, []
+            if self.is_valid_branch_target(target):
+                label = self.get_label(target)
+                return f'{mnemonic}\t{self.format_direct(operand_bytes[0])}, {label}', size, []
+            else:
+                hex_bytes = ', '.join(f'0x{self.data[offset+i]:02x}' for i in range(size))
+                return f'.db\t{hex_bytes:<16}; {mnemonic} {self.format_direct(operand_bytes[0])}, 0x{target:04x}', size, []
 
         elif operand_fmt.startswith('direct,'):
             reg = operand_fmt.replace('direct,', '')
@@ -641,11 +647,12 @@ class Disassembler:
                 rel -= 256
             target = addr + size + rel
             self.branch_targets.add(target)
-            if self.should_use_raw_branch(target):
-                hex_bytes = ', '.join(f'#0x{self.data[offset+i]:02x}' for i in range(size))
-                return f'.db\t{hex_bytes}\t; {mnemonic} 0x{bit:02x}, 0x{target:04x}', size, []
-            label = self.get_label(target)
-            return f'{mnemonic}\t{self.format_bit(bit)}, {label}', size, []
+            if self.is_valid_branch_target(target):
+                label = self.get_label(target)
+                return f'{mnemonic}\t{self.format_bit(bit)}, {label}', size, []
+            else:
+                hex_bytes = ', '.join(f'0x{self.data[offset+i]:02x}' for i in range(size))
+                return f'.db\t{hex_bytes:<16}; {mnemonic} {self.format_bit(bit)}, 0x{target:04x}', size, []
 
         elif operand_fmt == 'bit,C':
             return f'{mnemonic}\t{self.format_bit(operand_bytes[0])}, c', size, []
@@ -672,11 +679,12 @@ class Disassembler:
                         rel -= 256
                     target = addr + size + rel
                     self.branch_targets.add(target)
-                    if self.should_use_raw_branch(target):
-                        hex_bytes = ', '.join(f'#0x{self.data[offset+i]:02x}' for i in range(size))
-                        return f'.db\t{hex_bytes}\t; {mnemonic} {reg.lower()}, #0x{imm:02x}, 0x{target:04x}', size, []
-                    label = self.get_label(target)
-                    return f'{mnemonic}\t{reg.lower()}, #0x{imm:02x}, {label}', size, []
+                    if self.is_valid_branch_target(target):
+                        label = self.get_label(target)
+                        return f'{mnemonic}\t{reg.lower()}, #0x{imm:02x}, {label}', size, []
+                    else:
+                        hex_bytes = ', '.join(f'0x{self.data[offset+i]:02x}' for i in range(size))
+                        return f'.db\t{hex_bytes:<16}; {mnemonic} {reg.lower()}, #0x{imm:02x}, 0x{target:04x}', size, []
                 else:
                     direct = operand_bytes[0]
                     rel = operand_bytes[1]
@@ -684,11 +692,12 @@ class Disassembler:
                         rel -= 256
                     target = addr + size + rel
                     self.branch_targets.add(target)
-                    if self.should_use_raw_branch(target):
-                        hex_bytes = ', '.join(f'#0x{self.data[offset+i]:02x}' for i in range(size))
-                        return f'.db\t{hex_bytes}\t; {mnemonic} {reg.lower()}, 0x{direct:02x}, 0x{target:04x}', size, []
-                    label = self.get_label(target)
-                    return f'{mnemonic}\t{reg.lower()}, {self.format_direct(direct)}, {label}', size, []
+                    if self.is_valid_branch_target(target):
+                        label = self.get_label(target)
+                        return f'{mnemonic}\t{reg.lower()}, {self.format_direct(direct)}, {label}', size, []
+                    else:
+                        hex_bytes = ', '.join(f'0x{self.data[offset+i]:02x}' for i in range(size))
+                        return f'.db\t{hex_bytes:<16}; {mnemonic} {reg.lower()}, {self.format_direct(direct)}, 0x{target:04x}', size, []
             else:
                 # DJNZ Rn, rel
                 reg = parts[0]
@@ -697,11 +706,12 @@ class Disassembler:
                     rel -= 256
                 target = addr + size + rel
                 self.branch_targets.add(target)
-                if self.should_use_raw_branch(target):
-                    hex_bytes = ', '.join(f'#0x{self.data[offset+i]:02x}' for i in range(size))
-                    return f'.db\t{hex_bytes}\t; {mnemonic} {reg.lower()}, 0x{target:04x}', size, []
-                label = self.get_label(target)
-                return f'{mnemonic}\t{reg.lower()}, {label}', size, []
+                if self.is_valid_branch_target(target):
+                    label = self.get_label(target)
+                    return f'{mnemonic}\t{reg.lower()}, {label}', size, []
+                else:
+                    hex_bytes = ', '.join(f'0x{self.data[offset+i]:02x}' for i in range(size))
+                    return f'.db\t{hex_bytes:<16}; {mnemonic} {reg.lower()}, 0x{target:04x}', size, []
 
         # Simple operand formats - convert to lowercase and ensure comma spacing
         operands = operand_fmt.lower()

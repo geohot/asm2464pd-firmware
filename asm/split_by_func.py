@@ -68,7 +68,8 @@ def parse_asm_file(filepath):
     # Find all function start addresses
     func_addrs = set()
     for i, line in enumerate(lines):
-        match = re.match(r'^; ============ Function at (0x[0-9a-f]+)', line)
+        # Match both old format "; ============ Function at 0x..." and new format "; Function: 0x..."
+        match = re.match(r'^; (?:============ )?Function(?:: | at )(0x[0-9a-f]+)', line)
         if match:
             addr = int(match.group(1), 16)
             func_addrs.add(addr)
@@ -124,7 +125,8 @@ def split_into_modules(lines, header_end, targets, addr_to_line, func_addrs):
         # Adjust start to include any function marker or label before it
         while start_line > header_end:
             prev_line = lines[start_line - 1].strip()
-            if prev_line.startswith('; ===') or prev_line.endswith(':') or prev_line == '':
+            if (prev_line.startswith('; ===') or prev_line.startswith('; Function:') or
+                prev_line.endswith(':') or prev_line == ''):
                 start_line -= 1
             else:
                 break
@@ -134,7 +136,8 @@ def split_into_modules(lines, header_end, targets, addr_to_line, func_addrs):
         if end_addr <= max_addr:
             while end_line > start_line:
                 prev_line = lines[end_line - 1].strip()
-                if prev_line.startswith('; ===') or prev_line.endswith(':') or prev_line == '' or prev_line.startswith('; from'):
+                if (prev_line.startswith('; ===') or prev_line.startswith('; Function:') or
+                    prev_line.endswith(':') or prev_line == '' or prev_line.startswith('; from')):
                     end_line -= 1
                 else:
                     break

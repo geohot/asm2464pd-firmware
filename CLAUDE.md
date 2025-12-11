@@ -4,13 +4,17 @@ We are trying to match each function in the original firmware to ours, giving go
 
 Our firmware should build and the output should match fw.bin as close as possible. Build temporaries and artifacts should go in build/ The firmware we build should run on the device.
 
-You can use radare on the fw.bin files to get the 8051 assembly, don't forget the 8051 architecture flag. Be aware 8051 only has a 64kb code size, so addresses after 0x10000 are in the second bank. There's an indirect jump/call to get to that bank, and I believe the second bank is mapped at 0x8000 (so 0x8000 is 0x10000 if you are in second bank)
+You can use radare on the fw.bin files to get the 8051 assembly, don't forget the 8051 architecture flag. Be aware 8051 only has a 64kb code size, so addresses above 0x8000 can be banked. There's an indirect jump/call to switch banks via DPX register (SFR 0x96).
 
-0-0x8000 is always 0-0x8000
-In bank 0:  0x8000-0x10000 is 0x8000-0x10000
-In bank 1: 0x10000-0x18000 is 0x8000-0x10000
+Code address mapping:
+- 0x0000-0x7FFF: Always maps to file offset 0x0000-0x7FFF (32KB shared)
+- 0x8000-0xFFFF in bank 0: Maps to file offset 0x8000-0xFFFF
+- 0x8000-0xFFFF in bank 1: Maps to file offset 0xFF6B + (addr - 0x8000)
 
-BANK1 function addresses should be based on their position in the file, so they should be 0x10000-0x18000 while they will be mapped into code ram at 0x8000-0x10000.
+Bank 1 file offsets: 0xFF6B-0x17F6A (mapped to code addresses 0x8000-0xFFFF)
+
+BANK1 function addresses in comments should use the file offset for "actual addr", calculated as:
+  file_offset = 0xFF6B + (code_addr - 0x8000)
 
 ghidra.c is ghidra's attempt at C disassembly of the functions, you are welcome to reference it. Note: all the names in there may be wrong.
 

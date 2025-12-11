@@ -5,3 +5,4 @@ build
 uartexact
 __pycache__
 *.asm
+ghidra-asmedia-8051
