@@ -11,11 +11,16 @@ SUPPORTED_CONTROLLERS = [
   (0x174C, 0x2463),
   (0xADD1, 0x0001),
 ]
+if getenv("USBDEV", ""): SUPPORTED_CONTROLLERS.insert(0, (int(x, 16) for x in getenv("USBDEV", "").split(":")))
 
-vendor, device = [int(x, base=16) for x in getenv("USBDEV", "").split(":")] if getenv("USBDEV", "") else USB3.list_devices(dev_filter=SUPPORTED_CONTROLLERS)[0]
-try: dev = USB3(vendor, device, 0x81, 0x83, 0x02, 0x04, use_bot=True)
-except RuntimeError as e:
-  raise RuntimeError(f'{e}. You can set USBDEV environment variable to your device\'s vendor and device ID (e.g., USBDEV="174C:2464")') from e
+dev = None
+for vendor, device in SUPPORTED_CONTROLLERS:
+  try:
+    dev = USB3(vendor, device, 0x81, 0x83, 0x02, 0x04, use_bot=True)
+    break
+  except RuntimeError: pass
+if dev is None:
+  raise RuntimeError('Could not open controller. You can set USBDEV environment variable to your device\'s vendor and device ID (e.g., USBDEV="174C:2464")')
 
 with open(sys.argv[1], 'rb') as infile:
    fw = bytearray(infile.read())
