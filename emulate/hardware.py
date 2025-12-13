@@ -40,7 +40,7 @@ class HardwareState:
 
     # Hardware state
     usb_connected: bool = False
-    usb_connect_delay: int = 5000  # Cycles before USB plug-in event
+    usb_connect_delay: int = 500000  # Cycles before USB plug-in event (after init)
 
     # Polling counters - track how many times an address is polled
     poll_counts: Dict[int, int] = field(default_factory=dict)
@@ -55,10 +55,11 @@ class HardwareState:
     # USB command queue
     usb_cmd_queue: list = field(default_factory=list)
     usb_cmd_pending: bool = False
-    usb_ep0_buf: bytearray = field(default_factory=lambda: bytearray(64))  # Control EP buffer
+    usb_ep0_buf: bytearray = field(default_factory=lambda: bytearray(64))  # Control EP buffer (0x9E00)
     usb_ep0_len: int = 0
     usb_data_buf: bytearray = field(default_factory=lambda: bytearray(4096))  # Data buffer
     usb_data_len: int = 0
+    usb_ep_data_buf: bytearray = field(default_factory=lambda: bytearray(2048))  # EP data buffer (0xD800)
 
     # Memory reference for E4/E5 commands (set by create_hardware_hooks)
     memory: 'Memory' = None
@@ -67,8 +68,11 @@ class HardwareState:
     uart_buffer: str = ""
 
     # USB command injection timing
-    usb_inject_delay: int = 10000  # Cycles after USB connect to inject command
+    usb_inject_delay: int = 100  # Cycles after USB connect to inject command (short delay)
     usb_injected: bool = False
+
+    # USB endpoint selection tracking
+    usb_ep_selected: int = 0  # Currently selected endpoint index (0-31)
 
     def __post_init__(self):
         """Initialize hardware register defaults."""
@@ -254,6 +258,17 @@ class HardwareState:
         # USB EP0 CSR (0x9E10)
         self.read_callbacks[0x9E10] = self._usb_ep0_csr_read
         self.write_callbacks[0x9E10] = self._usb_ep0_csr_write
+
+        # USB EP data buffer (0xD800-0xDFFF) - endpoint data for bulk/control transfers
+        for addr in range(0xD800, 0xE000):
+            self.read_callbacks[addr] = self._usb_ep_data_buf_read
+            self.write_callbacks[addr] = self._usb_ep_data_buf_write
+
+        # USB endpoint selection/status registers
+        self.read_callbacks[0xC4EC] = self._usb_ep_status_read
+        self.write_callbacks[0xC4ED] = self._usb_ep_index_write
+        self.read_callbacks[0xC4EE] = self._usb_ep_id_low_read
+        self.read_callbacks[0xC4EF] = self._usb_ep_id_high_read
 
     # ============================================
     # UART Callbacks
@@ -480,17 +495,34 @@ class HardwareState:
             0x00
         ])
 
-        # Copy to USB EP0 buffer (0x9E00)
+        print(f"[{self.cycles:8d}] [USB] Inject cmd=0x{cmd_type:02X} addr=0x{xdata_addr:04X} "
+              f"{'size' if cmd_type == 0xE4 else 'val'}=0x{cmd_bytes[1]:02X} bytes={cmd_bytes.hex()}")
+
+        # Write command to USB endpoint data buffer (emulates USB controller DMA)
+        # Firmware reads from 0xD800 + (endpoint * 0x30) for EP0, that's just 0xD800
+        for i, b in enumerate(cmd_bytes):
+            self.usb_ep_data_buf[i] = b
+        print(f"[{self.cycles:8d}] [USB] Wrote {len(cmd_bytes)} bytes to EP data buffer")
+
+        # Also write to USB EP0 control buffer (0x9E00) for compatibility
         for i, b in enumerate(cmd_bytes):
             self.usb_ep0_buf[i] = b
         self.usb_ep0_len = len(cmd_bytes)
 
-        print(f"[{self.cycles:8d}] [USB] Inject cmd=0x{cmd_type:02X} addr=0x{xdata_addr:04X} "
-              f"{'size' if cmd_type == 0xE4 else 'val'}=0x{cmd_bytes[1]:02X}")
-
-        # Set USB interrupt flags to trigger firmware processing
-        self.regs[0xC802] |= 0x01  # USB interrupt pending (EP0 data)
+        # Set USB data available flags to trigger firmware USB handler
+        self.regs[0xC4EC] = self.regs.get(0xC4EC, 0) | 0x01  # USB EP data available (checked at 0x18A5)
+        self.regs[0xC802] = self.regs.get(0xC802, 0) | 0x01  # USB interrupt pending
         self.regs[0x9E10] = 0x01   # EP0 has data available
+
+        # Set USB endpoint status registers (checked after EP ID match)
+        # 0x9096 + ep_index: If 0, go to command handler; if != 0, just exit
+        # 0x90A1 + ep_index = endpoint data ready status (checked at 0x1926, bit 0 = ready)
+        self.regs[0x9096] = 0x00   # EP0 status - 0 to enable command processing path
+        self.regs[0x90A1] = 0x01   # EP0 data ready bit 0
+
+        # Endpoint ID for index 0 is returned dynamically by _usb_ep_id_*_read callbacks
+        # The callbacks return 0x00/0x00 when usb_cmd_pending is true and ep_selected == 0
+
         self.usb_cmd_pending = True
 
     def _trigger_usb_interrupt(self):
@@ -572,6 +604,60 @@ class HardwareState:
             if self.usb_cmd_queue:
                 self._trigger_usb_interrupt()
 
+    def _usb_ep_data_buf_read(self, hw: 'HardwareState', addr: int) -> int:
+        """Read from USB EP data buffer (0xD800-0xDFFF)."""
+        offset = addr - 0xD800
+        if offset < len(self.usb_ep_data_buf):
+            value = self.usb_ep_data_buf[offset]
+            # Always log reads from command area (first 8 bytes)
+            if offset < 8:
+                print(f"[{self.cycles:8d}] [USB] Read EP buf 0x{addr:04X} = 0x{value:02X}")
+            return value
+        return 0x00
+
+    def _usb_ep_data_buf_write(self, hw: 'HardwareState', addr: int, value: int):
+        """Write to USB EP data buffer (0xD800-0xDFFF)."""
+        offset = addr - 0xD800
+        if offset < len(self.usb_ep_data_buf):
+            self.usb_ep_data_buf[offset] = value
+
+    def _usb_ep_status_read(self, hw: 'HardwareState', addr: int) -> int:
+        """Read USB EP status register 0xC4EC - indicates USB data availability."""
+        value = self.regs.get(addr, 0x00)
+        if self.usb_cmd_pending:
+            print(f"[{self.cycles:8d}] [USB] Read 0xC4EC = 0x{value:02X}")
+        return value
+
+    def _usb_ep_index_write(self, hw: 'HardwareState', addr: int, value: int):
+        """Write USB EP index register 0xC4ED - selects which endpoint to query."""
+        # Low 5 bits are the endpoint index (0-31)
+        self.usb_ep_selected = value & 0x1F
+        self.regs[addr] = value
+        if self.usb_cmd_pending:
+            print(f"[{self.cycles:8d}] [USB] Select EP index {self.usb_ep_selected}")
+
+    def _usb_ep_id_low_read(self, hw: 'HardwareState', addr: int) -> int:
+        """Read USB EP ID low byte (0xC4EE) for currently selected endpoint."""
+        # When USB command pending and EP0 selected, return the value from RAM 0x0056
+        # This matches what firmware expects (it compares 0xC4EE/0xC4EF with 0x0056/0x0057)
+        if self.usb_cmd_pending and self.usb_ep_selected == 0 and self.memory:
+            # Read the expected value from RAM and return it so comparison passes
+            expected = self.memory.xdata[0x0056]
+            print(f"[{self.cycles:8d}] [USB] EP0 ID low = 0x{expected:02X} (from RAM 0x0056)")
+            return expected
+        return 0xFF  # No endpoint / invalid
+
+    def _usb_ep_id_high_read(self, hw: 'HardwareState', addr: int) -> int:
+        """Read USB EP ID high byte (0xC4EF) for currently selected endpoint."""
+        # When USB command pending and EP0 selected, return the value from RAM 0x0057
+        # This matches what firmware expects (it compares 0xC4EE/0xC4EF with 0x0056/0x0057)
+        if self.usb_cmd_pending and self.usb_ep_selected == 0 and self.memory:
+            # Read the expected value from RAM and return it so comparison passes
+            expected = self.memory.xdata[0x0057]
+            print(f"[{self.cycles:8d}] [USB] EP0 ID high = 0x{expected:02X} (from RAM 0x0057)")
+            return expected
+        return 0xFF  # No endpoint / invalid
+
     # ============================================
     # Main Read/Write Interface
     # ============================================
@@ -630,7 +716,7 @@ class HardwareState:
             self.regs[0x9000] = 0x81  # USB connected (bit 7) + active (bit 0)
             self.regs[0x90E0] = 0x02  # USB3 speed
             self.regs[0x9100] = 0x02  # USB link active
-            self.regs[0x9101] = 0x01  # USB connection status (checked at 0x0F4E)
+            self.regs[0x9101] = 0x21  # USB connection status - bit 5 for INT handler path + bit 0
             self.regs[0x9105] = 0xFF  # PHY active
 
             # Set USB interrupt for NVMe queue processing (triggers usb_ep_loop_180d)
@@ -669,14 +755,13 @@ class HardwareState:
         if self.cycles % 1000 == 0:
             self.regs[0xC806] |= 0x01
 
-        # Inject USB command after delay (disabled for now)
-        # if self.usb_connected and not self.usb_injected:
-        #     if self.cycles > self.usb_connect_delay + self.usb_inject_delay:
-        #         self.usb_injected = True
-        #         print(f"\n[{self.cycles:8d}] [HW] === INJECTING USB MEMORY READ ===")
-        #         # Inject E4 read command to read memory at 0x0000 (8 bytes)
-        #         self.inject_usb_command(0xE4, 0x0000, size=8)
-        pass
+        # Inject USB command after USB connected and additional delay
+        if self.usb_connected and not self.usb_injected:
+            if self.cycles > self.usb_connect_delay + self.usb_inject_delay:
+                self.usb_injected = True
+                print(f"\n[{self.cycles:8d}] [HW] === INJECTING USB MEMORY READ ===")
+                # Inject E4 read command to read memory at 0x0000 (8 bytes)
+                self.inject_usb_command(0xE4, 0x0000, size=8)
 
 
 
@@ -700,6 +785,7 @@ def create_hardware_hooks(memory: 'Memory', hw: HardwareState):
         (0xC800, 0xC900),   # Interrupt/DMA/Flash
         (0xCA00, 0xCB00),   # PD Controller
         (0xCC00, 0xCF00),   # Timer/CPU/SCSI
+        (0xD800, 0xE000),   # USB Endpoint Data Buffer
         (0xE300, 0xE400),   # PHY Completion / Debug
         (0xE400, 0xE500),   # Command Engine
         (0xE700, 0xE800),   # System Status
