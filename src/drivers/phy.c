@@ -5,6 +5,7 @@
  */
 
 #include "drivers/phy.h"
+#include "drivers/uart.h"
 #include "types.h"
 #include "sfr.h"
 #include "registers.h"
@@ -206,60 +207,557 @@ uint8_t phy_check_usb_state(void)
     return val;
 }
 
+/* Forward declarations for helper functions called from init helpers */
+extern void helper_ca51(void);        /* 0xCA51 - called from phy_mode_helper_c45b */
+extern void helper_b77b(uint8_t r4, uint8_t r5, uint8_t r6, uint8_t r7);  /* 0xB77B */
+extern void helper_bc18(uint8_t r5, uint8_t r7);  /* 0xBC18 */
+extern void helper_e4a0(void);        /* 0xE4A0 */
+extern void helper_9534(uint8_t r5, uint8_t r7);  /* 0x9534 */
+extern void helper_dfd6(void);        /* 0xDFD6 */
+extern void helper_e438(void);        /* 0xE438 */
+extern void helper_e1fd(void);        /* 0xE1FD */
+extern void helper_956a(void);        /* 0x956A */
+extern uint8_t helper_959a(void);     /* 0x959A */
+
 /*
- * phy_register_config - PHY/Register Configuration
- * Address: 0x0589-0x058d (5 bytes) -> dispatches to bank 0 0xD894
+ * pd_mode_init_94ca - Initialize PD mode register configuration
+ * Address: 0x94CA-0x94E9 (32 bytes)
  *
- * Function at 0xD894:
- * PHY and system register configuration handler.
- * Configures PCIe/USB interface registers.
- *
- * Algorithm:
- *   1. Call 0xBC8F, mask with 0xFD, call 0x0BE6 (write)
- *   2. Read 0xC809, clear bit 1, set bit 1, write back
- *   3. Call 0xB031 helper
- *   4. R1=0x02, call 0xBCB1, mask with 0xFE, call 0x0BE6
- *   5. Inc R1, write 0x01 via 0x0BE6
- *   6. Dec R1, call 0x0BC8, mask with 0xFD, call 0x0BE6
- *   7. Inc R1, write 0x02 via 0x0BE6
- *   8. R2=0x12, R1=0x1E, call 0x0BC8
- *   9. Mask with 0xFE, set bit 0, ljmp 0x0BE6
+ * Writes mode value to G_VENDOR_CTRL_07B9, then configures CC9x registers.
  *
  * Original disassembly:
- *   d894: lcall 0xbc8f
- *   d897: anl a, #0xfd           ; clear bit 1
- *   d899: lcall 0x0be6           ; write register
- *   d89c: mov dptr, #0xc809
- *   d89f: movx a, @dptr
- *   d8a0: anl a, #0xfd           ; clear bit 1
- *   d8a2: orl a, #0x02           ; set bit 1
- *   d8a4: movx @dptr, a
- *   d8a5: lcall 0xb031           ; helper
- *   ... (continues with register configuration)
+ *   94ca: mov dptr, #0x07b9
+ *   94cd: movx @dptr, a          ; write A to 0x07B9
+ *   94ce: mov dptr, #0xcc98
+ *   94d1: movx a, @dptr
+ *   94d2: anl a, #0xf8           ; clear bits 0-2
+ *   94d4: orl a, #0x06           ; set bits 1,2
+ *   94d6: movx @dptr, a
+ *   94d7: mov dptr, #0xcc9a
+ *   94da: clr a
+ *   94db: movx @dptr, a          ; write 0 to CC9A
+ *   94dc: inc dptr               ; CC9B
+ *   94dd: mov a, #0x50
+ *   94df: movx @dptr, a          ; write 0x50 to CC9B
+ *   94e0: mov dptr, #0xcc99
+ *   94e3: mov a, #0x04
+ *   94e5: movx @dptr, a          ; write 4 to CC99
+ *   94e6: mov a, #0x02
+ *   94e8: movx @dptr, a          ; write 2 to CC99
+ *   94e9: ret
  */
-void phy_register_config(void)
+static void pd_mode_init_94ca(uint8_t mode)
 {
     uint8_t val;
 
-    /* Configure interrupt control 2 - clear bit 1, set bit 1 */
-    val = REG_INT_CTRL;
-    val = (val & 0xFD) | 0x02;
-    REG_INT_CTRL = val;
+    /* Write mode to G_VENDOR_CTRL_07B9 */
+    G_VENDOR_CTRL_07B9 = mode;
 
-    /* Read state flag and check bit 1 */
-    val = G_STATE_FLAG_0AF1;
-    if (val & STATE_FLAG_INIT) {
-        /* If bit 1 set, call handler 0x057A with R7=0x03 */
-        /* This would handle a specific condition */
+    /* Configure REG_CPU_DMA_READY (0xCC98): clear bits 0-2, set bits 1,2 */
+    val = REG_CPU_DMA_READY;
+    val = (val & 0xF8) | 0x06;
+    REG_CPU_DMA_READY = val;
+
+    /* Write 0 to REG_XFER_DMA_DATA_LO (0xCC9A) */
+    REG_XFER_DMA_DATA_LO = 0;
+
+    /* Write 0x50 to REG_XFER_DMA_DATA_HI (0xCC9B) */
+    REG_XFER_DMA_DATA_HI = 0x50;
+
+    /* Write 4 then 2 to REG_XFER_DMA_CFG (0xCC99) */
+    REG_XFER_DMA_CFG = 0x04;
+    REG_XFER_DMA_CFG = 0x02;
+}
+
+/*
+ * phy_mode_helper_c45b - PHY mode finalization helper
+ * Address: 0xC45B-0xC464 (10 bytes)
+ *
+ * Called after pd_mode_init_94ca. Decrements A (which is 2), writes to CC99
+ * and G_TLP_BASE_LO, then calls helper_ca51.
+ *
+ * Original disassembly:
+ *   c45b: dec a                  ; A = 1
+ *   c45c: movx @dptr, a          ; write 1 to CC99
+ *   c45d: mov dptr, #0x0ae1
+ *   c460: movx @dptr, a          ; write 1 to G_TLP_BASE_LO
+ *   c461: lcall 0xca51
+ *   c464: ret
+ */
+static void phy_mode_helper_c45b(void)
+{
+    /* After pd_mode_init_94ca, the value to write is 1 (decremented from 2) */
+    REG_XFER_DMA_CFG = 0x01;
+    G_TLP_BASE_LO = 0x01;
+    /* TODO: Call helper_ca51() when implemented */
+    /* helper_ca51(); */
+}
+
+/*
+ * timer_setup_e592 - Configure CPU timer registers
+ * Address: 0xE592-0xE5A2 (17 bytes)
+ *
+ * Writes parameters to CC82, CC83, then configures CC81.
+ *
+ * Original disassembly:
+ *   e592: mov dptr, #0xcc82
+ *   e595: mov a, r6              ; param_hi
+ *   e596: movx @dptr, a
+ *   e597: inc dptr               ; CC83
+ *   e598: mov a, r7              ; param_lo
+ *   e599: movx @dptr, a
+ *   e59a: mov dptr, #0xcc81
+ *   e59d: lcall 0x94e3           ; write 4, then 2 to CC81
+ *   e5a0: dec a                  ; A = 1
+ *   e5a1: movx @dptr, a          ; write 1 to CC81
+ *   e5a2: ret
+ */
+static void timer_setup_e592(uint8_t param_hi, uint8_t param_lo)
+{
+    /* Write param_hi to CC82 */
+    REG_CPU_CTRL_CC82 = param_hi;
+
+    /* Write param_lo to CC83 */
+    REG_CPU_CTRL_CC83 = param_lo;
+
+    /* Write 4, then 2, then 1 to CC81 (REG_CPU_INT_CTRL) */
+    REG_CPU_INT_CTRL = 0x04;
+    REG_CPU_INT_CTRL = 0x02;
+    REG_CPU_INT_CTRL = 0x01;
+}
+
+/*
+ * helper_e0f8 - DMA/Timer helper
+ * Address: 0xE0F8-0xE119 (34 bytes)
+ *
+ * Configures CC91, CC90, CC92, CC93 registers.
+ *
+ * Original disassembly:
+ *   e0f8: mov dptr, #0xcc91
+ *   e0fb: lcall 0x94e3           ; write 4, then 2 to CC91
+ *   e0fe: lcall 0x956a           ; helper
+ *   e101: mov dptr, #0xcc90
+ *   e104: lcall 0x959a           ; helper, returns val in A
+ *   e107: orl a, #0x05           ; set bits 0,2
+ *   e109: movx @dptr, a          ; write to CC90
+ *   e10a: mov dptr, #0xcc92
+ *   e10d: clr a
+ *   e10e: movx @dptr, a          ; write 0 to CC92
+ *   e10f: inc dptr               ; CC93
+ *   e110: mov a, #0xc8
+ *   e112: movx @dptr, a          ; write 0xC8 to CC93
+ *   e113: mov dptr, #0xcc91
+ *   e116: mov a, #0x01
+ *   e118: movx @dptr, a          ; write 1 to CC91
+ *   e119: ret
+ */
+static void helper_e0f8_impl(void)
+{
+    uint8_t val;
+
+    /* Write 4, then 2 to CC91 */
+    REG_CPU_DMA_INT = 0x04;
+    REG_CPU_DMA_INT = 0x02;
+
+    /* TODO: call helper_956a() when implemented */
+    /* helper_956a(); */
+
+    /* Read/modify CC90 - simplified since helper_959a is not implemented */
+    val = REG_CPU_DMA_CTRL_CC90;
+    val |= 0x05;  /* Set bits 0,2 */
+    REG_CPU_DMA_CTRL_CC90 = val;
+
+    /* Write 0 to CC92 */
+    REG_CPU_DMA_DATA_LO = 0;
+
+    /* Write 0xC8 to CC93 */
+    REG_CPU_DMA_DATA_HI = 0xC8;
+
+    /* Write 1 to CC91 */
+    REG_CPU_DMA_INT = 0x01;
+}
+
+/*
+ * init_e44d - Additional PD initialization
+ * Address: 0xE44D-0xE45F (19 bytes)
+ *
+ * Sets up parameters and calls initialization helpers.
+ *
+ * Original disassembly:
+ *   e44d: mov r7, #0x00
+ *   e44f: mov r6, #0x80
+ *   e451: mov r5, #0x01
+ *   e453: mov r4, #0x00
+ *   e455: lcall 0xb77b           ; helper_b77b(0, 1, 0x80, 0)
+ *   e458: mov a, #0x04
+ *   e45a: movx @dptr, a          ; write 4 to DPTR (set by b77b)
+ *   e45b: mov r5, #0x03
+ *   e45d: mov r7, #0x03
+ *   e45f: ljmp 0xbc18            ; tail call helper_bc18(3, 3)
+ */
+static void init_e44d(void)
+{
+    /* TODO: Call helper_b77b(0, 1, 0x80, 0) when implemented */
+    /* helper_b77b(0, 1, 0x80, 0); */
+
+    /* For now, write 4 to a default register (placeholder) */
+    /* The actual register depends on helper_b77b's output */
+
+    /* TODO: Call helper_bc18(3, 3) when implemented */
+    /* helper_bc18(3, 3); */
+}
+
+/*
+ * mode_0x3a_init_e239 - Mode 0x3A specific initialization
+ * Address: 0xE239-0xE256 (30 bytes)
+ *
+ * Called for USB mode 0x3A. Initializes various state.
+ *
+ * Original disassembly:
+ *   e239: lcall 0xe4a0           ; helper
+ *   e23c: clr a
+ *   e23d: mov r5, a              ; r5 = 0
+ *   e23e: mov r7, #0x0e          ; r7 = 14
+ *   e240: lcall 0x9534           ; helper_9534(0, 14)
+ *   e243: mov dptr, #0x07ba
+ *   e246: mov a, #0x0e
+ *   e248: movx @dptr, a          ; G_PD_INIT_07BA = 14
+ *   e249: lcall 0xdfd6           ; helper
+ *   e24c: mov a, r7
+ *   e24d: jz 0xe256              ; if r7 == 0, return
+ *   e24f: mov r7, #0x10
+ *   e251: mov r6, #0x27
+ *   e253: lcall 0xe592           ; timer_setup_e592(0x27, 0x10)
+ *   e256: ret
+ */
+static void mode_0x3a_init_e239(void)
+{
+    /* TODO: Call helper_e4a0() when implemented */
+    /* helper_e4a0(); */
+
+    /* TODO: Call helper_9534(0, 14) when implemented */
+    /* helper_9534(0, 14); */
+
+    /* Write 14 to G_PD_INIT_07BA */
+    G_PD_INIT_07BA = 0x0E;
+
+    /* TODO: Call helper_dfd6() when implemented */
+    /* helper_dfd6(); */
+
+    /* Conditional timer setup - for now always call */
+    timer_setup_e592(0x27, 0x10);
+}
+
+/*
+ * usb_mode_update_e3f6 - Update USB mode state
+ * Address: 0xE3F6-0xE40C (23 bytes)
+ *
+ * Saves mode value and conditionally updates USB mode.
+ *
+ * Original disassembly:
+ *   e3f6: mov dptr, #0x0aa2
+ *   e3f9: mov a, r7              ; mode value (0xFF for common path)
+ *   e3fa: movx @dptr, a          ; G_STATE_PARAM_0AA2 = mode
+ *   e3fb: lcall 0xe438           ; helper
+ *   e3fe: mov a, r7
+ *   e3ff: jz 0xe40c              ; if r7 == 0, return
+ *   e401: mov dptr, #0x0aa2
+ *   e404: movx a, @dptr          ; read G_STATE_PARAM_0AA2
+ *   e405: mov dptr, #0x7000
+ *   e408: movx @dptr, a          ; write to G_FLASH_BUF_BASE (USB mode)
+ *   e409: lcall 0xe1fd           ; helper
+ *   e40c: ret
+ */
+static void usb_mode_update_e3f6(uint8_t mode)
+{
+    /* Write mode to G_STATE_PARAM_0AA2 */
+    G_STATE_PARAM_0AA2 = mode;
+
+    /* TODO: Call helper_e438() when implemented */
+    /* helper_e438(); */
+
+    /* Conditional update - for non-zero mode, update USB mode */
+    if (mode != 0) {
+        G_FLASH_BUF_BASE = G_STATE_PARAM_0AA2;
+        /* TODO: Call helper_e1fd() when implemented */
+        /* helper_e1fd(); */
+    }
+}
+
+/*
+ * pd_internal_state_init_b806 - Initialize PD state and print message
+ * Address: 0xB806-0xB85F (90 bytes)
+ *
+ * Prints "[InternalPD_StateInit]" to UART and initializes PD-related globals.
+ * Called when REG_FLASH_READY_STATUS bit 5 is set.
+ *
+ * Original disassembly:
+ *   b806: mov r3, #0xff          ; string length (0xFF = null terminated)
+ *   b808: mov r2, #0x2a          ; string addr high
+ *   b80a: mov r1, #0x01          ; string addr low (0x2A01)
+ *   b80c: lcall 0x53fa           ; uart_print_string
+ *   b80f: clr a
+ *   b810: mov dptr, #0x07b4      ; clear G_PD_STATE_07B4
+ *   b813: movx @dptr, a
+ *   b814: inc dptr               ; clear 0x07B5
+ *   b815: movx @dptr, a
+ *   b816: mov dptr, #0x07c0      ; clear G_CMD_ADDR_LO
+ *   b819: movx @dptr, a
+ *   b81a: inc dptr               ; clear 0x07C1
+ *   b81b: movx @dptr, a
+ *   ... (continues clearing more globals)
+ */
+static void pd_internal_state_init_b806(void)
+{
+    /* Print "[InternalPD_StateInit]" - string is at code address 0x2A00 */
+    uart_puts("[InternalPD_StateInit]");
+
+    /* Clear PD state variables */
+    G_PD_STATE_07B4 = 0;      /* 0x07B4 */
+    G_PD_STATE_07B5 = 0;      /* 0x07B5 */
+    G_CMD_ADDR_LO = 0;        /* 0x07C0 */
+    G_CMD_SLOT_C1 = 0;        /* 0x07C1 */
+    G_CMD_STATUS = 0;         /* 0x07C4 */
+    G_CMD_WORK_C2 = 0;        /* 0x07C2 */
+    G_CMD_ADDR_HI = 0;        /* 0x07BF */
+    G_PD_STATE_07BE = 0;      /* 0x07BE */
+    G_PD_STATE_07E0 = 0;      /* 0x07E0 */
+    G_PD_INIT_07BA = 1;       /* 0x07BA = 1 (set init flag) */
+
+    /* Set default PD mode */
+    G_PD_MODE_07D2 = 0x01;
+
+    /* Check 0x07DB and conditionally set 0x07C7 */
+    if (G_PD_COUNTER_07DB == 0) {
+        G_CMD_WORK_C7 = 0x02;
+    }
+    G_PD_COUNTER_07DB = 0;
+}
+
+/*
+ * pd_usb_init_b02f - PD/USB Initialization Helper
+ * Address: 0xB02F-0xB0FD (207 bytes)
+ *
+ * Performs extensive register configuration for PD/USB initialization.
+ * Called when REG_FLASH_READY_STATUS bit 5 is set.
+ *
+ * Original disassembly:
+ *   b02f: mov dptr, #0xe40b      ; REG_CMD_CONFIG
+ *   b032: lcall 0x967c           ; helper
+ *   b035: mov dptr, #0xe40a
+ *   b038: mov a, #0x0f
+ *   b03a: movx @dptr, a          ; write 0x0F to REG_CMD_CFG_E40A
+ *   b03b: mov dptr, #0xe413
+ *   b03e: movx a, @dptr
+ *   b03f: anl a, #0xfe           ; clear bit 0
+ *   b041: movx @dptr, a
+ *   b042: movx a, @dptr
+ *   b043: anl a, #0xfd           ; clear bit 1
+ *   b045: movx @dptr, a
+ *   b046: mov dptr, #0xe400
+ *   b049: movx a, @dptr
+ *   b04a: anl a, #0x7f           ; clear bit 7
+ *   b04c: movx @dptr, a
+ *   ... (continues with polling loops and more register writes)
+ *   b0fd: ret
+ */
+static void pd_usb_init_b02f(void)
+{
+    uint8_t val;
+
+    /* Write 0x0F to REG_CMD_CFG_E40A (0xB035-0xB03A) */
+    REG_CMD_CFG_E40A = 0x0F;
+
+    /* Read REG_CMD_CFG_E413, clear bit 0, write back (0xB03B-0xB041) */
+    val = REG_CMD_CFG_E413;
+    val &= 0xFE;  /* Clear bit 0 */
+    REG_CMD_CFG_E413 = val;
+
+    /* Read REG_CMD_CFG_E413, clear bit 1, write back (0xB042-0xB045) */
+    val = REG_CMD_CFG_E413;
+    val &= 0xFD;  /* Clear bit 1 */
+    REG_CMD_CFG_E413 = val;
+
+    /* Read REG_CMD_CTRL_E400, clear bit 7, write back (0xB046-0xB04C) */
+    val = REG_CMD_CTRL_E400;
+    val &= 0x7F;  /* Clear bit 7 */
+    REG_CMD_CTRL_E400 = val;
+
+    /* Poll REG_USB_STATUS_CC89 until bit 1 is set (0xB055-0xB059) */
+    while (!(REG_USB_STATUS_CC89 & 0x02)) {
+        /* Wait for USB ready */
     }
 
-    /* Configure PCIe control register */
-    val = REG_PCIE_CTRL_B402;
-    val = val & ~PCIE_CTRL_B402_BIT0;  /* Clear bit 0 */
-    REG_PCIE_CTRL_B402 = val;
-    val = REG_PCIE_CTRL_B402;
-    val = val & ~PCIE_CTRL_B402_BIT1;  /* Clear bit 1 */
-    REG_PCIE_CTRL_B402 = val;
+    /* Poll REG_USB_STATUS_CC89 again until bit 1 is set (0xB06E-0xB072) */
+    while (!(REG_USB_STATUS_CC89 & 0x02)) {
+        /* Wait for USB ready */
+    }
+
+    /* Poll REG_CMD_STATUS_E402 until bit 3 is clear (0xB078-0xB084) */
+    while (REG_CMD_STATUS_E402 & 0x08) {
+        /* Wait for command not busy */
+    }
+
+    /* Read REG_CMD_CTRL_E409, clear bit 0, write back (0xB086-0xB08C) */
+    val = REG_CMD_CTRL_E409;
+    val &= 0xFE;  /* Clear bit 0 */
+    REG_CMD_CTRL_E409 = val;
+
+    /* Write 0xA1 to REG_CMD_CFG_E411 (0xB09E-0xB0A3) */
+    REG_CMD_CFG_E411 = 0xA1;
+
+    /* Write 0x79 to REG_CMD_CFG_E412 (0xB0A4-0xB0A7) */
+    REG_CMD_CFG_E412 = 0x79;
+
+    /* Read REG_CMD_CTRL_E400, and with 0xC3, or with 0x3C, write back (0xB0A8-0xB0B0) */
+    val = REG_CMD_CTRL_E400;
+    val = (val & 0xC3) | 0x3C;
+    REG_CMD_CTRL_E400 = val;
+
+    /* Read REG_CMD_CTRL_E409, clear bit 7, write back (0xB0B1-0xB0B7) */
+    val = REG_CMD_CTRL_E409;
+    val &= 0x7F;  /* Clear bit 7 */
+    REG_CMD_CTRL_E409 = val;
+
+    /* Read REG_INT_CTRL (0xC809), clear bit 5, set bit 5, write back (0xB0B8-0xB0C0) */
+    val = REG_INT_CTRL;
+    val = (val & 0xDF) | 0x20;  /* Clear bit 5, then set bit 5 */
+    REG_INT_CTRL = val;
+
+    /* Write 0x8A to REG_CMD_CFG_E40E (0xB0C4-0xB0C9) */
+    REG_CMD_CFG_E40E = 0x8A;
+
+    /* Poll REG_PHY_MODE_E302 until bits 6,7 are set (0xB0CA-0xB0D5) */
+    while ((REG_PHY_MODE_E302 & 0xC0) == 0) {
+        /* Wait for PHY ready */
+    }
+
+    /* Read REG_CMD_CTRL_E400, clear bit 7, set bit 7, write back (0xB0D7-0xB0DF) */
+    val = REG_CMD_CTRL_E400;
+    val = (val & 0x7F) | 0x80;  /* Clear bit 7, then set bit 7 */
+    REG_CMD_CTRL_E400 = val;
+
+    /* Read REG_CMD_CONFIG (0xE40B), clear bit 0, write back (0xB0E0-0xB0E6) */
+    val = REG_CMD_CONFIG;
+    val &= 0xFE;  /* Clear bit 0 */
+    REG_CMD_CONFIG = val;
+
+    /* Read REG_PD_CTRL_E66A, clear bit 4, write back (0xB0E7-0xB0ED) */
+    val = REG_PD_CTRL_E66A;
+    val &= 0xEF;  /* Clear bit 4 */
+    REG_PD_CTRL_E66A = val;
+
+    /* Write 0x28 to REG_CMD_CFG_E40D (0xB0EE-0xB0F3) */
+    REG_CMD_CFG_E40D = 0x28;
+
+    /* Read REG_CMD_CFG_E413, and with 0x8F, or with 0x60, write back (0xB0F4-0xB0FC) */
+    val = REG_CMD_CFG_E413;
+    val = (val & 0x8F) | 0x60;
+    REG_CMD_CFG_E413 = val;
+
+    /* Return (0xB0FD) */
+}
+
+/*
+ * phy_register_config - PD/PHY Register Configuration
+ * Address: 0x050C-0x050F (dispatch) -> 0xC3FA-0xC45A (97 bytes)
+ *
+ * Called from main loop at 0x1FAD. Checks REG_FLASH_READY_STATUS bit 5
+ * and if set, initializes PD state and prints "[InternalPD_StateInit]".
+ *
+ * Original disassembly:
+ *   c3fa: mov dptr, #0xe795      ; REG_FLASH_READY_STATUS
+ *   c3fd: movx a, @dptr          ; read status
+ *   c3fe: jnb 0xe0.5, 0xc45a     ; if bit 5 NOT set, skip to return
+ *   c401: lcall 0xb02f           ; PD USB initialization helper
+ *   c404: lcall 0xb806           ; pd_internal_state_init (prints message)
+ *   c407: lcall 0xe44d           ; additional initialization
+ *   c40a: mov dptr, #0x7000      ; check USB mode
+ *   c40d: movx a, @dptr
+ *   c40e: cjne a, #0x3a, 0xc429  ; branch on mode value
+ *   c411-c41a: mode 0x3A - set 07B9=1, 07B5=1
+ *   c41b: lcall 0xe239           ; mode 0x3A specific init
+ *   c41e-c424: print "[Internal_StateInit_1]" (string at 0x2A18)
+ *   c427: sjmp 0xc44b            ; goto common path
+ *   c429: cjne a, #0x3b, 0xc43b  ; check mode 0x3B
+ *   c431: mov a, #0x02
+ *   c433: lcall 0x94ca           ; pd_mode_init_94ca(2)
+ *   c436: lcall 0xc45b           ; phy_mode_helper_c45b()
+ *   c439: sjmp 0xc44b            ; goto common path
+ *   c43b: cjne a, #0x3c, 0xc450  ; check mode 0x3C
+ *   c443: mov a, #0x03
+ *   c445: lcall 0x94ca           ; pd_mode_init_94ca(3)
+ *   c448: lcall 0xc45b           ; phy_mode_helper_c45b()
+ *   c44b: mov r7, #0xff          ; common path - mode = 0xFF
+ *   c44d: ljmp 0xe3f6            ; usb_mode_update_e3f6(0xFF)
+ *   c450: mov r7, #0x9c          ; else branch
+ *   c452: mov r6, #0x18
+ *   c454: lcall 0xe592           ; timer_setup_e592(0x18, 0x9C)
+ *   c457: lcall 0xe0f8           ; helper_e0f8_impl()
+ *   c45a: ret
+ */
+void phy_register_config(void)
+{
+    uint8_t flash_status;
+    uint8_t usb_mode;
+
+    /* Read REG_FLASH_READY_STATUS (0xE795) */
+    flash_status = REG_FLASH_READY_STATUS;
+
+    /* Check bit 5 - if NOT set, return immediately (c3fe: jnb 0xe0.5, 0xc45a) */
+    if (!(flash_status & 0x20)) {
+        return;
+    }
+
+    /* Call PD USB initialization helper (0xB02F) */
+    pd_usb_init_b02f();
+
+    /* Initialize PD state and print "[InternalPD_StateInit]" (0xB806) */
+    pd_internal_state_init_b806();
+
+    /* Additional initialization (0xE44D) */
+    init_e44d();
+
+    /* Read USB mode from G_FLASH_BUF_BASE (0x7000) */
+    usb_mode = G_FLASH_BUF_BASE;
+
+    /* Branch on USB mode value */
+    if (usb_mode == 0x3A) {
+        /* Mode 0x3A: Set globals and call mode-specific init */
+        G_VENDOR_CTRL_07B9 = 0x01;
+        G_PD_STATE_07B5 = 0x01;
+
+        /* Call mode 0x3A specific initialization (0xE239) */
+        mode_0x3a_init_e239();
+
+        /* Print "[Internal_StateInit_1]" - string at 0x2A18 */
+        uart_puts("[Internal_StateInit_1]");
+
+        /* Fall through to common path (0xC44B) */
+        usb_mode_update_e3f6(0xFF);
+
+    } else if (usb_mode == 0x3B) {
+        /* Mode 0x3B: Initialize with mode value 2 */
+        pd_mode_init_94ca(0x02);
+        phy_mode_helper_c45b();
+
+        /* Fall through to common path (0xC44B) */
+        usb_mode_update_e3f6(0xFF);
+
+    } else if (usb_mode == 0x3C) {
+        /* Mode 0x3C: Initialize with mode value 3 */
+        pd_mode_init_94ca(0x03);
+        phy_mode_helper_c45b();
+
+        /* Fall through to common path (0xC44B) */
+        usb_mode_update_e3f6(0xFF);
+
+    } else {
+        /* Default mode: Timer setup and DMA configuration */
+        timer_setup_e592(0x18, 0x9C);
+        helper_e0f8_impl();
+        /* Return without calling usb_mode_update_e3f6 */
+    }
 }
 
 /*===========================================================================

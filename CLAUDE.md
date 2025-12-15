@@ -42,6 +42,15 @@ Registers and variables in general should not have aliases. Adding bit constants
 
 All functions should exactly match the functions in the real firmware! It should match them one to one. This is the only way to ensure it is correct.
 
+**CRITICAL: NO SHORTCUTS OR SIMPLIFIED IMPLEMENTATIONS**
+- NEVER write comments like "simplified", "for now", "extensive register configuration" or skip functionality
+- NEVER leave out register writes, helper function calls, or conditional logic from the original
+- If the original firmware calls a helper function, you MUST implement and call that helper function
+- If the original writes to 10 registers, your implementation MUST write to all 10 registers
+- Every branch, every register write, every function call in the original must be replicated
+- When in doubt, disassemble more of the original to understand the full behavior
+- The goal is byte-for-byte behavioral equivalence, not "close enough"
+
 Checking in and making sure it builds every once in a while is good. You can also see how far along you are by comparing the size of our compiled firmware bin to fw.bin
 
 Before reverse engineering, check all the headers to see if the functions are already there.

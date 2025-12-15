@@ -687,9 +687,12 @@
 #define REG_XFER_DMA_ADDR_LO    XDATA_REG8(0xCC8A)  /* Transfer DMA address low */
 #define REG_XFER_DMA_ADDR_HI    XDATA_REG8(0xCC8B)  /* Transfer DMA address high */
 
+#define REG_CPU_DMA_CTRL_CC90   XDATA_REG8(0xCC90)  /* CPU DMA control */
 #define REG_CPU_DMA_INT         XDATA_REG8(0xCC91)  /* CPU DMA interrupt status */
 #define   CPU_DMA_INT_ACK        0x02  // Bit 1: Acknowledge DMA interrupt
 #define   CPU_DMA_INT_TRIGGER    0x04  // Bit 2: Trigger DMA
+#define REG_CPU_DMA_DATA_LO     XDATA_REG8(0xCC92)  /* CPU DMA data low */
+#define REG_CPU_DMA_DATA_HI     XDATA_REG8(0xCC93)  /* CPU DMA data high */
 #define REG_CPU_DMA_READY       XDATA_REG8(0xCC98)  /* CPU DMA ready status */
 #define   CPU_DMA_READY_BIT2     0x04              /* Bit 2: DMA ready flag */
 #define REG_XFER_DMA_CFG        XDATA_REG8(0xCC99)  /* Transfer DMA config */
@@ -822,15 +825,23 @@
 //=============================================================================
 // Command Engine (0xE400-0xE4FF)
 //=============================================================================
-#define REG_CMD_CTRL_E400       XDATA_REG8(0xE400)  /* Command control (bit 6 = busy) */
+#define REG_CMD_CTRL_E400       XDATA_REG8(0xE400)  /* Command control (bit 7 = enable, bit 6 = busy) */
 #define   CMD_CTRL_E400_BIT6      0x40  // Bit 6: Command busy flag
-#define REG_CMD_STATUS_E402     XDATA_REG8(0xE402)
+#define   CMD_CTRL_E400_BIT7      0x80  // Bit 7: Command enable
+#define REG_CMD_STATUS_E402     XDATA_REG8(0xE402)  /* Command status (bit 3 = poll status) */
 #define REG_CMD_CTRL_E403       XDATA_REG8(0xE403)
 #define REG_CMD_CFG_E404        XDATA_REG8(0xE404)
 #define REG_CMD_CFG_E405        XDATA_REG8(0xE405)
-#define REG_CMD_CONFIG          XDATA_REG8(0xE40B)
+#define REG_CMD_CTRL_E409       XDATA_REG8(0xE409)  /* Command control (bit 0,7 = flags) */
+#define REG_CMD_CFG_E40A        XDATA_REG8(0xE40A)  /* Command config - write 0x0F */
+#define REG_CMD_CONFIG          XDATA_REG8(0xE40B)  /* Command config (bit 0 = flag) */
+#define REG_CMD_CFG_E40D        XDATA_REG8(0xE40D)  /* Command config - write 0x28 */
+#define REG_CMD_CFG_E40E        XDATA_REG8(0xE40E)  /* Command config - write 0x8A */
 #define REG_CMD_CTRL_E40F       XDATA_REG8(0xE40F)
 #define REG_CMD_CTRL_E410       XDATA_REG8(0xE410)
+#define REG_CMD_CFG_E411        XDATA_REG8(0xE411)  /* Command config - write 0xA1 */
+#define REG_CMD_CFG_E412        XDATA_REG8(0xE412)  /* Command config - write 0x79 */
+#define REG_CMD_CFG_E413        XDATA_REG8(0xE413)  /* Command config (bits 0,1,4,5,6 = flags) */
 #define REG_CMD_BUSY_STATUS     XDATA_REG8(0xE41C)
 #define   CMD_BUSY_STATUS_BUSY    0x01  // Bit 0: Command engine busy
 #define REG_CMD_TRIGGER         XDATA_REG8(0xE420)
@@ -857,12 +868,20 @@
 #define REG_CMD_EXT_PARAM_1     XDATA_REG8(0xE435)
 
 //=============================================================================
+// Timer/CPU Control (0xCC00-0xCCFF)
+//=============================================================================
+#define REG_USB_STATUS_CC89     XDATA_REG8(0xCC89)  /* USB status - poll bit 1 for ready */
+#define   USB_STATUS_CC89_BIT1    0x02  // Bit 1: USB ready flag
+
+//=============================================================================
 // Debug/Interrupt (0xE600-0xE6FF)
 //=============================================================================
 #define REG_DEBUG_INT_E62F      XDATA_REG8(0xE62F)  // Debug interrupt 0x62F
 #define REG_DEBUG_INT_E65F      XDATA_REG8(0xE65F)  // Debug interrupt 0x65F
 #define REG_DEBUG_INT_E661      XDATA_REG8(0xE661)
 #define   DEBUG_INT_E661_FLAG     0x80  // Bit 7: Debug interrupt flag
+#define REG_PD_CTRL_E66A        XDATA_REG8(0xE66A)  /* PD control - clear bit 4 */
+#define   PD_CTRL_E66A_BIT4       0x10  // Bit 4: PD control flag
 
 //=============================================================================
 // System Status / Link Control (0xE700-0xE7FF)
