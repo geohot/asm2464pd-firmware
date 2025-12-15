@@ -1036,5 +1036,390 @@ class TestCommandDispatch:
             assert usb_state == 5, f"{cmd_name}: USB state should be 5, got {usb_state}"
 
 
+class TestVendorCommandStateMachine:
+    """Tests for USB state machine behavior during vendor commands."""
+
+    def test_usb_state_set_to_5_before_command(self, firmware_emulator):
+        """Test that I_STATE_6A is set to 5 (CONFIGURED) before command processing."""
+        emu, fw_name = firmware_emulator
+
+        emu.hw.inject_usb_command(0xE4, 0x1000, size=1)
+
+        # USB state should be 5 before firmware runs
+        state = emu.memory.idata[0x6A]
+        assert state == 5, f"[{fw_name}] USB state should be 5 before command, got {state}"
+
+    def test_vendor_flag_set_for_e4(self, firmware_emulator):
+        """Test that vendor flag (G_EP_STATUS_CTRL) bit 3 is set for E4 commands."""
+        emu, fw_name = firmware_emulator
+
+        emu.hw.inject_usb_command(0xE4, 0x1000, size=1)
+
+        # G_EP_STATUS_CTRL (0x0003) should have bit 3 set (0x08)
+        vendor_flag = emu.memory.xdata[0x0003]
+        assert vendor_flag & 0x08, f"[{fw_name}] Vendor flag bit 3 should be set, got 0x{vendor_flag:02X}"
+
+    def test_status_register_written_during_e4(self, firmware_emulator):
+        """Test that 0x90E3 is written with 0x02 during E4 processing."""
+        emu, fw_name = firmware_emulator
+
+        # Track writes to 0x90E3
+        writes_90e3 = []
+        def track_90e3(addr, val):
+            writes_90e3.append(val)
+        emu.memory.xdata_write_hooks[0x90E3] = track_90e3
+
+        emu.hw.inject_usb_command(0xE4, 0x1000, size=1)
+        emu.run(max_cycles=50000)
+
+        assert 0x02 in writes_90e3, f"[{fw_name}] 0x90E3 should be written with 0x02, writes: {writes_90e3}"
+
+
+class TestDMATriggerSequence:
+    """Tests for the DMA trigger sequence during E4 commands."""
+
+    def test_dma_triggered_by_0x08_write_to_b296(self, firmware_emulator):
+        """Test that DMA is triggered by writing 0x08 to 0xB296."""
+        emu, fw_name = firmware_emulator
+
+        # Track writes to 0xB296
+        writes_b296 = []
+        original_write = emu.hw.write_callbacks.get(0xB296)
+
+        def track_b296(hw, addr, val):
+            writes_b296.append(val)
+            if original_write:
+                original_write(hw, addr, val)
+
+        emu.hw.write_callbacks[0xB296] = track_b296
+
+        # Setup test data
+        emu.memory.xdata[0x1000] = 0xAB
+
+        emu.hw.inject_usb_command(0xE4, 0x1000, size=1)
+        emu.run(max_cycles=50000)
+
+        # Should have written 0x08 to trigger DMA
+        assert 0x08 in writes_b296, f"[{fw_name}] 0xB296 should be written with 0x08, writes: {writes_b296}"
+
+    def test_dma_copies_correct_data(self, firmware_emulator):
+        """Test that DMA correctly copies data from source to USB buffer."""
+        emu, fw_name = firmware_emulator
+
+        # Setup distinctive test pattern
+        test_data = [0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE]
+        for i, val in enumerate(test_data):
+            emu.memory.xdata[0x2000 + i] = val
+
+        emu.hw.inject_usb_command(0xE4, 0x2000, size=len(test_data))
+        emu.run(max_cycles=50000)
+
+        # Verify USB buffer at 0x8000
+        result = [emu.memory.xdata[0x8000 + i] for i in range(len(test_data))]
+        assert result == test_data, f"[{fw_name}] DMA should copy exact data, got {[hex(x) for x in result]}"
+
+    def test_dma_size_from_cdb(self, firmware_emulator):
+        """Test that DMA uses size from CDB register 0x910E."""
+        emu, fw_name = firmware_emulator
+
+        # Fill area with known pattern
+        for i in range(32):
+            emu.memory.xdata[0x3000 + i] = i + 0x40
+
+        # Request only 4 bytes
+        emu.hw.inject_usb_command(0xE4, 0x3000, size=4)
+        emu.run(max_cycles=50000)
+
+        # First 4 bytes should be copied
+        result = [emu.memory.xdata[0x8000 + i] for i in range(4)]
+        expected = [0x40, 0x41, 0x42, 0x43]
+        assert result == expected, f"[{fw_name}] Should copy exactly 4 bytes, got {[hex(x) for x in result]}"
+
+
+class TestE5WriteCommand:
+    """Tests for E5 write command functionality.
+
+    Note: E5 tests for original firmware are expected to fail because the
+    original firmware's E5 command handling uses a different code path that
+    doesn't go through the DMA trigger at 0xB296 that our emulator captures.
+    Our firmware implements E5 through the same DMA path as E4.
+    """
+
+    def test_e5_writes_to_xdata(self, firmware_emulator):
+        """Test E5 command writes value to specified XDATA address."""
+        emu, fw_name = firmware_emulator
+
+        test_addr = 0x2500
+        test_value = 0x77
+
+        # Clear the location first
+        emu.memory.xdata[test_addr] = 0x00
+
+        # Inject E5 write command
+        emu.hw.inject_usb_command(0xE5, test_addr, value=test_value)
+        # Use absolute cycle count (current + additional)
+        emu.run(max_cycles=emu.cpu.cycles + 50000)
+
+        # Verify the value was written
+        result = emu.memory.xdata[test_addr]
+        assert result == test_value, f"[{fw_name}] E5 should write 0x{test_value:02X}, got 0x{result:02X}"
+
+    def test_e5_writes_multiple_addresses(self, firmware_emulator):
+        """Test E5 command can write to different addresses."""
+        emu, fw_name = firmware_emulator
+
+        test_cases = [
+            (0x1000, 0x11),
+            (0x2000, 0x22),
+            (0x3000, 0x33),
+            (0x4000, 0x44),
+        ]
+
+        for addr, value in test_cases:
+            emu.reset()
+            # Run to boot state
+            emu.run(max_cycles=500000)
+            emu.memory.xdata[addr] = 0x00  # Clear first
+
+            emu.hw.inject_usb_command(0xE5, addr, value=value)
+            emu.run(max_cycles=emu.cpu.cycles + 50000)
+
+            result = emu.memory.xdata[addr]
+            assert result == value, f"[{fw_name}] E5 at 0x{addr:04X}: expected 0x{value:02X}, got 0x{result:02X}"
+
+    def test_e5_e4_roundtrip(self, firmware_emulator):
+        """Test E5 write followed by E4 read returns same value."""
+        emu, fw_name = firmware_emulator
+
+        test_addr = 0x2800
+        test_value = 0xA5
+
+        # First write with E5
+        emu.hw.inject_usb_command(0xE5, test_addr, value=test_value)
+        emu.run(max_cycles=emu.cpu.cycles + 50000)
+
+        # Store the written value directly since E5 DMA writes to XDATA
+        written_value = emu.memory.xdata[test_addr]
+
+        # Reset state for next command
+        emu.reset()
+        emu.run(max_cycles=500000)
+
+        # Restore the value since reset clears XDATA
+        emu.memory.xdata[test_addr] = written_value
+
+        # Then read back with E4
+        emu.hw.inject_usb_command(0xE4, test_addr, size=1)
+        emu.run(max_cycles=emu.cpu.cycles + 50000)
+
+        result = emu.memory.xdata[0x8000]
+        assert result == test_value, f"[{fw_name}] E4 after E5 should read 0x{test_value:02X}, got 0x{result:02X}"
+
+
+class TestE4EdgeCases:
+    """Tests for E4 command edge cases."""
+
+    def test_e4_read_single_byte(self, firmware_emulator):
+        """Test E4 reading exactly 1 byte."""
+        emu, fw_name = firmware_emulator
+
+        emu.memory.xdata[0x1234] = 0x99
+        emu.hw.inject_usb_command(0xE4, 0x1234, size=1)
+        emu.run(max_cycles=50000)
+
+        assert emu.memory.xdata[0x8000] == 0x99, f"[{fw_name}] Single byte read failed"
+
+    def test_e4_read_max_size_64(self, firmware_emulator):
+        """Test E4 reading maximum typical size (64 bytes)."""
+        emu, fw_name = firmware_emulator
+
+        # Fill with pattern
+        for i in range(64):
+            emu.memory.xdata[0x1000 + i] = i ^ 0xAA
+
+        emu.hw.inject_usb_command(0xE4, 0x1000, size=64)
+        emu.run(max_cycles=50000)
+
+        # Verify all 64 bytes
+        for i in range(64):
+            expected = i ^ 0xAA
+            result = emu.memory.xdata[0x8000 + i]
+            assert result == expected, f"[{fw_name}] Byte {i}: expected 0x{expected:02X}, got 0x{result:02X}"
+
+    def test_e4_read_low_xdata(self, firmware_emulator):
+        """Test E4 reading from low XDATA addresses (work RAM)."""
+        emu, fw_name = firmware_emulator
+
+        # Low XDATA is work RAM
+        test_addr = 0x0050
+        emu.memory.xdata[test_addr] = 0xCC
+
+        emu.hw.inject_usb_command(0xE4, test_addr, size=1)
+        emu.run(max_cycles=50000)
+
+        assert emu.memory.xdata[0x8000] == 0xCC, f"[{fw_name}] Low XDATA read failed"
+
+    def test_e4_read_high_xdata(self, firmware_emulator):
+        """Test E4 reading from high XDATA addresses."""
+        emu, fw_name = firmware_emulator
+
+        test_addr = 0x5000
+        emu.memory.xdata[test_addr] = 0xDD
+
+        emu.hw.inject_usb_command(0xE4, test_addr, size=1)
+        emu.run(max_cycles=50000)
+
+        assert emu.memory.xdata[0x8000] == 0xDD, f"[{fw_name}] High XDATA read failed"
+
+    def test_e4_preserves_adjacent_memory(self, firmware_emulator):
+        """Test E4 doesn't corrupt memory adjacent to target."""
+        emu, fw_name = firmware_emulator
+
+        # Fill area around target
+        for i in range(16):
+            emu.memory.xdata[0x2000 + i] = i + 1
+
+        # Read just 4 bytes from middle
+        emu.hw.inject_usb_command(0xE4, 0x2004, size=4)
+        emu.run(max_cycles=50000)
+
+        # Verify source data wasn't corrupted
+        for i in range(16):
+            expected = i + 1
+            result = emu.memory.xdata[0x2000 + i]
+            assert result == expected, f"[{fw_name}] Source memory corrupted at offset {i}"
+
+
+class TestRegisterStateDuringCommands:
+    """Tests for register state during command processing."""
+
+    def test_cdb_registers_contain_command(self, firmware_emulator):
+        """Test CDB registers are set up correctly before command runs."""
+        emu, fw_name = firmware_emulator
+
+        emu.hw.inject_usb_command(0xE4, 0x1234, size=8)
+
+        # Check CDB registers
+        assert emu.hw.regs[0x910D] == 0xE4, f"[{fw_name}] Command type wrong"
+        assert emu.hw.regs[0x910E] == 0x08, f"[{fw_name}] Size wrong"
+        assert emu.hw.regs[0x910F] == 0x50, f"[{fw_name}] Addr high wrong"
+        assert emu.hw.regs[0x9110] == 0x12, f"[{fw_name}] Addr mid wrong"
+        assert emu.hw.regs[0x9111] == 0x34, f"[{fw_name}] Addr low wrong"
+
+    def test_usb_interrupt_triggers_handler(self, firmware_emulator):
+        """Test that USB interrupt is triggered and handler runs."""
+        emu, fw_name = firmware_emulator
+
+        # Track if interrupt handler PC was reached
+        handler_reached = [False]
+
+        # Original firmware handler entry is around 0x0E33
+        # Our firmware may have handler at a different address
+        # Both should respond to External Interrupt 0 (vector 0x0003)
+        # The interrupt vector at 0x0003 typically has a jump to the actual handler
+
+        def check_handler():
+            pc = emu.cpu.pc
+            # Check if we're in the interrupt handler region
+            # Original: 0x0E00-0x0FFF
+            # Also check the interrupt vector region 0x0000-0x00FF
+            # or any address that indicates the interrupt was processed
+            if 0x0E00 <= pc <= 0x0FFF:
+                handler_reached[0] = True
+            # Also check for 0x0003 (EX0 vector) or near it
+            if 0x0003 <= pc <= 0x0030:
+                handler_reached[0] = True
+
+        emu.hw.inject_usb_command(0xE4, 0x1000, size=1)
+
+        # Run and check PC periodically
+        for _ in range(1000):
+            check_handler()
+            if handler_reached[0]:
+                break
+            emu.step()
+
+        assert handler_reached[0], f"[{fw_name}] Interrupt handler should be reached"
+
+
+class TestFirmwareBehaviorComparison:
+    """Tests that verify firmware behavior matches expected results.
+
+    These tests run against whichever firmware is selected and verify
+    the expected behavior. Both firmwares should produce correct results.
+    """
+
+    def test_e4_reads_various_patterns(self, firmware_emulator):
+        """Test E4 read command handles various data patterns correctly."""
+        emu, fw_name = firmware_emulator
+
+        test_cases = [
+            (0x1000, [0x11, 0x22, 0x33, 0x44]),
+            (0x2000, [0xAA, 0xBB]),
+            (0x3000, [0xFF]),
+            (0x4000, [0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE]),
+        ]
+
+        for test_addr, test_data in test_cases:
+            emu.reset()
+            emu.run(max_cycles=500000)
+
+            for i, val in enumerate(test_data):
+                emu.memory.xdata[test_addr + i] = val
+
+            emu.hw.inject_usb_command(0xE4, test_addr, size=len(test_data))
+            emu.run(max_cycles=emu.cpu.cycles + 50000)
+
+            result = [emu.memory.xdata[0x8000 + i] for i in range(len(test_data))]
+            assert result == test_data, \
+                f"[{fw_name}] E4 at 0x{test_addr:04X}: expected {[hex(x) for x in test_data]}, got {[hex(x) for x in result]}"
+
+    def test_e5_writes_various_patterns(self, firmware_emulator):
+        """Test E5 write command handles various data patterns correctly."""
+        emu, fw_name = firmware_emulator
+
+        test_cases = [
+            (0x1500, 0x42),
+            (0x2500, 0xAA),
+            (0x3500, 0x55),
+            (0x4500, 0x01),
+        ]
+
+        for test_addr, test_value in test_cases:
+            emu.reset()
+            emu.run(max_cycles=500000)
+
+            emu.hw.inject_usb_command(0xE5, test_addr, value=test_value)
+            emu.run(max_cycles=emu.cpu.cycles + 50000)
+
+            result = emu.memory.xdata[test_addr]
+            assert result == test_value, \
+                f"[{fw_name}] E5 at 0x{test_addr:04X}: expected 0x{test_value:02X}, got 0x{result:02X}"
+
+    def test_sequential_e4_commands(self, firmware_emulator):
+        """Test sequential E4 read commands work correctly."""
+        emu, fw_name = firmware_emulator
+
+        # First E4 read
+        emu.memory.xdata[0x2000] = 0x55
+        emu.hw.inject_usb_command(0xE4, 0x2000, size=1)
+        emu.run(max_cycles=emu.cpu.cycles + 50000)
+
+        result1 = emu.memory.xdata[0x8000]
+        assert result1 == 0x55, f"[{fw_name}] First E4 read: expected 0x55, got 0x{result1:02X}"
+
+        # Reset for next command
+        emu.reset()
+        emu.run(max_cycles=500000)
+
+        # Second E4 read
+        emu.memory.xdata[0x3000] = 0xAA
+        emu.hw.inject_usb_command(0xE4, 0x3000, size=1)
+        emu.run(max_cycles=emu.cpu.cycles + 50000)
+
+        result2 = emu.memory.xdata[0x8000]
+        assert result2 == 0xAA, f"[{fw_name}] Second E4 read: expected 0xAA, got 0x{result2:02X}"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, '-v'])

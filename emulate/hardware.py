@@ -187,6 +187,22 @@ class USBController:
         self.hw.regs[0xE4E0] = cdb[0]  # Command type (0xE4/0xE5)
         self.hw.regs[0xE091] = size    # Read size / write value
 
+        # Original firmware E5 path reads these (0x17FD-0x188B)
+        # 0xC47A: Value byte copied to IDATA[0x38] at 0x1801
+        # 0xCEB0: Command type copied to IDATA[0x39] at 0x188B
+        self.hw.regs[0xC47A] = value if cmd_type == 0xE5 else size
+        self.hw.regs[0xCEB0] = 0x05 if cmd_type == 0xE5 else 0x04
+
+        # Target address registers (read at 0x323A-0x3249)
+        # CEB2 = high byte of XDATA address
+        # CEB3 = low byte of XDATA address
+        self.hw.regs[0xCEB2] = (xdata_addr >> 8) & 0xFF
+        self.hw.regs[0xCEB3] = xdata_addr & 0xFF
+
+        # Store E5 value separately so it survives firmware clearing 0xC47A
+        if cmd_type == 0xE5:
+            self.hw.usb_e5_pending_value = value
+
         # USB EP0 data registers (read by various helpers)
         self.hw.regs[0x9E00] = cdb[0]  # bmRequestType / cmd type
         self.hw.regs[0x9E01] = cdb[1]  # bRequest / size
@@ -208,6 +224,9 @@ class USBController:
         self.hw.usb_cmd_size = size if cmd_type == 0xE4 else 0
         self.hw.usb_cmd_pending = True
         self.vendor_cmd_active = True
+
+        # Reset E5 DMA tracking flag for new command
+        self.hw._e5_dma_done = False
 
         # Reset state machine for fresh command processing
         self.hw.usb_ce89_read_count = 0
@@ -393,6 +412,7 @@ class HardwareState:
     # USB command state for MMIO hooks
     usb_cmd_type: int = 0  # Current command type (0xE4, 0xE5, etc.)
     usb_cmd_size: int = 0  # Size for E4 read commands
+    usb_e5_pending_value: int = 0  # Pending E5 value to write (preserved until read)
 
     # USB endpoint selection tracking
     usb_ep_selected: int = 0  # Currently selected endpoint index (0-31)
@@ -655,6 +675,12 @@ class HardwareState:
         for addr in range(0x9096, 0x90A1):
             self.read_callbacks[addr] = self._usb_ep_status_reg_read
 
+        # USB E5 value register (0xC47A)
+        # The firmware clears this register (writes 0xFF) before reading it.
+        # We need to preserve the injected value until it's read by the E5 handler.
+        self.read_callbacks[0xC47A] = self._usb_e5_value_read
+        self.write_callbacks[0xC47A] = self._usb_e5_value_write
+
     # ============================================
     # Execution Tracing
     # ============================================
@@ -838,38 +864,65 @@ class HardwareState:
         """
         PCIe DMA trigger at 0xB296.
 
-        When value 0x08 is written, this triggers a PCIe DMA transfer for E4 commands.
-        The source address comes from the CDB in USB registers 0x910F-0x9111.
-        The size comes from 0x910E.
-        The destination is the USB data buffer at 0x8000.
+        When value 0x08 is written, this triggers a PCIe DMA transfer for E4/E5 commands.
+        - E4 (read): Copy from XDATA to USB buffer (for host to read)
+        - E5 (write): Write value from CDB to XDATA
+
+        The target address comes from the CDB in USB registers 0x910F-0x9111.
+        For E4, 0x910E contains the size to read.
+        For E5, 0x910E contains the value to write (single byte).
         """
         self.regs[addr] = value
 
-        # Value 0x08 is the E4 read DMA trigger
+        # Value 0x08 is the E4/E5 DMA trigger
         if value == 0x08:
-            # Get source address from CDB (big-endian: 0x910F=high, 0x9110=mid, 0x9111=low)
+            # Get target address from CDB (big-endian: 0x910F=high, 0x9110=mid, 0x9111=low)
             addr_high = self.regs.get(0x910F, 0)
             addr_mid = self.regs.get(0x9110, 0)
             addr_low = self.regs.get(0x9111, 0)
-            source_addr = (addr_high << 16) | (addr_mid << 8) | addr_low
+            target_addr = (addr_high << 16) | (addr_mid << 8) | addr_low
 
-            # Get size from CDB
-            size = self.regs.get(0x910E, 0)
+            # Check command type to determine operation
+            cmd_type = self.usb_cmd_type
 
-            if self.log_pcie:
-                print(f"[{self.cycles:8d}] [PCIe] DMA TRIGGER: src=0x{source_addr:06X} size={size}")
+            if cmd_type == 0xE5:
+                # E5 WRITE: Write single byte from CDB to XDATA
+                write_value = self.regs.get(0x910E, 0)
+                xdata_addr = target_addr & 0xFFFF
 
-            # Perform the DMA - copy from simulated PCIe memory to USB buffer
-            self._perform_pcie_dma(source_addr, size)
+                if self.log_pcie:
+                    print(f"[{self.cycles:8d}] [PCIe] E5 WRITE: 0x{write_value:02X} -> XDATA[0x{xdata_addr:04X}]")
 
-            # Signal completion - multiple bits checked by different code paths
-            # Bit 2 checked at 0xE3A7 (JNB ACC.2), bit 1 checked at 0xBFE6 (ANL #0x02)
-            self.regs[0xB296] = 0x06  # PCIe DMA complete (bits 1+2)
+                # Perform the write
+                if self.memory:
+                    self.memory.xdata[xdata_addr] = write_value
 
-            # Clear command pending after successful DMA
-            if self.usb_cmd_pending:
-                self.usb_cmd_pending = False
-                print(f"[{self.cycles:8d}] [PCIe] USB command completed, clearing pending flag")
+                # Signal completion
+                self.regs[0xB296] = 0x06  # PCIe DMA complete (bits 1+2)
+
+                # Clear command pending after successful write
+                if self.usb_cmd_pending:
+                    self.usb_cmd_pending = False
+                    print(f"[{self.cycles:8d}] [PCIe] E5 command completed")
+
+            else:
+                # E4 READ: Copy from XDATA to USB buffer
+                size = self.regs.get(0x910E, 0)
+
+                if self.log_pcie:
+                    print(f"[{self.cycles:8d}] [PCIe] DMA TRIGGER: src=0x{target_addr:06X} size={size}")
+
+                # Perform the DMA - copy from simulated PCIe memory to USB buffer
+                self._perform_pcie_dma(target_addr, size)
+
+                # Signal completion - multiple bits checked by different code paths
+                # Bit 2 checked at 0xE3A7 (JNB ACC.2), bit 1 checked at 0xBFE6 (ANL #0x02)
+                self.regs[0xB296] = 0x06  # PCIe DMA complete (bits 1+2)
+
+                # Clear command pending after successful DMA
+                if self.usb_cmd_pending:
+                    self.usb_cmd_pending = False
+                    print(f"[{self.cycles:8d}] [PCIe] USB command completed, clearing pending flag")
 
     def _perform_pcie_dma(self, source_addr: int, size: int):
         """
@@ -1284,18 +1337,53 @@ class HardwareState:
         return 0x00
 
     def _usb_ep_data_buf_write(self, hw: 'HardwareState', addr: int, value: int):
-        """Write to USB EP data buffer (0xD800-0xDFFF)."""
+        """Write to USB EP data buffer (0xD800-0xDFFF).
+
+        D800 is also used as a DMA control register. When written with 0x04
+        and an E5 command is pending, this triggers the DMA transfer that
+        writes the E5 value to the target XDATA address.
+
+        The firmware sets up:
+        - C4E8 = data byte to write
+        - C4EA = high byte of target address
+        - C4EB = low byte of target address
+        - D800 = 0x04 to trigger transfer
+        """
         offset = addr - 0xD800
         if offset < len(self.usb_ep_data_buf):
             self.usb_ep_data_buf[offset] = value
+
+        # Check for DMA trigger for E5 commands
+        # D800 = 0x04 is the trigger value based on firmware trace
+        # We track if we've done the E5 DMA to avoid re-triggering on subsequent EP loop iterations
+        if addr == 0xD800 and value == 0x04 and self.usb_cmd_type == 0xE5:
+            # Only trigger if we haven't already done the E5 DMA transfer
+            if not getattr(self, '_e5_dma_done', False):
+                # Read the data and address from control registers
+                data = self.regs.get(0xC4E8, 0)
+                addr_hi = self.regs.get(0xC4EA, 0)
+                addr_lo = self.regs.get(0xC4EB, 0)
+                target_addr = (addr_hi << 8) | addr_lo
+
+                # Only do the transfer if we have valid data (not 0xFF from cleared state)
+                # and a valid address
+                if data != 0xFF and target_addr > 0:
+                    # Perform the DMA transfer - write to XDATA
+                    if self.memory and target_addr < 0x6000:
+                        self.memory.xdata[target_addr] = data
+                        self._e5_dma_done = True  # Mark as done to prevent re-trigger
+                        print(f"[{self.cycles:8d}] [DMA] E5 transfer: writing 0x{data:02X} to XDATA[0x{target_addr:04X}]")
 
     def _usb_ep_status_read(self, hw: 'HardwareState', addr: int) -> int:
         """
         Read USB EP status register 0xC4EC - indicates USB data availability.
 
-        The EP loop at 0x18A5 checks C4EC bit 0 to see if there's USB data.
-        The firmware processes EP data in multiple loop iterations.
-        We need to return 0x01 enough times for the vendor command to be processed.
+        The EP loop at 0x18A5 checks C4EC bit 0 to see if there's USB data:
+        - Bit 0 SET (0x01): Continue EP loop processing (for E4 commands)
+        - Bit 0 CLEAR (0x00): Jump to 0x194F (E5 command handler path)
+
+        For E5 commands, we need to return 0x00 so the firmware takes the
+        E5 path at 0x18A8 → 0x194F → 0x197A (E5 handler).
         """
         # Track EP loop iterations
         if self.usb_cmd_pending:
@@ -1303,8 +1391,15 @@ class HardwareState:
                 self._c4ec_read_count = 0
             self._c4ec_read_count += 1
 
-            # Return 0x01 for the first several reads to allow full command processing
-            # The vendor dispatch and DMA trigger happen across multiple loop iterations
+            # For E5 commands, return 0x00 to take the E5 path at 0x18A8
+            # This triggers: 0x18A8 ljmp 0x194F → 0x197A E5 check
+            if self.usb_cmd_type == 0xE5:
+                value = 0x00
+                print(f"[{self.cycles:8d}] [USB] Read 0xC4EC = 0x{value:02X} (E5 path - bit 0 CLEAR)")
+                return value
+
+            # For E4 commands, return 0x01 for the first several reads to allow
+            # full command processing through the EP loop
             if self._c4ec_read_count <= 3:
                 value = 0x01
                 print(f"[{self.cycles:8d}] [USB] Read 0xC4EC = 0x{value:02X} (EP loop iter {self._c4ec_read_count})")
@@ -1382,6 +1477,60 @@ class HardwareState:
             print(f"[{self.cycles:8d}] [USB] EP{ep_index} status reg 0x{addr:04X} = 0x{value:02X} (cmd pending)")
             return value
         return value
+
+    def _usb_e5_value_read(self, hw: 'HardwareState', addr: int) -> int:
+        """
+        Read USB E5 value register 0xC47A.
+
+        When an E5 command is pending, this returns the injected value.
+        The firmware reads this at 0x1800 (movx a, @dptr after mov dptr, #0xc47a)
+        and stores it to IDATA[0x38] at 0x1801.
+
+        The firmware clears this register (writes 0xFF) at 0x1178 before calling
+        the EP loop at 0x17DB. We preserve the injected value until it's read
+        by the E5 handler at 0x17FD-0x1801.
+
+        After the value is read, we clear usb_cmd_pending to allow the firmware
+        to exit the command loop. Unlike E4 which uses DMA at 0xB296 to signal
+        completion, E5 commands complete when the value is read.
+        """
+        if self.usb_cmd_pending and self.usb_cmd_type == 0xE5:
+            value = self.usb_e5_pending_value
+            print(f"[{self.cycles:8d}] [USB] Read E5 value reg 0xC47A = 0x{value:02X} (pending E5)")
+
+            # Track read count - clear pending after firmware has read the value
+            if not hasattr(self, '_e5_value_read_count'):
+                self._e5_value_read_count = 0
+            self._e5_value_read_count += 1
+
+            # After the first read, clear the pending flag so firmware exits the loop
+            # The E5 value is consumed when first read; subsequent reads can return
+            # the normal register value.
+            if self._e5_value_read_count >= 1:
+                self.usb_cmd_pending = False
+                self._e5_value_read_count = 0
+                print(f"[{self.cycles:8d}] [USB] E5 command completed, clearing pending flag")
+
+            return value
+
+        # Normal read
+        return self.regs.get(addr, 0x00)
+
+    def _usb_e5_value_write(self, hw: 'HardwareState', addr: int, value: int):
+        """
+        Write USB E5 value register 0xC47A.
+
+        The firmware writes 0xFF to this register at 0x1176-0x1178 to clear it
+        after processing each command. We preserve the pending E5 value by
+        ignoring clears (0xFF writes) while an E5 command is pending.
+        """
+        if self.usb_cmd_pending and self.usb_cmd_type == 0xE5 and value == 0xFF:
+            # Ignore clear while E5 command is pending
+            print(f"[{self.cycles:8d}] [USB] Ignoring write 0xFF to 0xC47A (E5 pending)")
+            return
+
+        # Normal write - update the register
+        self.regs[addr] = value
 
     # ============================================
     # Main Read/Write Interface

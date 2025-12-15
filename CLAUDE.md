@@ -102,6 +102,15 @@ uint8_t pcie_get_link_speed_masked(void);   /* 0x9a30-0x9a3a */
 
 The emulator in emulate/ provides 8051 CPU emulation for testing and analyzing firmware behavior.
 
+### CRITICAL: Emulator Updates for ORIGINAL Firmware Only
+
+**NEVER update the emulator to make our firmware work.** The emulator must be updated ONLY to accurately emulate the behavior observed in the **original firmware (fw.bin)**.
+
+- If a test fails for our firmware but passes for original firmware: Fix our firmware implementation
+- If a test fails for original firmware: Investigate original firmware behavior and update emulator to match
+- The emulator is the reference implementation of hardware behavior based on original firmware
+- Our firmware must adapt to the emulator, not the other way around
+
 ### CRITICAL: Hardware Emulation Philosophy
 
 The emulator MUST behave like real hardware. This means:
