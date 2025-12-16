@@ -36,7 +36,7 @@ class Emulator:
     """ASM2464PD Firmware Emulator."""
 
     def __init__(self, trace: bool = False, log_hw: bool = False,
-                 log_uart: bool = True, usb_delay: int = 5000):
+                 log_uart: bool = True, usb_delay: int = 200000):
         self.memory = Memory()
         self.cpu = CPU8051(
             read_code=self.memory.read_code,

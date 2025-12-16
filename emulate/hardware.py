@@ -77,15 +77,37 @@ class USBController:
         self.enumeration_step = 1
 
         # USB connection status registers
-        # NOTE: 0x9000 bit 0 must be CLEAR to reach the 0x5333 vendor handler path
-        self.hw.regs[0x9000] = 0x80  # Bit 7 (connected), bit 0 CLEAR for vendor path
+        # NOTE: 0x9000 bit 0 must be SET to enter USB state machine at 0x0E6E
+        # At ISR 0x0E68: if bit 0 SET, jump to USB handling at 0x0E6E
+        self.hw.regs[0x9000] = 0x81  # Bit 7 (connected), bit 0 SET for USB handling
         self.hw.regs[0x90E0] = 0x02  # USB3 speed
         self.hw.regs[0x9100] = 0x02  # USB link active
         self.hw.regs[0x9105] = 0xFF  # PHY active
+        # USB state indicator (0x9118):
+        # At ISR 0x0E71, value is used as index into table at 0x5AC9
+        # If table[0x9118] >= 8, USB handling is skipped
+        # table[0] = 0x08 (skip), table[1] = 0x00 (continue)
+        # Set to 1 to enable USB enumeration handling
+        self.hw.regs[0x9118] = 0x01  # USB enumeration state (1 = pending setup)
 
-        # USB interrupt - triggers handler at 0x0E33
+        # USB interrupt and state machine triggers:
+        # At 0x0FEB: if 0x9101 bit 6 CLEAR, skip USB init path
+        # At 0x0FF2: if 0x90E2 bit 0 CLEAR, skip USB init path
+        # So both bit 6 of 0x9101 and bit 0 of 0x90E2 must be SET
         self.hw.regs[0xC802] = 0x05  # USB interrupt pending (bits 0 + 2)
-        self.hw.regs[0x9101] = 0x21  # Bit 5 SET → 0x0E64 path, bit 0 for USB active
+        self.hw.regs[0x9101] = 0x61  # Bit 6 SET (USB init), bit 5 SET, bit 0 for USB active
+        self.hw.regs[0x90E2] = 0x03  # Bit 0 SET (USB init trigger), bit 1 SET
+
+        # USB restart trigger at 0xCC5D:
+        # At 0x2163-0x216B: if bit 0 CLEAR and bit 1 SET, calls USB restart at 0x2176
+        # This sets 0x0A5A=1 which enables the USB init path at 0x2185
+        self.hw.regs[0xCC5D] = 0x02  # Bit 1 SET, bit 0 CLEAR - triggers USB restart
+
+        # USB PHY control at 0x91C0:
+        # Firmware clears this during init, but at 0x203B it checks bit 1.
+        # When state 0x0A59 == 2, if 0x92C2 bit 6 is SET and 0x91C0 bit 1 is SET,
+        # firmware calls 0x0322 which progresses the USB state machine.
+        self.hw.regs[0x91C0] = 0x02  # Bit 1 SET - enables USB state machine progress
 
         print(f"[{self.hw.cycles:8d}] [USB_CTRL] Connected - MMIO set for enumeration")
 
@@ -414,9 +436,13 @@ class USBController:
             # Path: 0x0E33 → 0x0f07 (when 0x9101 bit 5 CLEAR)
             # At 0x0f07: checks 0x9101 bit 3 → if set, checks 0x9301 bit 6
             # If 0x9301 bit 6 set → calls 0x0359 (device descriptor handler)
-            self.hw.regs[0x9101] = 0x09  # Bit 3 set, bit 0 set, bit 5 CLEAR
-            self.hw.regs[0x9301] = 0x40  # Bit 6 set (triggers device descriptor path)
-            print(f"[{cycles:8d}] [USB_CTRL] Standard request - setting 0x9101=0x09, 0x9301=0x40")
+            # CRITICAL: Bit 1 must be SET for main loop at 0x4E3A to call USB dispatch
+            self.hw.regs[0x9101] = 0x0B  # Bits 0, 1, 3 set, bit 5 CLEAR
+            # 0x9301: Bit 6 triggers interrupt dispatch, callback clears after read
+            # At 0xD85A: bit 6 must be CLEAR, at 0xD85E: bit 7 must be CLEAR (jnb success)
+            # After callback clears bit 6, value is 0x00 and both checks pass
+            self.hw.regs[0x9301] = 0x40  # Bit 6 only (for interrupt dispatch)
+            print(f"[{cycles:8d}] [USB_CTRL] Standard request - setting 0x9101=0x0B, 0x9301=0x40")
         else:
             # Vendor or class request
             # Path: 0x0E33 → 0x0E64 → 0x0EF4 → 0x5333 (when 0x9101 bit 5 SET)
@@ -427,10 +453,25 @@ class USBController:
         self.hw.regs[0x9118] = 0x01  # Endpoint index (lookup table requires < 8 value)
 
         # EP0 handler prerequisites
-        # 0x92C2 bit 6 controls descriptor transfer - must be CLEAR for transfer to happen
-        # (firmware at 0xE42A checks this and skips if bit 6 is set)
-        self.hw.regs[0x92C2] = 0x00  # Bit 6 CLEAR for descriptor transfer
+        # NOTE: 0x92C2 bit 6 is handled by _usb_92c2_read callback:
+        #   - First read: returns bit 6 CLEAR (for ISR to call 0xBDA4)
+        #   - Subsequent reads: returns bit 6 SET (for main loop to call 0x0322)
         self.hw.regs[0x92F8] = 0x0C  # Bits 2-3 set
+
+        # CRITICAL: Main loop at 0xCE00-0xCE3C checks 0x9091 bits to dispatch USB handlers
+        # - Bit 1: triggers 0xD088 (checks 0x07E1 == 0x05 for device descriptor)
+        # - Bit 3: triggers 0xB286 (also checks 0x07E1 == 0x05)
+        # The interrupt handler sets 0x07E1 = 0x05, then main loop must call handler
+        # Also: 0x9002 bit 1 must be CLEAR to reach the 0x9091 check at 0xCE00
+        self.hw.regs[0x9002] = 0x00  # Bit 1 CLEAR to allow 0x9091 check
+        self.hw.regs[0x9091] = 0x02  # Bit 1 SET to trigger descriptor handler at 0xD088
+
+        # CRITICAL: The main loop at 0xCDC6-0xCDD9 waits for state transition registers:
+        # - Checks 0xE712 bit 0 or bit 1 to exit the polling loop
+        # - If neither set, checks 0xCC11 bit 1
+        # Without these bits, firmware never reaches USB dispatch at 0xCDE7
+        self.hw.regs[0xE712] = 0x01  # Bit 0 SET to exit polling loop
+        self.hw.regs[0xCC11] = 0x02  # Bit 1 SET as backup exit condition
 
         # Set command pending
         self.hw.usb_cmd_pending = True
@@ -444,11 +485,15 @@ class USBController:
         # Set pending interrupt flag so hardware update triggers actual CPU interrupt
         self.hw._pending_usb_interrupt = True
 
-        # Enable USB EP0 FIFO capture mode (routes 0xC001 writes to USB FIFO instead of UART)
+        # Mark control transfer as active (affects 0x92C2 read callback timing)
+        # Note: USB descriptor data is sent via hardware DMA from ROM, not via firmware
+        # copying bytes to a FIFO register. The usb_ep0_fifo is kept for potential
+        # future use but 0xC001 is UART-only.
         self.hw.usb_control_transfer_active = True
         self.hw.usb_ep0_fifo.clear()
+        self.hw.usb_92c2_read_count = 0  # Reset for ISR->main loop timing
 
-        print(f"[{cycles:8d}] [USB_CTRL] Control transfer injected (interrupt pending, FIFO capture enabled)")
+        print(f"[{cycles:8d}] [USB_CTRL] Control transfer injected (interrupt pending)")
 
 
 @dataclass
@@ -520,12 +565,29 @@ class HardwareState:
     # Tracks firmware USB state to know when to set register bits
     usb_state_machine_phase: int = 0  # 0=init, 1=waiting, 2=enumerating, 3=ready
     usb_ce89_read_count: int = 0  # Count reads of 0xCE89 for state transitions
+    usb_92c2_read_count: int = 0  # Count reads of 0x92C2 for ISR->main loop transition
 
-    # USB EP0 FIFO buffer - captures data written to 0xC001 for DMA transfer
+    # USB EP0 FIFO buffer - reserved for potential future use
+    # Note: USB descriptor data is sent via hardware DMA from ROM, not firmware FIFO writes
     usb_ep0_fifo: bytearray = field(default_factory=bytearray)
 
-    # USB control transfer active flag - routes 0xC001 writes to USB FIFO instead of UART
+    # USB control transfer active flag - affects 0x92C2 callback timing for ISR->main loop
     usb_control_transfer_active: bool = False
+
+    # USB descriptor DMA state
+    # When firmware handles GET_DESCRIPTOR, it sets up DMA from descriptor ROM.
+    # The emulator tracks the request and returns descriptor data.
+    usb_descriptor_request: int = 0  # wValue from GET_DESCRIPTOR (type << 8 | index)
+    usb_descriptor_length: int = 0   # wLength from control transfer
+    usb_ep0_response: bytearray = field(default_factory=bytearray)  # Response data for host
+    usb_transfer_complete: bool = False  # Set when firmware signals transfer complete
+
+    # USB descriptor table locations in XDATA/ROM
+    # These are the standard USB descriptors the device returns
+    USB_DESCRIPTOR_TABLE = {
+        0x0100: 0x0864,  # Device descriptor at XDATA 0x0864
+        # Configuration, string descriptors would be at other addresses
+    }
 
     # PCIe DMA state
     pcie_dma_pending: bool = False  # DMA operation in progress
@@ -789,16 +851,32 @@ class HardwareState:
         # indicating EP0 control transfer complete
         self.read_callbacks[0xE712] = self._usb_ep0_transfer_status_read
 
-        # NOTE: USB EP0 data FIFO may be at 0xC001, which conflicts with UART TX.
-        # Need to trace firmware to determine correct mapping. The firmware writes
-        # USB descriptor response data to EP0 FIFO via function 0x53FA, then
-        # triggers DMA at 0x9092 to copy to USB data buffer (0x8000).
+        # USB PHY control (0x91C0)
+        # Firmware clears this at 0xCA8C but needs bit 1 SET for USB state machine
+        # at 0x203B to progress from state 2 (0x0A59=2).
+        self.read_callbacks[0x91C0] = self._usb_91c0_read
 
-        # USB EP0 DMA control (0x9092)
-        # Writing 0x04 triggers DMA transfer from FIFO to USB buffer
-        # Firmware polls bit 2 - hardware clears it when transfer completes
+        # USB power state (0x92C2)
+        # ISR at 0xE42A needs bit 6 CLEAR to call descriptor init (0xBDA4)
+        # Main loop at 0x202A needs bit 6 SET to call 0x0322 for transfer
+        # After ISR completes (2+ reads), return bit 6 SET
+        self.read_callbacks[0x92C2] = self._usb_92c2_read
+
+        # NOTE: 0xC001 is UART TX only, not USB EP0 FIFO. Testing confirmed that
+        # firmware outputs debug messages to 0xC001 even during control transfer
+        # handling. USB descriptor data is sent via hardware DMA directly from the
+        # descriptor table in ROM (around 0x0864), not through firmware byte copies.
+        # The exact DMA mechanism needs further investigation.
+
+        # USB EP0 DMA control (0x9092) - may trigger hardware DMA
+        # The actual source address for descriptor DMA is likely set via other registers
         self.write_callbacks[0x9092] = self._usb_ep0_dma_trigger_write
         self.read_callbacks[0x9092] = self._usb_ep0_dma_status_read
+
+        # USB endpoint status (0x9301)
+        # Bit 6 triggers interrupt dispatch to device descriptor handler
+        # Hardware clears bit 6 after read (acknowledge behavior)
+        self.read_callbacks[0x9301] = self._usb_9301_status_read
 
         # Flash/Code ROM mirror region (0xE400-0xE500)
         # This XDATA region mirrors code ROM with offset 0xDDFC
@@ -937,17 +1015,13 @@ class HardwareState:
     def _uart_tx(self, hw: 'HardwareState', addr: int, value: int):
         """Handle UART transmit with message buffering.
 
-        NOTE: 0xC001 is shared between UART TX and USB EP0 FIFO.
-        When usb_control_transfer_active is True, writes are captured
-        as USB FIFO data instead of being treated as UART output.
+        NOTE: 0xC001 was previously thought to be shared with USB EP0 FIFO,
+        but testing shows it's UART-only. The firmware outputs debug messages
+        like "[InternalPD_StateInit]" to 0xC001 even during USB control transfer
+        handling. The actual USB EP0 descriptor data is sent via hardware DMA
+        directly from the descriptor table in ROM (around 0x0864), not through
+        firmware-driven byte copying to 0xC001.
         """
-        # Check if USB control transfer is active - if so, capture as EP0 FIFO data
-        if self.usb_control_transfer_active and addr == 0xC001:
-            self.usb_ep0_fifo.append(value)
-            if self.log_reads:
-                print(f"[{self.cycles:8d}] [USB] EP0 FIFO write: 0x{value:02X} (total: {len(self.usb_ep0_fifo)} bytes)")
-            return
-
         if self.log_uart:
             if value == 0x0A:  # Newline - print buffered line
                 if self.uart_buffer:
@@ -1176,14 +1250,17 @@ class HardwareState:
         USB/DMA status register 0xCE89.
 
         Controls USB state machine transitions:
-        - Bit 0: Must be set to exit wait loop at 0x348C (JNB 0xe0.0)
-        - Bit 1: Checked at 0x3493 (JNB 0xe0.1) - determines path
+        - Bit 0: Must be SET to exit wait loop at 0x348C (JNB 0xe0.0)
+        - Bit 1: Must be CLEAR for success at 0x3493 (jnb acc.1 takes good path)
+                 If SET, firmware jumps to 0x35A1 (failure path)
         - Bit 2: Controls state 3→4 transition at 0x3588 (JNB 0xe0.2)
+                 If SET, sets USB state to 4; if CLEAR, sets state to 3
 
         State machine flow:
         1. Firmware writes 0 to 0xCE88, then polls 0xCE89 bit 0
-        2. When bit 0 set, checks bit 1 and bit 4 of 0xCE86
-        3. In state 3, checks bit 2 - if set, transitions to state 4
+        2. When bit 0 set, checks bit 1 - must be CLEAR for success
+        3. Then checks bit 4 of 0xCE86 - must be CLEAR
+        4. In state 3, checks bit 2 - if set, transitions to state 4
         """
         self.usb_ce89_read_count += 1
 
@@ -1197,13 +1274,14 @@ class HardwareState:
             if self.usb_ce89_read_count >= 3:
                 value |= 0x01
 
-            # Bit 1 - set for successful enumeration path at 0x3493
-            if self.usb_ce89_read_count >= 5:
-                value |= 0x02
+            # Bit 1 - MUST STAY CLEAR (0)
+            # At 0x3493: jnb acc.1, 0x3499 means if bit 1 CLEAR, take good path
+            # If bit 1 is SET, firmware jumps to 0x35A1 (failure)
+            # So we NEVER set bit 1
 
             # Bit 2 - set to trigger state 3→4 transition at 0x3588
-            # This is the key bit for getting to state 5 (ready for vendor commands)
-            if self.usb_ce89_read_count >= 7:
+            # This is the key bit for getting to state 4/5 (ready for USB commands)
+            if self.usb_ce89_read_count >= 5:
                 value |= 0x04
 
         if self.log_reads or self.usb_cmd_pending:
@@ -1265,82 +1343,10 @@ class HardwareState:
         PHY command register write (0xCD31).
 
         This is a PHY/hardware control register. The firmware writes commands
-        to it during USB operations. The PHY command sequence 0x04, 0x02 triggers
-        USB data transfers.
-
-        When this is written during a control transfer, we simulate the hardware
-        DMA that would transfer descriptor data to the USB endpoint.
+        to it during USB operations. USB descriptor data is sent via hardware DMA
+        directly from the descriptor table in ROM (around 0x0864).
         """
-        prev_value = self.regs.get(addr, 0)
         self.regs[addr] = value
-
-        # Detect PHY command trigger: 0x04 followed by 0x02
-        # 0x04 selects the transfer type, 0x02 triggers it
-        if value == 0x02 and prev_value == 0x04:
-            if self.usb_control_transfer_active:
-                self._handle_usb_descriptor_transfer()
-
-    def _handle_usb_descriptor_transfer(self):
-        """
-        Handle USB descriptor DMA transfer triggered by PHY command.
-
-        When the firmware triggers the PHY command (0x04, 0x02) during a control
-        transfer, the hardware performs a DMA to transfer descriptor data to the
-        USB endpoint. We simulate this by reading the descriptor from ROM and
-        copying it to the USB buffer.
-        """
-        # Read setup packet to determine what's being requested
-        bmRequestType = self.usb_ep0_buf[0]
-        bRequest = self.usb_ep0_buf[1]
-        wValue = self.usb_ep0_buf[2] | (self.usb_ep0_buf[3] << 8)
-        wLength = self.usb_ep0_buf[6] | (self.usb_ep0_buf[7] << 8)
-
-        # Only handle GET_DESCRIPTOR requests
-        if bRequest != 0x06:  # GET_DESCRIPTOR
-            return
-
-        desc_type = (wValue >> 8) & 0xFF
-        desc_index = wValue & 0xFF
-
-        # Descriptor locations in ROM (from README)
-        # Device descriptor: 0x0627 (18 bytes)
-        # Config descriptor: 0x58CF (44 bytes)
-        # String 0: 0x599D (4 bytes)
-
-        desc_data = None
-        if desc_type == 0x01:  # Device descriptor
-            if self.memory:
-                desc_data = bytes(self.memory.code[0x0627:0x0627+18])
-                print(f"[{self.cycles:8d}] [USB_PHY] DMA: Device descriptor ({len(desc_data)} bytes)")
-        elif desc_type == 0x02:  # Configuration descriptor
-            if self.memory:
-                # Read full config descriptor (including interface/endpoint descriptors)
-                total_len = self.memory.code[0x58CF + 2] | (self.memory.code[0x58CF + 3] << 8)
-                total_len = min(total_len, wLength, 255)
-                desc_data = bytes(self.memory.code[0x58CF:0x58CF + total_len])
-                print(f"[{self.cycles:8d}] [USB_PHY] DMA: Config descriptor ({len(desc_data)} bytes)")
-        elif desc_type == 0x03:  # String descriptor
-            if desc_index == 0:
-                # Language IDs
-                if self.memory:
-                    desc_data = bytes(self.memory.code[0x599D:0x599D + 4])
-                    print(f"[{self.cycles:8d}] [USB_PHY] DMA: String 0 (language IDs)")
-            else:
-                # String descriptors 1, 2, 3 not found in ROM - return empty
-                print(f"[{self.cycles:8d}] [USB_PHY] DMA: String {desc_index} not in ROM")
-                # Don't set desc_data - will STALL
-
-        if desc_data:
-            # Copy descriptor to USB buffer at 0x8000
-            copy_len = min(len(desc_data), wLength)
-            if self.memory:
-                for i in range(copy_len):
-                    self.memory.xdata[0x8000 + i] = desc_data[i]
-                print(f"[{self.cycles:8d}] [USB_PHY] Copied {copy_len} bytes to 0x8000")
-                print(f"[{self.cycles:8d}] [USB_PHY] Data: {desc_data[:copy_len].hex()}")
-
-            # Mark control transfer as complete
-            self.usb_control_transfer_active = False
 
     def _cmd_engine_read(self, hw: 'HardwareState', addr: int) -> int:
         """Command engine - auto-clear bit 0 after polling."""
@@ -1579,12 +1585,53 @@ class HardwareState:
             self.regs[addr] = value
         return value
 
+    def _usb_91c0_read(self, hw: 'HardwareState', addr: int) -> int:
+        """
+        USB PHY control read (0x91C0).
+
+        At address 0x203B, firmware checks bit 1 of this register when
+        the USB state machine is in state 2 (0x0A59=2).
+        If bit 1 is SET, it calls 0x0322 which progresses the state machine.
+
+        The firmware clears this register at 0xCA8C, but we need to return
+        bit 1 SET when USB is connected to allow state machine progress.
+        """
+        if self.usb_connected:
+            return 0x02  # Bit 1 SET - enables USB state machine progress
+        return self.regs.get(addr, 0)
+
+    def _usb_92c2_read(self, hw: 'HardwareState', addr: int) -> int:
+        """
+        USB power state read (0x92C2).
+
+        This register controls two different code paths:
+        1. ISR at 0xE42A: checks bit 6 - if CLEAR, calls 0xBDA4 (descriptor init)
+        2. Main loop at 0x202A: checks bit 6 - if SET, calls 0x0322 (transfer)
+
+        During control transfers:
+        - First read: return bit 6 CLEAR (for ISR to call 0xBDA4)
+        - Subsequent reads: return bit 6 SET (for main loop to call 0x0322)
+
+        This simulates hardware setting bit 6 after the SETUP phase completes.
+        """
+        if self.usb_control_transfer_active:
+            self.usb_92c2_read_count += 1
+            if self.usb_92c2_read_count <= 1:
+                # First read - ISR needs bit 6 CLEAR to call descriptor init
+                return 0x00
+            else:
+                # Subsequent reads - main loop needs bit 6 SET to call transfer
+                return 0x40
+        return self.regs.get(addr, 0x40)  # Default: bit 6 SET (PD task enabled)
+
     def _usb_ep0_fifo_write(self, hw: 'HardwareState', addr: int, value: int):
         """
-        USB EP0 data FIFO write (0xC001).
+        USB EP0 data FIFO write (UNUSED).
 
-        Firmware writes descriptor data here byte by byte via function 0x53FA.
-        Data is accumulated in usb_ep0_fifo buffer until DMA trigger at 0x9092.
+        NOTE: This function is not currently registered as a callback.
+        Testing revealed that 0xC001 is UART TX only - USB descriptor data
+        is sent via hardware DMA directly from ROM, not via firmware byte copies.
+        Kept for potential future use if we discover the actual EP0 FIFO register.
         """
         self.usb_ep0_fifo.append(value)
         if self.log_writes:
@@ -1642,6 +1689,24 @@ class HardwareState:
             value &= ~0x04  # Clear bit 2
             self.regs[addr] = value
             print(f"[{self.cycles:8d}] [USB] EP0 DMA complete (bit 2 cleared)")
+
+        return value
+
+    def _usb_9301_status_read(self, hw: 'HardwareState', addr: int) -> int:
+        """
+        USB endpoint status read (0x9301).
+
+        Bit 6 triggers the interrupt dispatch to device descriptor handler (0x0359).
+        After reading, hardware clears bit 6 (acknowledge behavior).
+        This allows the main loop at 0xD83B to proceed after the interrupt dispatch.
+        """
+        value = self.regs.get(addr, 0)
+
+        # Clear bit 6 after reading (hardware acknowledge)
+        if value & 0x40:
+            self.regs[addr] = value & ~0x40
+            if self.log_reads:
+                print(f"[{self.cycles:8d}] [USB] 0x9301 read=0x{value:02X}, bit 6 cleared")
 
         return value
 

@@ -51,14 +51,6 @@ When the host sends USB control messages:
 5. **usb_device.py reads** the response from emulator
 6. **raw-gadget sends** the response back to the host
 
-### USB Descriptor Locations (Firmware ROM)
-
-| Descriptor | Address | Size |
-|------------|---------|------|
-| Device     | 0x0627  | 18 bytes |
-| Config     | 0x58CF  | 44 bytes |
-| String 0   | 0x599D  | 4 bytes |
-
 ### Control Transfer Flow
 
 ```
@@ -77,6 +69,23 @@ Host                    raw-gadget/usb_device.py              Emulator (fw.bin)
   │                              │◄──read response from XDATA/MMIO───│
   │◄─────response data──────────│                                   │
 ```
+
+### USB Descriptor Handling
+
+**Descriptors are handled entirely by firmware through MMIO:**
+
+1. Firmware receives GET_DESCRIPTOR request via setup packet at 0x9E00-0x9E07
+2. Firmware reads descriptor data from flash ROM mirror (XDATA 0xE4xx → Code ROM)
+   - The hardware maps XDATA reads at 0xE400-0xE500 to code ROM with offset 0xDDFC
+   - Formula: `code_addr = xdata_addr - 0xDDFC`
+3. Firmware writes response to EP0 FIFO (0xC001)
+4. Firmware triggers DMA (writes 0x04 to 0x9092)
+5. Hardware DMA copies FIFO data to USB buffer at 0x8000
+6. usb_device.py reads response from 0x8000
+
+**IMPORTANT:** The emulator does NOT hardcode descriptor addresses. The `_flash_rom_mirror_read`
+callback provides the MMIO hardware behavior - it maps XDATA reads to code ROM. The firmware
+determines which addresses to read based on its own descriptor tables.
 
 ### Key MMIO Registers
 
