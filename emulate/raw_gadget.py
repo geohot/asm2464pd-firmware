@@ -489,33 +489,50 @@ class RawGadget:
         except OSError as e:
             raise RawGadgetError(f"EP_DISABLE failed: {e}")
 
-    def ep_write(self, ep_num: int, data: bytes):
-        """Write data to an endpoint (IN transfer)."""
+    def ep_write(self, ep_num: int, data: bytes) -> int:
+        """
+        Write data to an endpoint (IN transfer to host).
+
+        Returns number of bytes written.
+        """
         if self.fd is None:
             raise RawGadgetError("Device not open")
 
-        io_data = struct.pack('<HHI', ep_num, 0, len(data)) + data
-        io_data = io_data.ljust(8 + 1024, b'\x00')
+        # struct usb_raw_ep_io {
+        #     __u16 ep;
+        #     __u16 flags;
+        #     __u32 length;
+        #     __u8 data[];
+        # }
+        io_buf = bytearray(8 + len(data))
+        struct.pack_into('<HHI', io_buf, 0, ep_num, 0, len(data))
+        io_buf[8:8+len(data)] = data
 
         try:
-            fcntl.ioctl(self.fd, USB_RAW_IOCTL_EP_WRITE, io_data)
+            fcntl.ioctl(self.fd, USB_RAW_IOCTL_EP_WRITE, io_buf, True)
         except OSError as e:
             raise RawGadgetError(f"EP_WRITE failed: {e}")
 
+        return len(data)
+
     def ep_read(self, ep_num: int, length: int) -> bytes:
-        """Read data from an endpoint (OUT transfer)."""
+        """
+        Read data from an endpoint (OUT transfer from host).
+
+        Returns the data received.
+        """
         if self.fd is None:
             raise RawGadgetError("Device not open")
 
-        buf = bytearray(struct.pack('<HHI', ep_num, 0, length) + b'\x00' * length)
-        buf = buf.ljust(8 + 1024, b'\x00')
+        buf = bytearray(8 + length)
+        struct.pack_into('<HHI', buf, 0, ep_num, 0, length)
 
         try:
-            fcntl.ioctl(self.fd, USB_RAW_IOCTL_EP_READ, buf)
+            fcntl.ioctl(self.fd, USB_RAW_IOCTL_EP_READ, buf, True)
         except OSError as e:
             raise RawGadgetError(f"EP_READ failed: {e}")
 
-        actual_len = struct.unpack('<I', buf[4:8])[0]
+        actual_len = struct.unpack_from('<I', buf, 4)[0]
         return bytes(buf[8:8+actual_len])
 
 

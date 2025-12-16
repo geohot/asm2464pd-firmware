@@ -1,578 +1,590 @@
 """
-ASM2464PD USB Device Emulator
+ASM2464PD USB Device Emulation
 
-Makes the 8051 firmware emulator appear as a real USB device on Linux
-using raw-gadget and dummy_hcd kernel modules.
+Connects raw-gadget USB device to the 8051 firmware emulator.
+ALL USB traffic is passed through to the firmware via MMIO registers.
 
-This allows testing firmware with real USB tools like:
-- python/usb.py (the tinygrad USB library)
-- lsusb
-- usbmon
+Architecture:
+  Host <--USB--> raw-gadget
+                    |
+                    └── ALL USB traffic --> firmware via MMIO
+
+Control Transfer Flow:
+1. Setup packet (8 bytes) written to 0x9E00-0x9E07
+2. USB interrupt triggered (EX0 at 0x0E33)
+3. Firmware reads setup packet from MMIO registers
+4. Firmware processes request (GET_DESCRIPTOR, SET_ADDRESS, etc.)
+5. Firmware writes response to USB buffer at 0x8000
+6. Response read back and sent to host
+
+Bulk Transfer Flow (E4/E5 vendor commands):
+1. CDB written to 0x910D-0x9112
+2. USB interrupt triggers vendor handler (0x5333 -> 0x4583 -> 0x35B7)
+3. Firmware processes E4 read or E5 write
+4. Response at 0x8000
+
+The firmware handles ALL USB endpoints including control endpoint 0.
+USB descriptors are provided by firmware, not hardcoded in Python.
 
 Setup:
-  # Load kernel modules
-  sudo modprobe dummy_hcd
-  sudo modprobe raw_gadget  # or build from github.com/xairy/raw-gadget
-
-  # Run the emulator with USB device
-  python emulate/usb_device.py [firmware.bin]
-
-The emulated device will appear at VID:PID 0xADD1:0x0001 (ASM2464PD).
+  sudo modprobe dummy_hcd raw_gadget
+  sudo python emulate/usb_device.py fw.bin
 """
 
 import os
 import sys
 import struct
 import threading
-import queue
-from typing import Optional, Callable
+import time
+from typing import Optional, Callable, TYPE_CHECKING
 from dataclasses import dataclass
 
 from raw_gadget import (
     RawGadget, RawGadgetError, USBRawEventType, USBControlRequest,
-    USBSpeed, USB_DIR_IN, USB_DIR_OUT, USB_TYPE_VENDOR,
-    USB_REQ_GET_DESCRIPTOR, USB_REQ_SET_ADDRESS, USB_REQ_SET_CONFIGURATION,
-    USB_REQ_GET_CONFIGURATION, USB_REQ_SET_INTERFACE,
-    USB_DT_DEVICE, USB_DT_CONFIG, USB_DT_STRING, USB_DT_BOS,
+    USBSpeed, USB_DIR_IN, USB_DIR_OUT, USB_DT_ENDPOINT,
     check_raw_gadget_available
 )
 
-# ============================================
-# ASM2464PD USB Descriptors
-# ============================================
+if TYPE_CHECKING:
+    from emu import Emulator
 
-# VID:PID from python/usb.py
+# USB request types
+USB_TYPE_STANDARD = 0x00
+USB_TYPE_CLASS = 0x20
+USB_TYPE_VENDOR = 0x40
+
+# Standard requests
+USB_REQ_GET_STATUS = 0x00
+USB_REQ_CLEAR_FEATURE = 0x01
+USB_REQ_SET_FEATURE = 0x03
+USB_REQ_SET_ADDRESS = 0x05
+USB_REQ_GET_DESCRIPTOR = 0x06
+USB_REQ_SET_DESCRIPTOR = 0x07
+USB_REQ_GET_CONFIGURATION = 0x08
+USB_REQ_SET_CONFIGURATION = 0x09
+USB_REQ_GET_INTERFACE = 0x0A
+USB_REQ_SET_INTERFACE = 0x0B
+
+# Descriptor types
+USB_DT_DEVICE = 0x01
+USB_DT_CONFIG = 0x02
+USB_DT_STRING = 0x03
+USB_DT_INTERFACE = 0x04
+USB_DT_ENDPOINT = 0x05
+USB_DT_BOS = 0x0F
+
+# VID:PID
 ASM2464_VID = 0xADD1
 ASM2464_PID = 0x0001
 
-# Device descriptor (18 bytes) - USB 2.0 High-Speed compatible
-DEVICE_DESCRIPTOR = bytes([
-    18,         # bLength
-    0x01,       # bDescriptorType (Device)
-    0x00, 0x02, # bcdUSB (2.00 for USB 2.0)
-    0x00,       # bDeviceClass (defined at interface level)
-    0x00,       # bDeviceSubClass
-    0x00,       # bDeviceProtocol
-    64,         # bMaxPacketSize0 (64 bytes for USB 2.0 High-Speed)
-    ASM2464_VID & 0xFF, ASM2464_VID >> 8,  # idVendor
-    ASM2464_PID & 0xFF, ASM2464_PID >> 8,  # idProduct
-    0x00, 0x01, # bcdDevice
-    0x01,       # iManufacturer
-    0x02,       # iProduct
-    0x03,       # iSerialNumber
-    0x01,       # bNumConfigurations
-])
-
-# Configuration descriptor + interface + endpoints
-# Based on the USB3 class with UAS-like bulk streaming
-def make_config_descriptor():
-    """Build full configuration descriptor with interface and endpoints."""
-    # Interface descriptor (9 bytes)
-    interface_desc = bytes([
-        9,          # bLength
-        0x04,       # bDescriptorType (Interface)
-        0x00,       # bInterfaceNumber
-        0x01,       # bAlternateSetting (alt 1 for streaming)
-        0x04,       # bNumEndpoints
-        0x08,       # bInterfaceClass (Mass Storage)
-        0x06,       # bInterfaceSubClass (SCSI)
-        0x62,       # bInterfaceProtocol (UAS)
-        0x00,       # iInterface
-    ])
-
-    # Endpoint descriptors - USB 2.0 High-Speed (max 512 bytes for bulk)
-    # EP1 IN (0x81) - Data IN - Bulk
-    ep1_in = bytes([
-        7,          # bLength
-        0x05,       # bDescriptorType (Endpoint)
-        0x81,       # bEndpointAddress (EP1 IN)
-        0x02,       # bmAttributes (Bulk)
-        0x00, 0x02, # wMaxPacketSize (512)
-        0x00,       # bInterval
-    ])
-
-    # EP2 OUT (0x02) - Data OUT - Bulk
-    ep2_out = bytes([
-        7,          # bLength
-        0x05,       # bDescriptorType (Endpoint)
-        0x02,       # bEndpointAddress (EP2 OUT)
-        0x02,       # bmAttributes (Bulk)
-        0x00, 0x02, # wMaxPacketSize (512)
-        0x00,       # bInterval
-    ])
-
-    # EP3 IN (0x83) - Status IN - Bulk
-    ep3_in = bytes([
-        7,          # bLength
-        0x05,       # bDescriptorType (Endpoint)
-        0x83,       # bEndpointAddress (EP3 IN)
-        0x02,       # bmAttributes (Bulk)
-        0x00, 0x02, # wMaxPacketSize (512)
-        0x00,       # bInterval
-    ])
-
-    # EP4 OUT (0x04) - Command OUT - Bulk
-    ep4_out = bytes([
-        7,          # bLength
-        0x05,       # bDescriptorType (Endpoint)
-        0x04,       # bEndpointAddress (EP4 OUT)
-        0x02,       # bmAttributes (Bulk)
-        0x00, 0x02, # wMaxPacketSize (512)
-        0x00,       # bInterval
-    ])
-
-    # Alt setting 0 (no endpoints, for initial enumeration)
-    interface_alt0 = bytes([
-        9,          # bLength
-        0x04,       # bDescriptorType (Interface)
-        0x00,       # bInterfaceNumber
-        0x00,       # bAlternateSetting
-        0x00,       # bNumEndpoints
-        0x08,       # bInterfaceClass
-        0x06,       # bInterfaceSubClass
-        0x62,       # bInterfaceProtocol
-        0x00,       # iInterface
-    ])
-
-    # Combine all descriptors
-    descriptors = interface_alt0 + interface_desc + ep1_in + ep2_out + ep3_in + ep4_out
-    total_length = 9 + len(descriptors)
-
-    # Configuration descriptor header (9 bytes)
-    config_header = bytes([
-        9,          # bLength
-        0x02,       # bDescriptorType (Configuration)
-        total_length & 0xFF, total_length >> 8,  # wTotalLength
-        0x01,       # bNumInterfaces
-        0x01,       # bConfigurationValue
-        0x00,       # iConfiguration
-        0x80,       # bmAttributes (Bus powered)
-        0xFA,       # bMaxPower (500mA)
-    ])
-
-    return config_header + descriptors
-
-CONFIG_DESCRIPTOR = make_config_descriptor()
-
-# String descriptors
-STRING_DESCRIPTOR_0 = bytes([4, 0x03, 0x09, 0x04])  # Supported languages (English)
-
-def make_string_descriptor(s: str) -> bytes:
-    """Create a USB string descriptor from a Python string."""
-    encoded = s.encode('utf-16-le')
-    return bytes([2 + len(encoded), 0x03]) + encoded
-
-STRING_DESCRIPTORS = {
-    0: STRING_DESCRIPTOR_0,
-    1: make_string_descriptor("ASMedia"),
-    2: make_string_descriptor("ASM2464PD"),
-    3: make_string_descriptor("000000000001"),
-}
-
-# BOS descriptor for USB 3.x
-BOS_DESCRIPTOR = bytes([
-    # BOS descriptor header
-    5,          # bLength
-    0x0F,       # bDescriptorType (BOS)
-    22, 0,      # wTotalLength
-    2,          # bNumDeviceCaps
-
-    # USB 2.0 Extension
-    7,          # bLength
-    0x10,       # bDescriptorType (Device Capability)
-    0x02,       # bDevCapabilityType (USB 2.0 Extension)
-    0x02, 0x00, 0x00, 0x00,  # bmAttributes (LPM supported)
-
-    # SuperSpeed USB Device Capability
-    10,         # bLength
-    0x10,       # bDescriptorType (Device Capability)
-    0x03,       # bDevCapabilityType (SuperSpeed)
-    0x00,       # bmAttributes
-    0x0E, 0x00, # wSpeedsSupported (FS, HS, SS)
-    0x01,       # bFunctionalitySupport (FS)
-    0x0A,       # bU1DevExitLat
-    0xFF, 0x07, # wU2DevExitLat
-])
-
-
-# ============================================
-# USB Command Handler
-# ============================================
 
 @dataclass
-class USBCommand:
-    """Parsed USB command from host."""
-    cmd_type: int       # 0xE4=read, 0xE5=write, 0x8A=scsi_write
-    address: int        # Target XDATA address (for E4/E5)
-    size: int           # Read size (E4) or 0
-    value: int          # Write value (E5) or 0
-    data: bytes         # SCSI write data
+class USBSetupPacket:
+    """USB control transfer setup packet."""
+    bmRequestType: int
+    bRequest: int
+    wValue: int
+    wIndex: int
+    wLength: int
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> 'USBSetupPacket':
+        bmRequestType, bRequest, wValue, wIndex, wLength = struct.unpack('<BBHHH', data[:8])
+        return cls(bmRequestType, bRequest, wValue, wIndex, wLength)
+
+    def to_bytes(self) -> bytes:
+        return struct.pack('<BBHHH', self.bmRequestType, self.bRequest,
+                          self.wValue, self.wIndex, self.wLength)
 
 
-class ASM2464Device:
+class USBDevicePassthrough:
     """
-    ASM2464PD USB device emulation using raw-gadget.
+    USB device emulation connecting raw-gadget to firmware emulator.
 
-    Handles USB enumeration and forwards vendor commands (E4/E5)
-    to the 8051 firmware emulator.
+    USB control transfers (setup packets) are passed through to firmware via MMIO.
+    E4/E5 vendor commands via bulk endpoints also go through firmware.
     """
 
-    def __init__(self, memory_read: Callable[[int], int] = None,
-                       memory_write: Callable[[int, int], None] = None):
+    # USB setup packet registers (8-byte setup packet at 0x9E00)
+    # These are the actual registers the firmware reads for control transfers
+    REG_USB_EP0_DATA = 0x9E00      # EP0 data buffer base address
+    REG_USB_SETUP_TYPE = 0x9E00   # bmRequestType
+    REG_USB_SETUP_REQ = 0x9E01    # bRequest
+    REG_USB_SETUP_VALUE_L = 0x9E02  # wValue low
+    REG_USB_SETUP_VALUE_H = 0x9E03  # wValue high
+    REG_USB_SETUP_INDEX_L = 0x9E04  # wIndex low
+    REG_USB_SETUP_INDEX_H = 0x9E05  # wIndex high
+    REG_USB_SETUP_LEN_L = 0x9E06    # wLength low
+    REG_USB_SETUP_LEN_H = 0x9E07    # wLength high
+
+    # CDB registers - firmware reads CDB from here for SCSI commands
+    REG_CDB_START = 0x910D
+
+    # USB status/control registers
+    REG_USB_STATUS = 0x9000
+    REG_USB_INT_FLAGS = 0x9101
+    REG_USB_INT_PENDING = 0xC802
+    REG_USB_EP_READY = 0x9096
+    REG_USB_EP_STATUS = 0x90E3
+
+    # Target address registers (for vendor commands)
+    REG_TARGET_ADDR_HI = 0xCEB2
+    REG_TARGET_ADDR_LO = 0xCEB3
+    REG_CMD_TYPE = 0xCEB0
+
+    # Response buffer in XDATA
+    USB_BUFFER_ADDR = 0x8000
+
+    def __init__(self, emulator: 'Emulator'):
         """
-        Initialize the USB device emulator.
+        Initialize passthrough with emulator reference.
 
         Args:
-            memory_read: Callback to read from XDATA (addr) -> value
-            memory_write: Callback to write to XDATA (addr, value) -> None
+            emulator: The 8051 emulator running the firmware
         """
+        self.emu = emulator
         self.gadget: Optional[RawGadget] = None
         self.running = False
         self.configured = False
-        self.address = 0
+        self.address_set = False
+        self.usb_address = 0
 
-        # Memory access callbacks (connect to 8051 emulator)
-        self.memory_read = memory_read or (lambda addr: 0)
-        self.memory_write = memory_write or (lambda addr, val: None)
+        # Endpoint handles (assigned by kernel after enable)
+        self.ep_data_in = None   # 0x81 - Data IN (bulk)
+        self.ep_data_out = None  # 0x02 - Data OUT (bulk)
+        self.ep_stat_in = None   # 0x83 - Status IN (bulk)
+        self.ep_cmd_out = None   # 0x04 - Command OUT (bulk)
 
-        # Command queue for async processing
-        self.cmd_queue = queue.Queue()
-        self.response_queue = queue.Queue()
-
-        # Endpoint numbers (assigned by kernel)
-        self.ep_data_in = None   # 0x81
-        self.ep_data_out = None  # 0x02
-        self.ep_stat_in = None   # 0x83
-        self.ep_cmd_out = None   # 0x04
-
-        # Pending command state
-        self.pending_cmd: Optional[USBCommand] = None
+        # Thread for handling bulk transfers
+        self._bulk_thread: Optional[threading.Thread] = None
+        self._bulk_running = False
 
     def start(self, driver: str = "dummy_udc", device: str = "dummy_udc.0",
               speed: USBSpeed = USBSpeed.USB_SPEED_HIGH):
-        """Start the USB device emulation."""
-        print(f"[USB_DEV] Starting ASM2464PD emulation on {device}")
+        """Start the USB device passthrough."""
+        available, msg = check_raw_gadget_available()
+        if not available:
+            raise RuntimeError(f"raw-gadget not available: {msg}")
 
         self.gadget = RawGadget()
         self.gadget.open()
-        self.gadget.init(driver, device, speed)
-
-        print(f"[USB_DEV] Initialized, calling run()...")
+        self.gadget.init(driver, device, speed)  # driver_name, device_name, speed
         self.gadget.run()
 
         self.running = True
-        print(f"[USB_DEV] Device running, waiting for host connection")
+        print(f"[USB_PASS] Started on {driver}/{device} at {speed.name}")
 
     def stop(self):
-        """Stop the USB device emulation."""
+        """Stop the USB device passthrough."""
         self.running = False
+        self._bulk_running = False
+
+        if self._bulk_thread and self._bulk_thread.is_alive():
+            self._bulk_thread.join(timeout=1.0)
+
         if self.gadget:
             self.gadget.close()
             self.gadget = None
-        print("[USB_DEV] Device stopped")
+
+        print("[USB_PASS] Stopped")
+
+    def inject_setup_packet(self, setup: USBSetupPacket):
+        """
+        Inject USB setup packet into emulator MMIO registers.
+
+        This writes the setup packet fields to the appropriate hardware
+        registers where the firmware will read them.
+        """
+        hw = self.emu.hw
+
+        # Write setup packet to MMIO registers
+        hw.regs[self.REG_USB_SETUP_TYPE] = setup.bmRequestType
+        hw.regs[self.REG_USB_SETUP_REQ] = setup.bRequest
+        hw.regs[self.REG_USB_SETUP_VALUE_L] = setup.wValue & 0xFF
+        hw.regs[self.REG_USB_SETUP_VALUE_H] = (setup.wValue >> 8) & 0xFF
+        hw.regs[self.REG_USB_SETUP_INDEX_L] = setup.wIndex & 0xFF
+        hw.regs[self.REG_USB_SETUP_INDEX_H] = (setup.wIndex >> 8) & 0xFF
+        hw.regs[self.REG_USB_SETUP_LEN_L] = setup.wLength & 0xFF
+        hw.regs[self.REG_USB_SETUP_LEN_H] = (setup.wLength >> 8) & 0xFF
+
+        print(f"[USB_PASS] Injected setup: type=0x{setup.bmRequestType:02X} "
+              f"req=0x{setup.bRequest:02X} val=0x{setup.wValue:04X} "
+              f"idx=0x{setup.wIndex:04X} len={setup.wLength}")
+
+    def trigger_usb_interrupt(self):
+        """Trigger USB interrupt in emulator to process injected request."""
+        hw = self.emu.hw
+
+        # Set USB interrupt pending
+        hw.regs[self.REG_USB_INT_PENDING] |= 0x01
+        hw.regs[self.REG_USB_INT_FLAGS] |= 0x01
+        hw.regs[self.REG_USB_STATUS] |= 0x01
+
+        # The emulator's run loop should process the interrupt
+
+    def run_firmware_cycles(self, max_cycles: int = 10000):
+        """Run firmware for a number of cycles to process request."""
+        self.emu.run(max_cycles=self.emu.cpu.cycles + max_cycles)
+
+    def read_response(self, length: int) -> bytes:
+        """
+        Read response data from firmware's USB buffer.
+
+        Args:
+            length: Number of bytes to read
+
+        Returns:
+            Response data from XDATA[0x8000+]
+        """
+        result = bytearray(length)
+        for i in range(length):
+            result[i] = self.emu.memory.xdata[self.USB_BUFFER_ADDR + i]
+        return bytes(result)
+
+    def handle_control_transfer(self, setup: USBSetupPacket, data: bytes = b'') -> Optional[bytes]:
+        """
+        Handle a control transfer by passing to firmware.
+
+        ALL USB requests are handled by firmware via MMIO registers.
+        The firmware reads the setup packet from 0x9E00-0x9E07 and
+        processes it through the USB interrupt handler at 0x0E33.
+
+        Args:
+            setup: The USB setup packet
+            data: Data phase payload (for OUT transfers)
+
+        Returns:
+            Response data for IN transfers, or None for OUT transfers
+        """
+        # Use USBController's inject_control_transfer to properly set up MMIO
+        # and copy setup packet to RAM locations firmware expects
+        self.emu.hw.usb_controller.inject_control_transfer(
+            bmRequestType=setup.bmRequestType,
+            bRequest=setup.bRequest,
+            wValue=setup.wValue,
+            wIndex=setup.wIndex,
+            wLength=setup.wLength,
+            data=data
+        )
+
+        # Trigger USB interrupt
+        hw = self.emu.hw
+        hw._pending_usb_interrupt = True
+        self.emu.cpu._ext0_pending = True
+
+        # Enable interrupts
+        ie = self.emu.memory.read_sfr(0xA8)
+        ie |= 0x81  # EA + EX0
+        self.emu.memory.write_sfr(0xA8, ie)
+
+        # Run firmware to process request
+        self.run_firmware_cycles(max_cycles=50000)
+
+        # For IN transfers, read response from buffer
+        if setup.bmRequestType & 0x80:  # Device-to-host
+            response = self.read_response(setup.wLength)
+            # Check if we got a valid response (not all zeros)
+            if any(b != 0 for b in response):
+                return response
+            # Firmware didn't produce response - may need more cycles
+            self.run_firmware_cycles(max_cycles=50000)
+            return self.read_response(setup.wLength)
+
+        return None
+
 
     def handle_events(self):
-        """
-        Main event loop - handle USB events from raw-gadget.
-
-        This should be called in a loop or from a dedicated thread.
-        """
-        if not self.running or not self.gadget:
+        """Main event loop - process raw-gadget events."""
+        if not self.gadget:
             return
 
         try:
-            event = self.gadget.event_fetch()
-        except RawGadgetError as e:
-            print(f"[USB_DEV] Event fetch error: {e}")
+            event = self.gadget.event_fetch(timeout_ms=100)
+        except RawGadgetError:
             return
 
         if event.type == USBRawEventType.CONNECT:
-            print(f"[USB_DEV] Host connected (speed={event.length})")
-            # Get available endpoints
-            eps = self.gadget.eps_info()
-            print(f"[USB_DEV] {len(eps)} endpoints available")
-
-        elif event.type == USBRawEventType.DISCONNECT:
-            print("[USB_DEV] Host disconnected")
-            self.configured = False
-
-        elif event.type == USBRawEventType.RESET:
-            print("[USB_DEV] Bus reset")
-            self.configured = False
-            self.address = 0
-
-        elif event.type == USBRawEventType.SUSPEND:
-            print("[USB_DEV] Suspend")
-
-        elif event.type == USBRawEventType.RESUME:
-            print("[USB_DEV] Resume")
+            speed = event.data[0] if event.data else 0
+            print(f"[USB_PASS] Connect event (speed={speed})")
+            # Initialize emulator USB state
+            self.emu.hw.usb_controller.connect()
+            # Run firmware boot sequence
+            self.emu.run(max_cycles=100000)
 
         elif event.type == USBRawEventType.CONTROL:
-            ctrl = event.get_control_request()
-            if ctrl:
-                self._handle_control(ctrl, event.data[8:] if event.length > 8 else b'')
+            self._handle_control_event(event.data)
 
-    def _handle_control(self, ctrl: USBControlRequest, data: bytes):
-        """Handle USB control transfer."""
-        is_in = bool(ctrl.direction)  # USB_DIR_IN = 0x80
-
-        # Standard requests
-        if ctrl.type == 0x00:  # USB_TYPE_STANDARD
-            if ctrl.bRequest == USB_REQ_GET_DESCRIPTOR:
-                self._handle_get_descriptor(ctrl)
-            elif ctrl.bRequest == USB_REQ_SET_ADDRESS:
-                self.address = ctrl.wValue
-                # OUT request: use ep0_read for status stage
-                self.gadget.ep0_read(0)
-                print(f"[USB_DEV] Set address: {self.address}")
-            elif ctrl.bRequest == USB_REQ_SET_CONFIGURATION:
-                self._handle_set_configuration(ctrl.wValue)
-            elif ctrl.bRequest == USB_REQ_GET_CONFIGURATION:
-                self.gadget.ep0_write(bytes([1 if self.configured else 0]))
-            elif ctrl.bRequest == USB_REQ_SET_INTERFACE:
-                self._handle_set_interface(ctrl.wIndex, ctrl.wValue)
-            else:
-                print(f"[USB_DEV] Unhandled standard request: 0x{ctrl.bRequest:02X}")
-                self.gadget.ep0_stall()
-
-        # Vendor requests (E4/E5 commands via control transfers)
-        elif ctrl.type == USB_TYPE_VENDOR:
-            self._handle_vendor_request(ctrl, data)
-
-        else:
-            print(f"[USB_DEV] Unhandled request type: 0x{ctrl.bRequestType:02X}")
-            self.gadget.ep0_stall()
-
-    def _handle_get_descriptor(self, ctrl: USBControlRequest):
-        """Handle GET_DESCRIPTOR request."""
-        desc_type = ctrl.wValue >> 8
-        desc_index = ctrl.wValue & 0xFF
-        max_len = ctrl.wLength
-
-        if desc_type == USB_DT_DEVICE:
-            self.gadget.ep0_write(DEVICE_DESCRIPTOR[:max_len])
-            print(f"[USB_DEV] Sent device descriptor ({len(DEVICE_DESCRIPTOR)} bytes)")
-
-        elif desc_type == USB_DT_CONFIG:
-            self.gadget.ep0_write(CONFIG_DESCRIPTOR[:max_len])
-            print(f"[USB_DEV] Sent config descriptor ({len(CONFIG_DESCRIPTOR)} bytes)")
-
-        elif desc_type == USB_DT_STRING:
-            if desc_index in STRING_DESCRIPTORS:
-                desc = STRING_DESCRIPTORS[desc_index]
-                self.gadget.ep0_write(desc[:max_len])
-                print(f"[USB_DEV] Sent string descriptor {desc_index}")
-            else:
-                self.gadget.ep0_stall()
-
-        elif desc_type == USB_DT_BOS:
-            self.gadget.ep0_write(BOS_DESCRIPTOR[:max_len])
-            print(f"[USB_DEV] Sent BOS descriptor")
-
-        else:
-            print(f"[USB_DEV] Unknown descriptor type: 0x{desc_type:02X}")
-            self.gadget.ep0_stall()
-
-    def _handle_set_configuration(self, config: int):
-        """Handle SET_CONFIGURATION request."""
-        print(f"[USB_DEV] Set configuration: {config}")
-
-        if config == 1:
-            self.gadget.configure()
-            self.configured = True
-            # OUT request: use ep0_read for status stage
-            self.gadget.ep0_read(0)
-            print("[USB_DEV] Device configured!")
-        elif config == 0:
+        elif event.type == USBRawEventType.RESET:
+            print("[USB_PASS] Reset event")
             self.configured = False
-            self.gadget.ep0_read(0)
-        else:
-            self.gadget.ep0_stall()
+            self.address_set = False
 
-    def _handle_set_interface(self, interface: int, alt_setting: int):
-        """Handle SET_INTERFACE request."""
-        print(f"[USB_DEV] Set interface {interface} alt {alt_setting}")
+        elif event.type == USBRawEventType.DISCONNECT:
+            print("[USB_PASS] Disconnect event")
+            self.configured = False
+            self.address_set = False
 
-        if interface == 0 and alt_setting in (0, 1):
-            if alt_setting == 1:
-                # Enable bulk endpoints for streaming (512 bytes for USB 2.0 High-Speed)
-                try:
-                    self.ep_data_in = self.gadget.ep_enable(0x81, 2, 512)   # Bulk IN
-                    self.ep_data_out = self.gadget.ep_enable(0x02, 2, 512)  # Bulk OUT
-                    self.ep_stat_in = self.gadget.ep_enable(0x83, 2, 512)   # Status IN
-                    self.ep_cmd_out = self.gadget.ep_enable(0x04, 2, 512)   # Command OUT
-                    print(f"[USB_DEV] Endpoints enabled: IN={self.ep_data_in}, OUT={self.ep_data_out}, "
-                          f"STAT={self.ep_stat_in}, CMD={self.ep_cmd_out}")
-                except RawGadgetError as e:
-                    print(f"[USB_DEV] Failed to enable endpoints: {e}")
-                    self.gadget.ep0_stall()
-                    return
+        elif event.type == USBRawEventType.SUSPEND:
+            print("[USB_PASS] Suspend event")
 
-            # OUT request: use ep0_read for status stage
-            self.gadget.ep0_read(0)
-        else:
-            self.gadget.ep0_stall()
+        elif event.type == USBRawEventType.RESUME:
+            print("[USB_PASS] Resume event")
 
-    def _handle_vendor_request(self, ctrl: USBControlRequest, data: bytes):
-        """Handle vendor-specific control request (E4/E5 via control pipe)."""
-        # This handles E4/E5 commands sent as control transfers
-        # The real device uses bulk endpoints, but control transfers are simpler
+    def _handle_control_event(self, data: bytes):
+        """Handle a USB control request by passing through to firmware."""
+        if len(data) < 8:
+            print(f"[USB_PASS] Control event too short: {len(data)} bytes")
+            return
 
-        if ctrl.direction == USB_DIR_IN:
-            # Read request (like E4)
-            # wValue = address low, wIndex = address high
-            addr = (ctrl.wIndex << 16) | ctrl.wValue
-            size = ctrl.wLength
+        setup = USBSetupPacket.from_bytes(data)
+        direction = "IN" if setup.bmRequestType & 0x80 else "OUT"
+        req_type = (setup.bmRequestType >> 5) & 0x03
+        req_type_name = ["STD", "CLASS", "VENDOR", "RESERVED"][req_type]
 
-            # Read from emulator memory
-            result = bytearray(size)
-            for i in range(size):
-                result[i] = self.memory_read(addr + i) & 0xFF
+        print(f"[USB_PASS] Control {direction} {req_type_name}: "
+              f"req=0x{setup.bRequest:02X} val=0x{setup.wValue:04X} "
+              f"idx=0x{setup.wIndex:04X} len={setup.wLength}")
 
-            self.gadget.ep0_write(bytes(result))
-            print(f"[USB_DEV] Vendor read: addr=0x{addr:04X} size={size} -> {result.hex()}")
+        try:
+            # ALL control transfers go through firmware
+            response = self.handle_control_transfer(setup)
 
-        else:
-            # Write request (like E5)
-            addr = (ctrl.wIndex << 16) | ctrl.wValue
+            # Track state changes based on what firmware processed
+            if setup.bmRequestType == 0x00:
+                if setup.bRequest == USB_REQ_SET_ADDRESS:
+                    self.address_set = True
+                    self.usb_address = setup.wValue & 0x7F
+                elif setup.bRequest == USB_REQ_SET_CONFIGURATION:
+                    if setup.wValue > 0:
+                        self.gadget.configure()
+                        self._enable_endpoints()
+                        self.configured = True
 
-            if ctrl.wLength > 0:
-                # Read the data phase
-                write_data = self.gadget.ep0_read(ctrl.wLength)
-                for i, val in enumerate(write_data):
-                    self.memory_write(addr + i, val)
-                print(f"[USB_DEV] Vendor write: addr=0x{addr:04X} data={write_data.hex()}")
+            if response is not None:
+                # IN transfer - send response
+                if len(response) > 0:
+                    print(f"[USB_PASS] Response ({len(response)} bytes): {response[:32].hex()}...")
+                self.gadget.ep0_write(response)
             else:
-                print(f"[USB_DEV] Vendor write: addr=0x{addr:04X} (no data)")
+                # OUT transfer - ACK with zero-length read
+                self.gadget.ep0_read(0)
 
-            self.gadget.ep0_write(b'')  # ZLP ACK
+        except Exception as e:
+            print(f"[USB_PASS] Error handling control: {e}")
+            import traceback
+            traceback.print_exc()
+            self.gadget.ep0_stall()
 
-    def process_bulk_command(self, cmd_data: bytes) -> Optional[bytes]:
-        """
-        Process a bulk command packet (from EP4 OUT).
+    def _enable_endpoints(self):
+        """Enable bulk endpoints after configuration."""
+        if not self.gadget:
+            return
 
-        This handles the UAS-like command protocol used by ASM2464PD.
-        Returns response data for EP1 IN, or None if no response needed.
-        """
-        if len(cmd_data) < 16:
-            print(f"[USB_DEV] Command too short: {len(cmd_data)} bytes")
-            return None
+        try:
+            # UAS endpoints for bulk data transfer
+            # EP1 IN (0x81) - Data IN (bulk, 512 bytes for high-speed)
+            self.ep_data_in = self.gadget.ep_enable(0x81, 0x02, 512)
+            print(f"[USB_PASS] Enabled EP1 IN (data): handle={self.ep_data_in}")
 
-        # Parse command packet header
-        # Based on python/usb.py cmd_template format:
-        # [0x01, 0x00, 0x00, slot, ..., CDB at offset 16]
-        slot = cmd_data[3]
-        cdb = cmd_data[16:] if len(cmd_data) > 16 else b''
+            # EP2 OUT (0x02) - Data OUT (bulk)
+            self.ep_data_out = self.gadget.ep_enable(0x02, 0x02, 512)
+            print(f"[USB_PASS] Enabled EP2 OUT (data): handle={self.ep_data_out}")
 
-        if len(cdb) < 6:
-            print(f"[USB_DEV] CDB too short: {len(cdb)} bytes")
-            return None
+            # EP3 IN (0x83) - Status IN (bulk)
+            self.ep_stat_in = self.gadget.ep_enable(0x83, 0x02, 512)
+            print(f"[USB_PASS] Enabled EP3 IN (status): handle={self.ep_stat_in}")
 
-        cmd_type = cdb[0]
-        print(f"[USB_DEV] Bulk command: slot={slot} type=0x{cmd_type:02X} cdb={cdb[:8].hex()}")
+            # EP4 OUT (0x04) - Command OUT (bulk)
+            self.ep_cmd_out = self.gadget.ep_enable(0x04, 0x02, 512)
+            print(f"[USB_PASS] Enabled EP4 OUT (command): handle={self.ep_cmd_out}")
 
-        if cmd_type == 0xE4:
-            # Read XDATA
-            # Format: struct.pack('>BBBHB', 0xE4, size, addr >> 16, addr & 0xFFFF, 0)
-            size = cdb[1]
-            addr = (cdb[2] << 16) | (cdb[3] << 8) | cdb[4]
-            # Convert from USB address format (0x50XXXX) to XDATA (0xXXXX)
-            xdata_addr = addr & 0xFFFF
+            # Start bulk transfer thread
+            self._start_bulk_thread()
 
-            result = bytearray(size)
-            for i in range(size):
-                result[i] = self.memory_read(xdata_addr + i) & 0xFF
+        except RawGadgetError as e:
+            print(f"[USB_PASS] Failed to enable endpoints: {e}")
 
-            print(f"[USB_DEV] E4 read: addr=0x{xdata_addr:04X} size={size} -> {result.hex()}")
-            return bytes(result)
+    def _start_bulk_thread(self):
+        """Start background thread for bulk transfer handling."""
+        if self._bulk_thread and self._bulk_thread.is_alive():
+            return
 
-        elif cmd_type == 0xE5:
-            # Write XDATA
-            # Format: struct.pack('>BBBHB', 0xE5, value, addr >> 16, addr & 0xFFFF, 0)
-            value = cdb[1]
-            addr = (cdb[2] << 16) | (cdb[3] << 8) | cdb[4]
-            xdata_addr = addr & 0xFFFF
+        self._bulk_running = True
+        self._bulk_thread = threading.Thread(target=self._bulk_transfer_loop, daemon=True)
+        self._bulk_thread.start()
+        print("[USB_PASS] Bulk transfer thread started")
 
-            self.memory_write(xdata_addr, value)
-            print(f"[USB_DEV] E5 write: addr=0x{xdata_addr:04X} value=0x{value:02X}")
-            return None  # No data response, just status
+    def _bulk_transfer_loop(self):
+        """Background thread for bulk endpoint transfers."""
+        print("[BULK] Transfer loop starting")
 
-        elif cmd_type == 0x8A:
-            # SCSI write
-            # Format: struct.pack('>BBQIBB', 0x8A, 0, lba, sectors, 0, 0)
-            lba = struct.unpack('>Q', cdb[2:10])[0]
-            sectors = struct.unpack('>I', cdb[10:14])[0]
-            print(f"[USB_DEV] SCSI write: LBA={lba} sectors={sectors}")
-            # Data will come on EP2 OUT
-            self.pending_cmd = USBCommand(0x8A, 0, sectors * 512, 0, b'')
-            return None
+        while self._bulk_running and self.gadget:
+            try:
+                if self.ep_cmd_out is None:
+                    time.sleep(0.01)
+                    continue
 
-        else:
-            print(f"[USB_DEV] Unknown command type: 0x{cmd_type:02X}")
-            return None
+                # Read command from EP4 OUT
+                cmd_data = self.gadget.ep_read(self.ep_cmd_out, 32)
+                if len(cmd_data) == 0:
+                    continue
+
+                # Parse UAS command packet
+                slot = cmd_data[3] if len(cmd_data) > 3 else 1
+                cdb = cmd_data[16:] if len(cmd_data) > 16 else b''
+
+                if len(cdb) < 6:
+                    continue
+
+                cmd_type = cdb[0]
+                print(f"[BULK] Command: slot={slot} type=0x{cmd_type:02X}")
+
+                # Parse CDB: [cmd, size_or_val, addr_high, addr_mid, addr_low, 0]
+                size_or_val = cdb[1]
+                # USB address format: (addr & 0x1FFFF) | 0x500000
+                # Decode: addr_high=0x50, addr_mid/low = actual address
+                usb_addr = (cdb[2] << 16) | (cdb[3] << 8) | cdb[4]
+                xdata_addr = usb_addr & 0x1FFFF
+
+                # Use inject_usb_command() for proper MMIO setup
+                if cmd_type == 0xE4:  # Read XDATA
+                    print(f"[BULK] E4 read: addr=0x{xdata_addr:04X} size={size_or_val}")
+                    self.emu.hw.inject_usb_command(0xE4, xdata_addr, size=size_or_val)
+                    self.run_firmware_cycles(50000)
+
+                    response = self.read_response(size_or_val)
+                    print(f"[BULK] E4 response: {response.hex()[:32]}...")
+
+                    # Send data on EP1 IN
+                    if self.ep_data_in:
+                        self.gadget.ep_write(self.ep_data_in, response)
+
+                    # Send status on EP3 IN
+                    if self.ep_stat_in:
+                        status = self._make_status(slot, 0)
+                        self.gadget.ep_write(self.ep_stat_in, status)
+
+                elif cmd_type == 0xE5:  # Write XDATA
+                    print(f"[BULK] E5 write: addr=0x{xdata_addr:04X} val=0x{size_or_val:02X}")
+                    self.emu.hw.inject_usb_command(0xE5, xdata_addr, value=size_or_val)
+                    self.run_firmware_cycles(50000)
+
+                    # Send status on EP3 IN
+                    if self.ep_stat_in:
+                        status = self._make_status(slot, 0)
+                        self.gadget.ep_write(self.ep_stat_in, status)
+
+                else:
+                    print(f"[BULK] Unknown command: 0x{cmd_type:02X}")
+                    if self.ep_stat_in:
+                        status = self._make_status(slot, 1)  # Error
+                        self.gadget.ep_write(self.ep_stat_in, status)
+
+            except RawGadgetError as e:
+                if self._bulk_running:
+                    print(f"[BULK] Error: {e}")
+                    time.sleep(0.1)
+            except Exception as e:
+                print(f"[BULK] Unexpected error: {e}")
+                time.sleep(0.1)
+
+        print("[BULK] Transfer loop stopped")
+
+    def _make_status(self, slot: int, status: int) -> bytes:
+        """Create UAS status IU response."""
+        return bytes([
+            0x03,       # IU type (status)
+            0x00,       # Reserved
+            slot >> 8, slot & 0xFF,  # Tag
+            status,     # Status
+            0x00, 0x00, 0x00,  # Reserved
+        ])
 
 
-# ============================================
-# Main entry point
-# ============================================
+def main():
+    """Run the USB passthrough with emulator."""
+    import argparse
 
-def run_usb_device(firmware_path: str = None):
-    """
-    Run the USB device emulator standalone.
+    parser = argparse.ArgumentParser(description='ASM2464PD USB Device Emulation')
+    parser.add_argument('firmware', nargs='?',
+                       default=os.path.join(os.path.dirname(__file__), '..', 'fw.bin'),
+                       help='Path to firmware binary (default: fw.bin)')
+    parser.add_argument('--driver', default='dummy_udc',
+                       help='UDC driver name (default: dummy_udc)')
+    parser.add_argument('--device', default='dummy_udc.0',
+                       help='UDC device name (default: dummy_udc.0)')
+    parser.add_argument('--speed', choices=['low', 'full', 'high', 'super'],
+                       default='high', help='USB speed (default: high)')
+    parser.add_argument('--verbose', '-v', action='store_true',
+                       help='Enable verbose logging')
+    args = parser.parse_args()
 
-    If firmware_path is provided, loads and runs the firmware.
-    Otherwise, uses simple memory stubs.
-    """
+    # Map speed string to enum
+    speed_map = {
+        'low': USBSpeed.USB_SPEED_LOW,
+        'full': USBSpeed.USB_SPEED_FULL,
+        'high': USBSpeed.USB_SPEED_HIGH,
+        'super': USBSpeed.USB_SPEED_SUPER,
+    }
+    speed = speed_map[args.speed]
+
     # Check raw-gadget availability
     available, msg = check_raw_gadget_available()
     if not available:
-        print(f"Error: {msg}")
-        print("\nSetup instructions:")
-        print("  # Clone and build raw-gadget")
-        print("  git clone https://github.com/xairy/raw-gadget")
-        print("  cd raw-gadget/dummy_hcd && make && sudo ./insmod.sh")
-        print("  cd ../raw_gadget && make && sudo ./insmod.sh")
-        print("\n  # Or load pre-built modules if available")
+        print(f"[ERROR] {msg}")
+        print("\nTo set up raw-gadget:")
         print("  sudo modprobe dummy_hcd")
         print("  sudo modprobe raw_gadget")
-        return 1
+        print("  # Or build from source: https://github.com/xairy/raw-gadget")
+        sys.exit(1)
 
-    print(f"[USB_DEV] {msg}")
+    # Import emulator
+    sys.path.insert(0, os.path.dirname(__file__))
+    from emu import Emulator
 
-    # Simple memory for standalone testing
-    xdata = bytearray(65536)
+    # Create emulator
+    print(f"[MAIN] Loading firmware: {args.firmware}")
+    emu = Emulator(log_uart=True)
+    emu.reset()
+    emu.load_firmware(args.firmware)
 
-    def mem_read(addr):
-        return xdata[addr & 0xFFFF]
+    if args.verbose:
+        emu.hw.log_reads = True
+        emu.hw.log_writes = True
 
-    def mem_write(addr, val):
-        xdata[addr & 0xFFFF] = val & 0xFF
-        print(f"  [MEM] Write 0x{addr:04X} = 0x{val:02X}")
+    # Run initial boot sequence
+    print("[MAIN] Running firmware boot sequence...")
+    emu.run(max_cycles=500000)
+    print(f"[MAIN] Boot complete. PC=0x{emu.cpu.pc:04X}, cycles={emu.cpu.cycles}")
 
-    # Create device
-    device = ASM2464Device(memory_read=mem_read, memory_write=mem_write)
+    # Create USB passthrough
+    usb = USBDevicePassthrough(emu)
 
     try:
-        device.start()
+        print(f"[MAIN] Starting USB device on {args.driver}/{args.device} ({args.speed} speed)")
+        usb.start(driver=args.driver, device=args.device, speed=speed)
 
-        print("\n[USB_DEV] Device should now appear in lsusb as ADD1:0001")
-        print("[USB_DEV] Press Ctrl+C to stop\n")
+        print("[MAIN] USB device ready. Press Ctrl+C to stop.")
+        print("[MAIN] Connect to the emulated device with: lsusb")
+        print()
 
-        while device.running:
-            device.handle_events()
+        while usb.running:
+            usb.handle_events()
+
+            # Periodically run firmware to process background tasks
+            if emu.cpu.cycles % 10000 == 0:
+                emu.run(max_cycles=emu.cpu.cycles + 1000)
 
     except KeyboardInterrupt:
-        print("\n[USB_DEV] Interrupted")
+        print("\n[MAIN] Interrupted")
     except Exception as e:
-        print(f"[USB_DEV] Error: {e}")
+        print(f"\n[MAIN] Error: {e}")
         import traceback
         traceback.print_exc()
     finally:
-        device.stop()
-
-    return 0
+        usb.stop()
+        print("[MAIN] Shutdown complete")
 
 
 if __name__ == "__main__":
-    firmware = sys.argv[1] if len(sys.argv) > 1 else None
-    sys.exit(run_usb_device(firmware))
+    main()

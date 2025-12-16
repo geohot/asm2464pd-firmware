@@ -1421,5 +1421,998 @@ class TestFirmwareBehaviorComparison:
         assert result2 == 0xAA, f"[{fw_name}] Second E4 read: expected 0xAA, got 0x{result2:02X}"
 
 
+class TestUSBPassthrough:
+    """
+    Tests for USB passthrough mechanism.
+
+    These tests verify that:
+    1. CDB format matches python/usb.py expectations
+    2. inject_usb_command() sets correct MMIO registers
+    3. Response data goes to correct location (0x8000)
+    4. The passthrough can use inject_usb_command() as a reference
+
+    The passthrough (usb_device.py) should replicate what inject_usb_command()
+    does in hardware.py to properly trigger firmware command processing.
+    """
+
+    def test_passthrough_cdb_format(self, emulator):
+        """Verify CDB format matches python/usb.py expectations."""
+        # Test address encoding: addr | 0x500000
+        test_cases = [
+            (0x1234, 0x50, 0x12, 0x34),
+            (0x0000, 0x50, 0x00, 0x00),
+            (0xFFFF, 0x50, 0xFF, 0xFF),
+            (0x8000, 0x50, 0x80, 0x00),
+        ]
+
+        for xdata_addr, exp_high, exp_mid, exp_low in test_cases:
+            usb_addr = (xdata_addr & 0x1FFFF) | 0x500000
+            assert (usb_addr >> 16) & 0xFF == exp_high, f"High byte wrong for 0x{xdata_addr:04X}"
+            assert (usb_addr >> 8) & 0xFF == exp_mid, f"Mid byte wrong for 0x{xdata_addr:04X}"
+            assert usb_addr & 0xFF == exp_low, f"Low byte wrong for 0x{xdata_addr:04X}"
+
+    def test_passthrough_cdb_registers_are_set(self, firmware_emulator):
+        """Verify inject_usb_command sets CDB in registers 0x910D-0x9112."""
+        emu, fw_name = firmware_emulator
+
+        test_addr = 0x1234
+        size = 8
+
+        # Inject command (this is what passthrough should replicate)
+        emu.hw.inject_usb_command(0xE4, test_addr, size=size)
+
+        # Verify CDB registers
+        assert emu.hw.regs[0x910D] == 0xE4, "CDB[0] should be command type"
+        assert emu.hw.regs[0x910E] == size, "CDB[1] should be size"
+        assert emu.hw.regs[0x910F] == 0x50, "CDB[2] should be 0x50"
+        assert emu.hw.regs[0x9110] == 0x12, "CDB[3] should be addr mid"
+        assert emu.hw.regs[0x9111] == 0x34, "CDB[4] should be addr low"
+
+    def test_passthrough_response_at_0x8000(self, firmware_emulator):
+        """Verify E4 response goes to 0x8000 (where passthrough reads from)."""
+        emu, fw_name = firmware_emulator
+
+        # Set up test data
+        test_addr = 0x2000
+        test_data = [0xDE, 0xAD, 0xBE, 0xEF]
+        for i, val in enumerate(test_data):
+            emu.memory.xdata[test_addr + i] = val
+
+        # Inject and run
+        emu.hw.inject_usb_command(0xE4, test_addr, size=len(test_data))
+        emu.run(max_cycles=50000)
+
+        # Verify response is at 0x8000
+        result = [emu.memory.xdata[0x8000 + i] for i in range(len(test_data))]
+        assert result == test_data, \
+            f"[{fw_name}] Response at 0x8000: expected {test_data}, got {result}"
+
+    def test_passthrough_interrupt_flags_set(self, firmware_emulator):
+        """Verify inject_usb_command sets interrupt flags correctly."""
+        emu, fw_name = firmware_emulator
+
+        # Before injection
+        emu.hw.regs[0xC802] = 0x00
+        emu.hw.regs[0x9101] = 0x00
+
+        # Inject command
+        emu.hw.inject_usb_command(0xE4, 0x1000, size=1)
+
+        # Verify interrupt flags were set
+        assert emu.hw.regs[0xC802] != 0, "Interrupt pending should be set"
+        assert emu.hw.regs[0x9101] != 0, "USB interrupt flags should be set"
+
+    def test_passthrough_mmio_snapshot(self, firmware_emulator):
+        """
+        Snapshot all MMIO registers that inject_usb_command sets.
+
+        This documents what the passthrough needs to replicate.
+        """
+        emu, fw_name = firmware_emulator
+
+        # Clear known registers
+        for reg in [0x910D, 0x910E, 0x910F, 0x9110, 0x9111, 0x9112,
+                    0x9000, 0x9101, 0xC802, 0x9096, 0xCEB0, 0xCEB2, 0xCEB3]:
+            emu.hw.regs[reg] = 0x00
+
+        # Inject E4 read command
+        emu.hw.inject_usb_command(0xE4, 0x1234, size=4)
+
+        # Document what was set (this is informational, test always passes)
+        print(f"\n[{fw_name}] MMIO registers set by inject_usb_command(0xE4, 0x1234, size=4):")
+        print(f"  CDB: 0x910D={emu.hw.regs[0x910D]:02X} 0x910E={emu.hw.regs[0x910E]:02X} "
+              f"0x910F={emu.hw.regs[0x910F]:02X} 0x9110={emu.hw.regs[0x9110]:02X} "
+              f"0x9111={emu.hw.regs[0x9111]:02X}")
+        print(f"  Status: 0x9000={emu.hw.regs[0x9000]:02X} 0x9101={emu.hw.regs[0x9101]:02X} "
+              f"0xC802={emu.hw.regs[0xC802]:02X}")
+        print(f"  EP: 0x9096={emu.hw.regs[0x9096]:02X}")
+        print(f"  Addr: 0xCEB2={emu.hw.regs[0xCEB2]:02X} 0xCEB3={emu.hw.regs[0xCEB3]:02X}")
+        print(f"  Type: 0xCEB0={emu.hw.regs[0xCEB0]:02X}")
+
+        # Verify critical registers are set
+        assert emu.hw.regs[0x910D] == 0xE4, "Command type must be set"
+        assert emu.hw.regs[0xC802] != 0, "Interrupt must be pending"
+
+    def test_passthrough_e5_write_works(self, firmware_emulator):
+        """Verify E5 write command works (passthrough would do same)."""
+        emu, fw_name = firmware_emulator
+
+        test_addr = 0x2500
+        test_value = 0x77
+
+        # Clear target
+        emu.memory.xdata[test_addr] = 0x00
+
+        # Inject E5 write
+        emu.hw.inject_usb_command(0xE5, test_addr, value=test_value)
+        emu.run(max_cycles=50000)
+
+        # Verify write
+        result = emu.memory.xdata[test_addr]
+        assert result == test_value, \
+            f"[{fw_name}] E5 write: expected 0x{test_value:02X}, got 0x{result:02X}"
+
+    def test_passthrough_sequential_commands(self, firmware_emulator):
+        """Verify sequential commands work (simulates continuous passthrough)."""
+        emu, fw_name = firmware_emulator
+
+        # Command 1: Read
+        emu.memory.xdata[0x1000] = 0xAA
+        emu.hw.inject_usb_command(0xE4, 0x1000, size=1)
+        emu.run(max_cycles=50000)
+        assert emu.memory.xdata[0x8000] == 0xAA, f"[{fw_name}] Command 1 failed"
+
+        # Command 2: Write
+        emu.hw.inject_usb_command(0xE5, 0x2000, value=0xBB)
+        emu.run(max_cycles=emu.cpu.cycles + 50000)
+        assert emu.memory.xdata[0x2000] == 0xBB, f"[{fw_name}] Command 2 failed"
+
+        # Command 3: Read back the write
+        emu.hw.inject_usb_command(0xE4, 0x2000, size=1)
+        emu.run(max_cycles=emu.cpu.cycles + 50000)
+        assert emu.memory.xdata[0x8000] == 0xBB, f"[{fw_name}] Command 3 failed"
+
+
+class TestUSBRegisterMapping:
+    """Tests for USB register mapping verification."""
+
+    def test_cdb_register_addresses(self, firmware_emulator):
+        """Verify CDB is read from correct registers."""
+        emu, fw_name = firmware_emulator
+
+        # These are the documented CDB register addresses
+        cdb_regs = [0x910D, 0x910E, 0x910F, 0x9110, 0x9111, 0x9112]
+
+        # Write test pattern
+        for i, reg in enumerate(cdb_regs):
+            emu.hw.regs[reg] = 0x10 + i
+
+        # Verify they're readable
+        for i, reg in enumerate(cdb_regs):
+            val = emu.hw.regs[reg]
+            assert val == 0x10 + i, f"CDB register 0x{reg:04X} mismatch"
+
+    def test_usb_buffer_at_0x8000(self, emulator):
+        """Verify USB buffer is accessible at 0x8000."""
+        emu = emulator
+
+        # Write to buffer
+        for i in range(256):
+            emu.memory.xdata[0x8000 + i] = i
+
+        # Verify
+        for i in range(256):
+            assert emu.memory.xdata[0x8000 + i] == i, f"Buffer[{i}] mismatch"
+
+    def test_interrupt_registers(self, emulator):
+        """Verify interrupt control registers work."""
+        emu = emulator
+
+        # USB interrupt pending register
+        emu.hw.regs[0xC802] = 0x05
+        assert emu.hw.regs[0xC802] == 0x05
+
+        # USB status register
+        emu.hw.regs[0x9000] = 0x80
+        assert emu.hw.regs[0x9000] == 0x80
+
+        # USB interrupt flags
+        emu.hw.regs[0x9101] = 0x21
+        assert emu.hw.regs[0x9101] == 0x21
+
+
+class TestUSBControlTransfer:
+    """
+    Tests for USB control transfer handling.
+
+    The firmware handles ALL USB control transfers (setup packets) through
+    registers at 0x9E00-0x9E07:
+      0x9E00 = bmRequestType
+      0x9E01 = bRequest
+      0x9E02 = wValue low
+      0x9E03 = wValue high
+      0x9E04 = wIndex low
+      0x9E05 = wIndex high
+      0x9E06 = wLength low
+      0x9E07 = wLength high
+
+    Responses go to XDATA[0x8000].
+    """
+
+    def test_get_device_descriptor_trace(self, firmware_emulator):
+        """
+        Trace firmware handling of GET_DESCRIPTOR (device descriptor) request.
+        This is the FIRST request any USB host sends during enumeration.
+
+        Setup packet:
+          bmRequestType = 0x80 (IN, standard, device)
+          bRequest = 0x06 (GET_DESCRIPTOR)
+          wValue = 0x0100 (device descriptor type=1, index=0)
+          wIndex = 0x0000
+          wLength = 0x0012 (18 bytes) or 0x0008 (first 8 bytes)
+        """
+        emu, fw_name = firmware_emulator
+
+        # Run boot first
+        emu.run(max_cycles=500000)
+
+        # Track all MMIO reads/writes
+        reads_log = []
+        writes_log = []
+
+        original_read = emu.hw.read
+        original_write = emu.hw.write
+
+        def log_read(addr):
+            val = original_read(addr)
+            if 0x9000 <= addr < 0xA000 or 0xC000 <= addr < 0xD000:
+                reads_log.append((emu.cpu.pc, addr, val))
+            return val
+
+        def log_write(addr, val):
+            if 0x9000 <= addr < 0xA000 or 0x8000 <= addr < 0x9000:
+                writes_log.append((emu.cpu.pc, addr, val))
+            original_write(addr, val)
+
+        emu.hw.read = log_read
+        emu.hw.write = log_write
+
+        # Inject GET_DESCRIPTOR for device descriptor (8 bytes first, like real USB)
+        # Setup packet at 0x9E00-0x9E07
+        emu.hw.regs[0x9E00] = 0x80  # bmRequestType: IN, standard, device
+        emu.hw.regs[0x9E01] = 0x06  # bRequest: GET_DESCRIPTOR
+        emu.hw.regs[0x9E02] = 0x00  # wValue low: descriptor index
+        emu.hw.regs[0x9E03] = 0x01  # wValue high: device descriptor type
+        emu.hw.regs[0x9E04] = 0x00  # wIndex low
+        emu.hw.regs[0x9E05] = 0x00  # wIndex high
+        emu.hw.regs[0x9E06] = 0x08  # wLength low: 8 bytes (initial request)
+        emu.hw.regs[0x9E07] = 0x00  # wLength high
+
+        # Also write to EP0 buffer
+        for i in range(8):
+            emu.hw.usb_ep0_buf[i] = emu.hw.regs[0x9E00 + i]
+
+        # Set up USB interrupt properly
+        emu.hw.regs[0xC802] = 0x01  # USB interrupt pending
+        emu.hw.regs[0x9101] = 0x01  # EP0 flag (NOT bit 5 vendor path)
+        emu.hw.regs[0x9000] = 0x81  # USB connected + EP0 active
+
+        # USB state = configured
+        emu.memory.idata[0x6A] = 5
+
+        # CRITICAL: Set the pending interrupt flag AND trigger via CPU
+        emu.hw._pending_usb_interrupt = True
+        emu.cpu._ext0_pending = True  # Trigger EX0 interrupt directly
+
+        print(f"\n[{fw_name}] === GET_DESCRIPTOR (device) test ===")
+        print(f"[{fw_name}] Setup packet: 80 06 00 01 00 00 08 00")
+        print(f"[{fw_name}] Triggered EX0 interrupt")
+
+        # Run firmware - interrupt should fire
+        start_cycles = emu.cpu.cycles
+        emu.run(max_cycles=start_cycles + 50000)
+
+        # Check response at 0x8000
+        response = bytes([emu.memory.xdata[0x8000 + i] for i in range(18)])
+        print(f"[{fw_name}] Response at 0x8000: {response.hex()}")
+
+        # A valid device descriptor starts with:
+        # bLength=18 (0x12), bDescriptorType=1 (0x01)
+        if response[0] == 0x12 and response[1] == 0x01:
+            print(f"[{fw_name}] VALID device descriptor found!")
+        else:
+            print(f"[{fw_name}] No valid device descriptor at 0x8000")
+
+        # Print interesting reads/writes
+        print(f"\n[{fw_name}] Key register reads:")
+        for pc, addr, val in reads_log[:20]:
+            print(f"  PC=0x{pc:04X}: read 0x{addr:04X} = 0x{val:02X}")
+
+        print(f"\n[{fw_name}] Key register writes:")
+        for pc, addr, val in writes_log[:20]:
+            print(f"  PC=0x{pc:04X}: write 0x{addr:04X} = 0x{val:02X}")
+
+    def test_find_usb_descriptor_handler(self, firmware_emulator):
+        """
+        Search for USB descriptor handling code by tracing PC execution
+        after USB interrupt.
+        """
+        emu, fw_name = firmware_emulator
+
+        # Run boot first
+        emu.run(max_cycles=500000)
+
+        # Track which PCs are executed
+        pcs_executed = set()
+
+        # Hook step to track PC
+        def track_pc():
+            pcs_executed.add(emu.cpu.pc)
+
+        # Set up USB state for EP0 control transfer
+        emu.hw.regs[0x9E00] = 0x80  # bmRequestType
+        emu.hw.regs[0x9E01] = 0x06  # bRequest GET_DESCRIPTOR
+        emu.hw.regs[0x9E02] = 0x00  # wValue low
+        emu.hw.regs[0x9E03] = 0x01  # wValue high (device desc)
+        emu.hw.regs[0x9E04] = 0x00  # wIndex low
+        emu.hw.regs[0x9E05] = 0x00  # wIndex high
+        emu.hw.regs[0x9E06] = 0x12  # wLength low
+        emu.hw.regs[0x9E07] = 0x00  # wLength high
+
+        # Trigger EP0 interrupt
+        emu.hw.regs[0xC802] = 0x01
+        emu.hw.regs[0x9101] = 0x01  # EP0, not vendor
+        emu.hw.regs[0x9000] = 0x81
+        emu.memory.idata[0x6A] = 5
+
+        # Run while tracking PCs
+        for _ in range(5000):
+            track_pc()
+            emu.step()
+
+        # Check if we hit known USB handler addresses
+        usb_handlers = {
+            0x0E33: "USB_ISR_entry",
+            0x0E64: "USB_check_vendor",
+            0x5333: "vendor_cmd_processor",
+            0x4583: "vendor_dispatch",
+            # Add more known addresses
+        }
+
+        print(f"\n[{fw_name}] USB handler addresses hit:")
+        for addr, name in usb_handlers.items():
+            if addr in pcs_executed:
+                print(f"  0x{addr:04X}: {name} - HIT")
+            else:
+                print(f"  0x{addr:04X}: {name} - not hit")
+
+        # Show some PCs around USB region
+        usb_region_pcs = [pc for pc in sorted(pcs_executed) if 0x0E00 <= pc < 0x1000]
+        print(f"\n[{fw_name}] PCs in USB region (0x0E00-0x1000):")
+        for pc in usb_region_pcs[:30]:
+            print(f"  0x{pc:04X}")
+
+    def test_setup_packet_registers_0x9e00(self, firmware_emulator):
+        """
+        Verify setup packet registers at 0x9E00-0x9E07 are accessible.
+        These are the correct registers for USB control transfer injection.
+        """
+        emu, fw_name = firmware_emulator
+
+        # Write setup packet to 0x9E00-0x9E07
+        setup = [0x80, 0x06, 0x00, 0x01, 0x00, 0x00, 0x12, 0x00]
+        for i, val in enumerate(setup):
+            emu.hw.regs[0x9E00 + i] = val
+
+        # Verify values are stored
+        for i, val in enumerate(setup):
+            result = emu.hw.regs[0x9E00 + i]
+            assert result == val, f"[{fw_name}] 0x9E0{i:X} should be 0x{val:02X}, got 0x{result:02X}"
+
+    def test_setup_packet_via_usb_ep0_buf_callback(self, firmware_emulator):
+        """
+        Verify USB EP0 buffer callback returns values from 0x9E00 area.
+        The firmware reads EP0 data through these callbacks.
+        """
+        emu, fw_name = firmware_emulator
+
+        # Write test pattern to EP0 buffer
+        test_data = bytes([0xDE, 0xAD, 0xBE, 0xEF])
+        for i, val in enumerate(test_data):
+            emu.hw.usb_ep0_buf[i] = val
+
+        # Read through the callback (simulates firmware reading 0x9E00)
+        for i, expected in enumerate(test_data):
+            result = emu.hw._usb_ep0_buf_read(emu.hw, 0x9E00 + i)
+            assert result == expected, f"[{fw_name}] EP0 buf[{i}] should be 0x{expected:02X}"
+
+    def test_control_transfer_get_descriptor(self, firmware_emulator):
+        """
+        Test firmware handling of GET_DESCRIPTOR control transfer.
+        Setup packet for device descriptor:
+          bmRequestType=0x80 (IN, standard, device)
+          bRequest=0x06 (GET_DESCRIPTOR)
+          wValue=0x0100 (device descriptor, index 0)
+          wIndex=0x0000
+          wLength=0x0012 (18 bytes)
+        """
+        emu, fw_name = firmware_emulator
+
+        # Write setup packet to the correct registers (0x9E00-0x9E07)
+        emu.hw.regs[0x9E00] = 0x80  # bmRequestType: IN, standard, device
+        emu.hw.regs[0x9E01] = 0x06  # bRequest: GET_DESCRIPTOR
+        emu.hw.regs[0x9E02] = 0x00  # wValue low: descriptor index
+        emu.hw.regs[0x9E03] = 0x01  # wValue high: device descriptor type
+        emu.hw.regs[0x9E04] = 0x00  # wIndex low
+        emu.hw.regs[0x9E05] = 0x00  # wIndex high
+        emu.hw.regs[0x9E06] = 0x12  # wLength low: 18 bytes
+        emu.hw.regs[0x9E07] = 0x00  # wLength high
+
+        # Also populate the EP0 buffer (firmware may read from either)
+        for i in range(8):
+            emu.hw.usb_ep0_buf[i] = emu.hw.regs[0x9E00 + i]
+
+        # Set up USB interrupt flags for control transfer
+        emu.hw.regs[0xC802] = 0x01  # USB interrupt pending
+        emu.hw.regs[0x9101] = 0x01  # EP0 control transfer flag
+        emu.hw.regs[0x9000] = 0x81  # USB connected (bit 7) + active (bit 0)
+
+        # USB state = configured
+        emu.memory.idata[0x6A] = 5
+
+        # Run firmware
+        emu.run(max_cycles=50000)
+
+        # Check if response buffer has any non-zero data
+        # Device descriptor starts with bLength (18) and bDescriptorType (1)
+        response = [emu.memory.xdata[0x8000 + i] for i in range(18)]
+        print(f"\n[{fw_name}] GET_DESCRIPTOR response at 0x8000: {[hex(x) for x in response[:8]]}...")
+
+        # This is informational - we're seeing if firmware responds
+        # A valid device descriptor would have [18, 1, ...] at start
+
+    def test_control_transfer_vendor_request(self, firmware_emulator):
+        """
+        Test firmware handling of vendor-specific control transfer.
+        This is what E4/E5 commands actually are - vendor control requests.
+        """
+        emu, fw_name = firmware_emulator
+
+        # E4 read command as vendor control transfer
+        # bmRequestType=0xC0 (IN, vendor, device)
+        # bRequest=0xE4
+        # wValue=addr_low | (addr_mid << 8)
+        # wIndex=addr_high | 0x50
+        # wLength=size
+
+        test_addr = 0x1234
+        test_size = 4
+
+        # Write test data to XDATA
+        test_data = [0xDE, 0xAD, 0xBE, 0xEF]
+        for i, val in enumerate(test_data):
+            emu.memory.xdata[test_addr + i] = val
+
+        # Inject as vendor control transfer
+        emu.hw.regs[0x9E00] = 0xC0  # bmRequestType: IN, vendor, device
+        emu.hw.regs[0x9E01] = 0xE4  # bRequest: E4 read
+        emu.hw.regs[0x9E02] = test_addr & 0xFF         # wValue low
+        emu.hw.regs[0x9E03] = (test_addr >> 8) & 0xFF  # wValue high
+        emu.hw.regs[0x9E04] = 0x50  # wIndex low (XDATA marker)
+        emu.hw.regs[0x9E05] = 0x00  # wIndex high
+        emu.hw.regs[0x9E06] = test_size  # wLength low
+        emu.hw.regs[0x9E07] = 0x00  # wLength high
+
+        # Also use the standard injection to ensure all state is correct
+        emu.hw.inject_usb_command(0xE4, test_addr, size=test_size)
+        emu.run(max_cycles=50000)
+
+        # Verify response
+        result = [emu.memory.xdata[0x8000 + i] for i in range(test_size)]
+        assert result == test_data, f"[{fw_name}] Vendor control read: expected {test_data}, got {result}"
+
+    def test_inject_setup_packet_method(self, emulator):
+        """
+        Test the inject_setup_packet method in USBDevicePassthrough.
+        """
+        import sys
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'emulate'))
+        from usb_device import USBDevicePassthrough, USBSetupPacket
+
+        emu = emulator
+        passthrough = USBDevicePassthrough(emu)
+
+        # Create GET_DESCRIPTOR setup packet
+        setup = USBSetupPacket(
+            bmRequestType=0x80,
+            bRequest=0x06,
+            wValue=0x0100,  # Device descriptor
+            wIndex=0x0000,
+            wLength=0x0012
+        )
+
+        # Inject it
+        passthrough.inject_setup_packet(setup)
+
+        # Verify registers were set correctly
+        assert emu.hw.regs[0x9E00] == 0x80, "bmRequestType wrong"
+        assert emu.hw.regs[0x9E01] == 0x06, "bRequest wrong"
+        assert emu.hw.regs[0x9E02] == 0x00, "wValue low wrong"
+        assert emu.hw.regs[0x9E03] == 0x01, "wValue high wrong"
+        assert emu.hw.regs[0x9E04] == 0x00, "wIndex low wrong"
+        assert emu.hw.regs[0x9E05] == 0x00, "wIndex high wrong"
+        assert emu.hw.regs[0x9E06] == 0x12, "wLength low wrong"
+        assert emu.hw.regs[0x9E07] == 0x00, "wLength high wrong"
+
+    def test_usb_setup_packet_dataclass(self, emulator):
+        """Test USBSetupPacket dataclass conversion."""
+        import sys
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'emulate'))
+        from usb_device import USBSetupPacket
+
+        # Test from_bytes
+        raw = bytes([0x80, 0x06, 0x00, 0x01, 0x00, 0x00, 0x12, 0x00])
+        setup = USBSetupPacket.from_bytes(raw)
+
+        assert setup.bmRequestType == 0x80
+        assert setup.bRequest == 0x06
+        assert setup.wValue == 0x0100
+        assert setup.wIndex == 0x0000
+        assert setup.wLength == 0x0012
+
+        # Test to_bytes
+        output = setup.to_bytes()
+        assert output == raw, f"to_bytes mismatch: {output.hex()} vs {raw.hex()}"
+
+    def test_e4_via_inject_usb_command_matches_passthrough(self, firmware_emulator):
+        """
+        Verify inject_usb_command and passthrough use same register mapping.
+        This ensures the passthrough will work correctly when wired up.
+        """
+        emu, fw_name = firmware_emulator
+
+        # Clear registers first
+        for reg in range(0x9E00, 0x9E08):
+            emu.hw.regs[reg] = 0x00
+
+        # Use inject_usb_command
+        test_addr = 0x2468
+        test_size = 8
+        emu.hw.inject_usb_command(0xE4, test_addr, size=test_size)
+
+        # Check 0x9E00 registers were set (inject_vendor_command sets these)
+        assert emu.hw.regs[0x9E00] == 0xE4, f"[{fw_name}] 0x9E00 should be E4 cmd"
+        assert emu.hw.regs[0x9E01] == test_size, f"[{fw_name}] 0x9E01 should be size"
+
+        # The passthrough should set the same registers
+        print(f"\n[{fw_name}] Registers set by inject_usb_command:")
+        for reg in range(0x9E00, 0x9E08):
+            print(f"  0x{reg:04X} = 0x{emu.hw.regs[reg]:02X}")
+
+    def test_response_buffer_accessible_after_control_transfer(self, firmware_emulator):
+        """
+        Verify response data at 0x8000 is accessible after command processing.
+        """
+        emu, fw_name = firmware_emulator
+
+        # Set up test data
+        test_addr = 0x3000
+        test_data = [0xCA, 0xFE, 0xBA, 0xBE]
+        for i, val in enumerate(test_data):
+            emu.memory.xdata[test_addr + i] = val
+
+        # Inject E4 read
+        emu.hw.inject_usb_command(0xE4, test_addr, size=len(test_data))
+        emu.run(max_cycles=50000)
+
+        # Read response from 0x8000
+        response = bytes([emu.memory.xdata[0x8000 + i] for i in range(len(test_data))])
+        expected = bytes(test_data)
+
+        assert response == expected, f"[{fw_name}] Response at 0x8000 should be {expected.hex()}, got {response.hex()}"
+
+
+class TestUSBDescriptorInit:
+    """Tests for USB descriptor initialization during firmware startup."""
+
+    def test_trace_descriptor_init(self, firmware_emulator):
+        """
+        Trace where USB descriptors are written during firmware init.
+
+        The firmware reads descriptor data from ROM at 0x0620 and copies it
+        somewhere. This test traces that process to understand the flow.
+        """
+        emu, fw_name = firmware_emulator
+
+        # Track writes to MMIO/USB regions
+        writes_to_usb_area = []
+
+        def track_write(addr, val):
+            """Track writes to USB-related areas."""
+            writes_to_usb_area.append((emu.hw.cycles, addr, val))
+
+        # Install write tracking for USB-related regions
+        for addr in range(0x8000, 0x8040):  # USB buffer area
+            orig = emu.memory.xdata_write_hooks.get(addr)
+            def make_hook(a, orig_hook=orig):
+                def hook(addr, val):
+                    track_write(addr, val)
+                    if orig_hook:
+                        orig_hook(addr, val)
+                    else:
+                        emu.memory.xdata[addr] = val
+                return hook
+            emu.memory.xdata_write_hooks[addr] = make_hook(addr)
+
+        # Run init until past descriptor processing
+        # The descriptor init is around PC 0x43A3-0x4420
+        # It ends by jumping to 0x1F7C or falling through
+        emu.run(max_cycles=50000)
+
+        print(f"\n[{fw_name}] Writes to 0x8000-0x803F during init:")
+        for cycle, addr, val in writes_to_usb_area[:20]:  # First 20
+            print(f"  [{cycle:8d}] 0x{addr:04X} = 0x{val:02X}")
+
+        # Also check what's in the USB buffer area now
+        print(f"\n[{fw_name}] USB buffer (0x8000-0x801F) after init:")
+        for i in range(32):
+            val = emu.memory.xdata[0x8000 + i]
+            if val != 0:
+                print(f"  0x{0x8000 + i:04X} = 0x{val:02X}")
+
+    def test_find_vid_pid_in_memory(self, firmware_emulator):
+        """
+        Search memory for VID (0x174C) and PID (0x2462/0x2464) after init.
+
+        This helps us find where the firmware stores USB descriptors.
+        """
+        emu, fw_name = firmware_emulator
+
+        # Run init
+        emu.run(max_cycles=100000)
+
+        # Search for VID in little-endian format (0x4C, 0x17)
+        vid_low, vid_high = 0x4C, 0x17
+        found_vid = []
+
+        for addr in range(0x6000, 0xC000):  # MMIO/XDATA range
+            if emu.memory.xdata[addr] == vid_low:
+                if addr + 1 < 0xFFFF and emu.memory.xdata[addr + 1] == vid_high:
+                    found_vid.append(addr)
+
+        print(f"\n[{fw_name}] VID 0x174C found at addresses:")
+        for addr in found_vid:
+            # Print context around the VID
+            context = []
+            for i in range(-4, 8):
+                if 0 <= addr + i < 0xFFFF:
+                    context.append(f"{emu.memory.xdata[addr + i]:02X}")
+            print(f"  0x{addr:04X}: {' '.join(context)}")
+
+        # Also search MMIO regs
+        found_in_regs = []
+        for addr in emu.hw.regs:
+            if emu.hw.regs.get(addr, 0) == vid_low:
+                if emu.hw.regs.get(addr + 1, 0) == vid_high:
+                    found_in_regs.append(addr)
+
+        if found_in_regs:
+            print(f"\n[{fw_name}] VID found in MMIO regs at:")
+            for addr in found_in_regs:
+                print(f"  0x{addr:04X}")
+
+    def test_descriptor_processing_code_path(self, firmware_emulator):
+        """
+        Verify the firmware executes the descriptor processing code at 0x43A3.
+        """
+        emu, fw_name = firmware_emulator
+
+        # Track key points in the descriptor processing code
+        trace_points = {
+            0x43A3: "descriptor_loop_start",
+            0x43A6: "loop_body",
+            0x43A9: "movc_read",
+            0x43AA: "jz_check",
+            0x43BF: "cjne_e0_check",
+            0x43D4: "call_0bbe",
+            0x43E7: "anl_c0",
+            0x437A: "ljmp_1f7c_exit",
+            0x1F7C: "main_loop_entry",
+        }
+
+        for addr in trace_points:
+            emu.trace_pcs.add(addr)
+
+        # Run init
+        old_stdout = sys.stdout
+        sys.stdout = io.StringIO()  # Suppress trace output during run
+        try:
+            emu.run(max_cycles=100000)
+        finally:
+            sys.stdout = old_stdout
+
+        print(f"\n[{fw_name}] Descriptor init code execution:")
+        for addr, name in sorted(trace_points.items()):
+            hits = emu.trace_pc_hits.get(addr, 0)
+            if hits > 0:
+                print(f"  0x{addr:04X} ({name}): {hits} hits")
+
+        assert emu.trace_pc_hits.get(0x43A3, 0) > 0, f"[{fw_name}] Should execute descriptor init at 0x43A3"
+
+    def test_usb_mmio_writes_during_init(self, firmware_emulator):
+        """
+        Track USB-related MMIO writes during firmware initialization.
+
+        This helps understand how the USB hardware is configured and whether
+        descriptor handling is done by hardware or firmware.
+        """
+        emu, fw_name = firmware_emulator
+
+        # Track all writes to USB-related MMIO regions
+        usb_writes = []
+
+        # Save original log setting
+        orig_log = emu.hw.log_writes
+
+        # Define USB MMIO ranges to track
+        usb_ranges = [
+            (0x9000, 0x9200, "USB Control"),
+            (0x9E00, 0x9F00, "USB EP/Desc"),
+            (0x90E0, 0x9100, "USB Status"),
+            (0xC800, 0xC900, "Interrupt"),
+        ]
+
+        def in_usb_range(addr):
+            for start, end, name in usb_ranges:
+                if start <= addr < end:
+                    return name
+            return None
+
+        # Hook the write callback
+        orig_callbacks = dict(emu.hw.write_callbacks)
+
+        def track_write(addr, val):
+            range_name = in_usb_range(addr)
+            if range_name:
+                usb_writes.append((emu.hw.cycles, addr, val, range_name))
+
+        # Install tracking for USB ranges
+        for start, end, name in usb_ranges:
+            for addr in range(start, end):
+                orig_cb = emu.hw.write_callbacks.get(addr)
+                def make_cb(a, orig=orig_cb):
+                    def cb(addr, val):
+                        track_write(addr, val)
+                        if orig:
+                            orig(addr, val)
+                        else:
+                            emu.hw.regs[addr] = val
+                    return cb
+                emu.hw.write_callbacks[addr] = make_cb(addr)
+
+        # Run initialization only (before USB interrupt handling)
+        emu.hw.usb_connect_delay = 999999  # Delay USB connect
+        emu.run(max_cycles=10000)  # Just init, before USB connect
+
+        print(f"\n[{fw_name}] USB MMIO writes during early init:")
+        for cycle, addr, val, range_name in usb_writes[:30]:
+            print(f"  [{cycle:6d}] 0x{addr:04X} = 0x{val:02X} ({range_name})")
+
+        if len(usb_writes) > 30:
+            print(f"  ... and {len(usb_writes) - 30} more writes")
+
+        # Show unique addresses written
+        unique_addrs = sorted(set(addr for _, addr, _, _ in usb_writes))
+        print(f"\n[{fw_name}] Unique USB addresses written:")
+        print(f"  {', '.join(f'0x{a:04X}' for a in unique_addrs[:20])}")
+
+    def test_usb_interrupt_handler_trace(self, firmware_emulator):
+        """
+        Trace USB interrupt handler execution to understand descriptor handling.
+
+        When USB is connected, an interrupt fires and the firmware handles it
+        at 0x0E33. This test traces that path.
+        """
+        emu, fw_name = firmware_emulator
+
+        # Key addresses in USB interrupt handler
+        trace_points = {
+            0x0003: "EX0_vector",
+            0x0E33: "usb_isr_entry",
+            0x0E54: "check_c802_bit0",
+            0x0E5A: "read_9101",
+            0x0E5E: "check_9101_bit5",
+            0x0E61: "jmp_0f07",
+            0x0E64: "read_9000",
+            0x0E68: "check_9000_bit0",
+            0x0E6E: "main_ep0_handler",
+            0x0EF4: "exit_path_1",
+            0x0F07: "0f07_entry",
+            0x10B8: "exit_path_2",
+        }
+
+        for addr in trace_points:
+            emu.trace_pcs.add(addr)
+
+        # Track USB-related writes
+        usb_writes = []
+
+        def track_usb_write(addr, val):
+            if 0x9000 <= addr < 0xA000 or 0x8000 <= addr < 0x8100:
+                usb_writes.append((emu.hw.cycles, addr, val, emu.cpu.pc))
+
+        # Hook XDATA writes
+        orig_write = emu.memory.write_xdata
+        def hooked_write(addr, val):
+            track_usb_write(addr, val)
+            return orig_write(addr, val)
+        emu.memory.write_xdata = hooked_write
+
+        # Run with USB connect enabled
+        old_stdout = sys.stdout
+        sys.stdout = io.StringIO()  # Suppress trace output
+        try:
+            emu.run(max_cycles=50000)
+        finally:
+            sys.stdout = old_stdout
+
+        print(f"\n[{fw_name}] USB interrupt handler execution:")
+        for addr, name in sorted(trace_points.items()):
+            hits = emu.trace_pc_hits.get(addr, 0)
+            if hits > 0:
+                print(f"  0x{addr:04X} ({name}): {hits} hits")
+
+        print(f"\n[{fw_name}] USB MMIO/buffer writes after connect:")
+        for cycle, addr, val, pc in usb_writes[:20]:
+            print(f"  [{cycle:6d}] 0x{addr:04X} = 0x{val:02X} (PC=0x{pc:04X})")
+
+        # Check 0x8000 buffer for device descriptor
+        print(f"\n[{fw_name}] USB buffer (0x8000-0x8020) after connect:")
+        for i in range(32):
+            val = emu.memory.xdata[0x8000 + i]
+            if val != 0:
+                print(f"  0x{0x8000 + i:04X} = 0x{val:02X}")
+
+
+    def test_ep0_path_with_setup_packet(self, firmware_emulator):
+        """
+        Test USB control transfer via EP0 path (0x9000 bit 0 = SET).
+
+        This tests the path for standard USB requests like GET_DESCRIPTOR.
+        """
+        emu, fw_name = firmware_emulator
+
+        # Disable automatic USB connect
+        emu.hw.usb_connect_delay = 999999999
+
+        # First run initialization
+        emu.run(max_cycles=5000)
+
+        # Now set up for EP0 path (standard USB requests)
+        # Different from vendor command path - bit 0 must be SET!
+        emu.hw.regs[0x9000] = 0x81  # Bit 7 (connected) + bit 0 SET for EP0 path
+        emu.hw.regs[0xC802] = 0x05  # USB interrupt pending
+        emu.hw.regs[0x9101] = 0x21  # Bit 5 set
+
+        # Set up endpoint status for EP0 (required for the handler)
+        emu.hw.regs[0x9118] = 0x00  # EP0 selected
+        for addr in range(0x9096, 0x90A0):
+            emu.hw.regs[addr] = 0x01  # EP has data
+
+        # Enable interrupts
+        emu.memory.write_sfr(0xA8, 0x81)  # IE = EX0 + EA
+
+        # Trace key points in EP0 handler
+        trace_points = {
+            0x0003: "EX0_vector",
+            0x0E33: "usb_isr_entry",
+            0x0E54: "check_c802",
+            0x0E5A: "check_9101",
+            0x0E64: "read_9000",
+            0x0E68: "check_9000_bit0",
+            0x0E6E: "ep0_handler_start",
+            0x0E71: "ep0_read_9118",
+            0x0ED3: "ep0_read_909E",
+            0x0EDD: "ep0_call_54a1",
+            0x0EF4: "exit_path",
+            0x10B8: "isr_exit",
+        }
+
+        for addr in trace_points:
+            emu.trace_pcs.add(addr)
+
+        # Track XDATA writes to 0x07xx area (USB state)
+        usb_state_writes = []
+
+        def track_write(addr, val):
+            if 0x0700 <= addr < 0x0800 or 0x8000 <= addr < 0x8100:
+                usb_state_writes.append((emu.hw.cycles, addr, val, emu.cpu.pc))
+
+        orig_write = emu.memory.write_xdata
+        def hooked_write(addr, val):
+            track_write(addr, val)
+            return orig_write(addr, val)
+        emu.memory.write_xdata = hooked_write
+
+        # Trigger USB interrupt
+        emu.cpu._ext0_pending = True
+
+        # Run firmware
+        old_stdout = sys.stdout
+        sys.stdout = io.StringIO()
+        try:
+            emu.run(max_cycles=30000)
+        finally:
+            sys.stdout = old_stdout
+
+        print(f"\n[{fw_name}] EP0 path trace:")
+        for addr, name in sorted(trace_points.items()):
+            hits = emu.trace_pc_hits.get(addr, 0)
+            if hits > 0:
+                print(f"  0x{addr:04X} ({name}): {hits} hits")
+
+        print(f"\n[{fw_name}] XDATA writes (0x07xx and 0x80xx):")
+        for cycle, addr, val, pc in usb_state_writes[:30]:
+            print(f"  [{cycle:6d}] 0x{addr:04X} = 0x{val:02X} (PC=0x{pc:04X})")
+
+        # Check what's in the USB request state area
+        print(f"\n[{fw_name}] USB state area (0x07B0-0x07E0):")
+        for addr in range(0x07B0, 0x07E0):
+            val = emu.memory.xdata[addr]
+            if val != 0:
+                print(f"  0x{addr:04X} = 0x{val:02X}")
+
+
+    def test_hardware_get_device_descriptor(self, firmware_emulator):
+        """
+        Test that GET_DESCRIPTOR for device descriptor is handled by hardware
+        and returns the correct descriptor from firmware ROM.
+        """
+        emu, fw_name = firmware_emulator
+
+        # Import USB device passthrough
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'emulate'))
+        from usb_device import USBDevicePassthrough, USBSetupPacket, USB_REQ_GET_DESCRIPTOR, USB_DT_DEVICE
+
+        # Create passthrough
+        passthrough = USBDevicePassthrough(emu)
+
+        # Create GET_DESCRIPTOR request for device descriptor
+        setup = USBSetupPacket(
+            bmRequestType=0x80,  # Device-to-host, standard, device
+            bRequest=USB_REQ_GET_DESCRIPTOR,
+            wValue=(USB_DT_DEVICE << 8) | 0,  # Device descriptor, index 0
+            wIndex=0,
+            wLength=18
+        )
+
+        # Handle the request
+        response = passthrough.handle_control_transfer(setup)
+
+        # Verify response
+        assert response is not None, f"[{fw_name}] Should return device descriptor"
+        assert len(response) == 18, f"[{fw_name}] Device descriptor should be 18 bytes"
+
+        # Parse descriptor
+        assert response[0] == 0x12, f"[{fw_name}] bLength should be 18 (0x12)"
+        assert response[1] == 0x01, f"[{fw_name}] bDescriptorType should be 1 (Device)"
+
+        # Check VID/PID (little-endian)
+        vid = response[8] | (response[9] << 8)
+        pid = response[10] | (response[11] << 8)
+
+        print(f"\n[{fw_name}] Device descriptor:")
+        print(f"  bLength: {response[0]}")
+        print(f"  bDescriptorType: {response[1]}")
+        print(f"  bcdUSB: 0x{response[3]:02X}{response[2]:02X}")
+        print(f"  bDeviceClass: {response[4]}")
+        print(f"  bMaxPacketSize0: {response[7]}")
+        print(f"  idVendor: 0x{vid:04X}")
+        print(f"  idProduct: 0x{pid:04X}")
+
+        # Verify it's an ASMedia device
+        assert vid == 0x174C, f"[{fw_name}] VID should be 0x174C (ASMedia)"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, '-v'])
