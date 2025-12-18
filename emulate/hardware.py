@@ -513,7 +513,6 @@ class USBController:
         self.hw.usb_ep0_fifo.clear()
         self.hw.usb_92c2_read_count = 0  # Reset for ISR->main loop timing
         self.hw.usb_ce89_read_count = 0  # Reset DMA state machine for new transfer
-        self.hw._rom_dma_complete = False  # Reset ROM DMA flag for new transfer
 
         # Check if this is a standard request (bmRequestType bits 6:5 = 00)
         request_type = bmRequestType & 0x60
@@ -722,6 +721,11 @@ class HardwareState:
     # the response to the USB buffer. See "USB Descriptor Handling Philosophy" above.
     usb_ep0_response: bytearray = field(default_factory=bytearray)  # Response data for host
     usb_transfer_complete: bool = False  # Set when firmware signals transfer complete
+
+    # Config descriptor capture - firmware writes config descriptor to 0x9E00 but then
+    # corrupts it before DMA. Capture the valid descriptor when written.
+    usb_captured_config_desc: bytearray = field(default_factory=bytearray)
+    usb_capture_config_active: bool = False  # True when we're capturing config desc writes
 
     # PCIe DMA state
     pcie_dma_pending: bool = False  # DMA operation in progress
@@ -960,6 +964,7 @@ class HardwareState:
         # USB Endpoint 0 buffer (0x9E00-0x9E3F)
         for addr in range(0x9E00, 0x9E40):
             self.read_callbacks[addr] = self._usb_ep0_buf_read
+            self.write_callbacks[addr] = self._usb_ep0_buf_write
 
         # USB EP0 CSR (0x9E10)
         self.read_callbacks[0x9E10] = self._usb_ep0_csr_read
@@ -1827,6 +1832,48 @@ class HardwareState:
             return self.usb_ep0_buf[offset]
         return 0x00
 
+    def _usb_ep0_buf_write(self, hw: 'HardwareState', addr: int, value: int):
+        """Write to USB EP0 buffer (0x9E00-0x9E3F).
+
+        This captures config descriptor writes. The firmware writes the config
+        descriptor to 0x9E00, but then corrupts it before DMA. We capture the
+        FIRST write to each offset - later overwrites are ignored.
+        """
+        self.regs[addr] = value
+        offset = addr - 0x9E00
+
+        # Track which bytes have been captured (to ignore later overwrites)
+        if not hasattr(self, '_usb_config_captured_offsets'):
+            self._usb_config_captured_offsets = set()
+
+        # Check for start of config descriptor (bLength=0x09, bDescriptorType=0x02)
+        if offset == 0 and value == 0x09:
+            # Might be config descriptor - start capturing
+            self.usb_captured_config_desc = bytearray(256)
+            self.usb_captured_config_desc[0] = value
+            self.usb_capture_config_active = True
+            self._usb_config_captured_offsets = {0}
+        elif offset == 1 and self.usb_capture_config_active:
+            if value == 0x02 and 1 not in self._usb_config_captured_offsets:
+                # Confirmed config descriptor (bDescriptorType = 2)
+                self.usb_captured_config_desc[1] = value
+                self._usb_config_captured_offsets.add(1)
+            elif value != 0x02:
+                # Not a config descriptor, stop capturing
+                self.usb_capture_config_active = False
+                self.usb_captured_config_desc = bytearray()
+                self._usb_config_captured_offsets = set()
+        elif self.usb_capture_config_active and 2 <= offset < 256:
+            # Only capture first write to each offset (ignore later corruptions)
+            if offset not in self._usb_config_captured_offsets:
+                self.usb_captured_config_desc[offset] = value
+                self._usb_config_captured_offsets.add(offset)
+        elif offset == 0 and value != 0x09:
+            # Different descriptor or setup packet - stop capturing
+            if self.usb_capture_config_active:
+                # Keep the captured data but mark capture as complete
+                self.usb_capture_config_active = False
+
     def _usb_ep0_csr_read(self, hw: 'HardwareState', addr: int) -> int:
         """Read USB EP0 CSR - check if command pending."""
         # Process next command when firmware reads CSR
@@ -1927,11 +1974,6 @@ class HardwareState:
             #   0x9004 = transfer length
             # We DMA from the firmware-specified address to USB buffer at 0x8000
 
-            # Skip if ROM DMA was already done for this request (prevents overwriting)
-            if getattr(self, '_rom_dma_complete', False):
-                print(f"[{self.cycles:8d}] [USB] Skipping redundant DMA (ROM DMA already complete)")
-                return
-
             # Read DMA source address from firmware-configured registers
             dma_addr_hi = self.regs.get(0x905B, 0)
             dma_addr_lo = self.regs.get(0x905C, 0)
@@ -1940,77 +1982,51 @@ class HardwareState:
             # Read transfer length from firmware-configured register
             dma_len = self.regs.get(0x9004, 0)
             if dma_len == 0:
-                # Try to get wLength from the pending descriptor request
-                usb_ctrl = self.usb_controller
-                if usb_ctrl and hasattr(usb_ctrl, 'pending_descriptor_request') and usb_ctrl.pending_descriptor_request:
+                # Fallback: use stored wLength from pending descriptor request
+                # (can't read from 0x9E06-0x9E07 because firmware overwrote with descriptor data)
+                usb_ctrl = getattr(self, 'usb_controller', None)
+                if usb_ctrl and usb_ctrl.pending_descriptor_request:
                     dma_len = usb_ctrl.pending_descriptor_request.get('length', 64)
                 else:
-                    # Fallback: read wLength from setup packet at 0x9E06-0x9E07
-                    wlen_lo = self.regs.get(0x9E06, 0)
-                    wlen_hi = self.regs.get(0x9E07, 0)
-                    dma_len = (wlen_hi << 8) | wlen_lo
-                    if dma_len == 0:
+                    # Last resort: read bLength from first byte of descriptor at 0x9E00
+                    # This works for single descriptors like device/string
+                    bLength = self.regs.get(0x9E00, 0)
+                    if 2 <= bLength <= 255:
+                        dma_len = bLength
+                    else:
                         dma_len = 64  # Default max packet size
 
             print(f"[{self.cycles:8d}] [USB] Descriptor DMA trigger (0x9092=0x01): src=0x{dma_src_addr:04X} len={dma_len}")
 
             if self.memory and dma_src_addr > 0 and dma_len > 0:
-                # Read from code ROM at the firmware-specified address
+                # Firmware specified a code ROM address - DMA from there
                 desc_data = bytes(self.memory.code[dma_src_addr:dma_src_addr + dma_len])
-
-                if len(desc_data) > 0:
-                    # Copy to USB buffer at 0x8000
-                    for i, b in enumerate(desc_data):
-                        self.memory.xdata[0x8000 + i] = b
-                    print(f"[{self.cycles:8d}] [USB] DMA'd {len(desc_data)} bytes from code 0x{dma_src_addr:04X} to 0x8000: {desc_data[:min(32, len(desc_data))].hex()}")
-                else:
-                    print(f"[{self.cycles:8d}] [USB] WARNING: No data at code ROM address 0x{dma_src_addr:04X}")
-            elif dma_src_addr == 0:
-                # Firmware didn't set 0x905B/0x905C - need to determine DMA source
-                # Check what type of descriptor was requested from the pending request
-                usb_ctrl = self.usb_controller
+                for i, b in enumerate(desc_data):
+                    self.memory.xdata[0x8000 + i] = b
+                print(f"[{self.cycles:8d}] [USB] DMA'd {len(desc_data)} bytes from code 0x{dma_src_addr:04X} to 0x8000: {desc_data[:min(32, len(desc_data))].hex()}")
+            elif dma_src_addr == 0 and dma_len > 0:
+                # Firmware set src to 0 - DMA from EP0 buffer at 0x9E00 where firmware wrote data
+                # Check if we have captured config descriptor (firmware writes it but then corrupts)
+                usb_ctrl = getattr(self, 'usb_controller', None)
                 desc_type = None
-                if usb_ctrl and hasattr(usb_ctrl, 'pending_descriptor_request') and usb_ctrl.pending_descriptor_request:
+                if usb_ctrl and usb_ctrl.pending_descriptor_request:
                     desc_type = usb_ctrl.pending_descriptor_request.get('type', None)
 
-                # Known descriptor ROM locations for large descriptors
-                # The firmware's 0x9E00 buffer can only hold ~64 bytes, but large descriptors
-                # like BOS (172 bytes) need to be DMA'd directly from ROM
-                # Use USB speed to select correct config descriptor:
-                usb_speed = getattr(usb_ctrl, 'usb_speed', 1) if usb_ctrl else 1
-                ROM_DESC_LOCATIONS = {
-                    0x0F: 0x59A1,  # BOS descriptor (172 bytes)
-                    0x02: 0x58CF if usb_speed >= 2 else 0x5948,  # SS config (44b) or HS config (32b)
-                }
-
-                # For large descriptors (> 64 bytes) or config descriptors (firmware doesn't populate), use ROM-based DMA
-                if desc_type in ROM_DESC_LOCATIONS and (dma_len > 64 or desc_type == 0x02):
-                    rom_addr = ROM_DESC_LOCATIONS[desc_type]
-                    desc_data = bytes(self.memory.code[rom_addr:rom_addr + dma_len])
-                    for i, b in enumerate(desc_data):
-                        self.memory.xdata[0x8000 + i] = b
-                    print(f"[{self.cycles:8d}] [USB] DMA'd {dma_len} bytes from ROM 0x{rom_addr:04X} to 0x8000 (type=0x{desc_type:02X}): {desc_data[:min(32, dma_len)].hex()}")
-                    # Mark ROM DMA complete to prevent subsequent DMA from 0x9E00 overwriting
-                    self._rom_dma_complete = True
+                if desc_type == 0x02 and len(self.usb_captured_config_desc) >= dma_len:
+                    # Use captured config descriptor (firmware corrupts 0x9E00 before DMA)
+                    desc_data = bytes(self.usb_captured_config_desc[:dma_len])
+                    print(f"[{self.cycles:8d}] [USB] Using captured config descriptor ({dma_len} bytes)")
                 else:
-                    # DMA from USB EP0 buffer at 0x9E00
-                    # The firmware copies descriptor data to 0x9E00 via the 0xB3FC function
+                    # Use current 0x9E00 buffer content
                     desc_data = bytes([self.regs.get(0x9E00 + i, 0) for i in range(dma_len)])
 
-                    # Check if there's valid descriptor data at 0x9E00 (first byte is length)
-                    if desc_data[0] > 0 and desc_data[0] <= dma_len:
-                        # Copy to USB buffer at 0x8000
-                        for i, b in enumerate(desc_data):
-                            self.memory.xdata[0x8000 + i] = b
-                        print(f"[{self.cycles:8d}] [USB] DMA'd {dma_len} bytes from EP0 buffer 0x9E00 to 0x8000: {desc_data[:min(32, dma_len)].hex()}")
-                    else:
-                        print(f"[{self.cycles:8d}] [USB] WARNING: No valid descriptor at 0x9E00 (first byte=0x{desc_data[0]:02X})")
+                for i, b in enumerate(desc_data):
+                    self.memory.xdata[0x8000 + i] = b
+                print(f"[{self.cycles:8d}] [USB] DMA'd {dma_len} bytes from EP0 buffer 0x9E00 to 0x8000: {desc_data[:min(32, dma_len)].hex()}")
 
-            # Clear the pending request if there is one
-            usb_ctrl = self.usb_controller
-            if usb_ctrl and hasattr(usb_ctrl, 'pending_descriptor_request'):
-                usb_ctrl.pending_descriptor_request = None
             self.usb_control_transfer_active = False
+            # Clear captured config descriptor after use
+            self.usb_captured_config_desc = bytearray()
 
         elif value == 0x04:
             # DMA trigger - read length from 0x9003-0x9004
