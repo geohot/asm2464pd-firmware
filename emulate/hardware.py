@@ -69,22 +69,30 @@ class USBController:
         # Pending descriptor request from GET_DESCRIPTOR
         self.pending_descriptor_request = None
 
-    def connect(self):
+    def connect(self, speed: int = 2):
         """
         Simulate USB cable connection via MMIO registers.
 
         This sets the initial MMIO state that triggers USB enumeration
         in the firmware. The firmware will progress through states 0→5.
+
+        Args:
+            speed: USB speed mode:
+                0 = Full Speed (USB 1.x, 12 Mbps)
+                1 = High Speed (USB 2.0, 480 Mbps)
+                2 = SuperSpeed (USB 3.x, 5 Gbps)
+                3 = SuperSpeed+ (USB 3.1+, 10+ Gbps)
         """
         self.state = USBState.ATTACHED
         self.enumeration_step = 1
+        self.usb_speed = speed
 
         # USB connection status registers
         # NOTE: 0x9000 bit 0 must be SET to enter USB state machine at 0x0E6E
         # At ISR 0x0E68: if bit 0 SET, jump to USB handling at 0x0E6E
         self.hw.regs[0x9000] = 0x81  # Bit 7 (connected), bit 0 SET for USB handling
-        self.hw.regs[0x90E0] = 0x02  # USB3 speed
-        self.hw.regs[0x9100] = 0x02  # USB link active
+        self.hw.regs[0x90E0] = speed  # USB speed
+        self.hw.regs[0x9100] = speed  # USB link active with speed
         self.hw.regs[0x9105] = 0xFF  # PHY active
         # USB state indicator (0x9118):
         # At ISR 0x0E71, value is used as index into table at 0x5AC9
@@ -111,6 +119,18 @@ class USBController:
         # When state 0x0A59 == 2, if 0x92C2 bit 6 is SET and 0x91C0 bit 1 is SET,
         # firmware calls 0x0322 which progresses the USB state machine.
         self.hw.regs[0x91C0] = 0x02  # Bit 1 SET - enables USB state machine progress
+
+        # USB mode indicators for descriptor handling at 0xA7E5 and 0x87A1:
+        # At 0xA7E4-0xA7E5: checks 0xCC91 bit 1 for USB3 mode
+        # At 0xA7FD-0xA7FF: checks 0x09F9 bit 6 for USB3 speed
+        # If both set, 0x0ACC gets value with bit 1 SET, enabling USB3 descriptor path
+        # For USB 2.0: clear these bits so firmware takes USB2 path
+        if speed >= 2:  # SuperSpeed or higher
+            self.hw.regs[0xCC91] = 0x02  # Bit 1 SET - USB3 mode
+            self.hw.regs[0x09F9] = 0x40  # Bit 6 SET - USB3 speed indicator
+        else:  # High Speed or Full Speed (USB 2.0)
+            self.hw.regs[0xCC91] = 0x00  # Bit 1 CLEAR - USB2 mode
+            self.hw.regs[0x09F9] = 0x00  # Bit 6 CLEAR - USB2 speed indicator
 
         # PCIe enumeration state - simulate that PCIe link is already up
         # In real hardware, PCIe enumeration happens during boot before USB control
@@ -433,7 +453,19 @@ class USBController:
         print(f"[{cycles:8d}] [USB_CTRL] bmRequestType=0x{bmRequestType:02X} bRequest=0x{bRequest:02X}")
         print(f"[{cycles:8d}] [USB_CTRL] wValue=0x{wValue:04X} wIndex=0x{wIndex:04X} wLength={wLength}")
 
-        # Write setup packet to MMIO registers (0x9E00-0x9E07)
+        # Write setup packet to MMIO registers
+        # The firmware at 0xA5EA-0xA604 reads from 0x9104-0x910B (setup packet buffer)
+        # and copies to XDATA 0x0ACE-0x0AD5
+        self.hw.regs[0x9104] = bmRequestType
+        self.hw.regs[0x9105] = bRequest
+        self.hw.regs[0x9106] = wValue & 0xFF
+        self.hw.regs[0x9107] = (wValue >> 8) & 0xFF
+        self.hw.regs[0x9108] = wIndex & 0xFF
+        self.hw.regs[0x9109] = (wIndex >> 8) & 0xFF
+        self.hw.regs[0x910A] = wLength & 0xFF
+        self.hw.regs[0x910B] = (wLength >> 8) & 0xFF
+
+        # Also write to 0x9E00-0x9E07 (alternate setup packet location)
         self.hw.regs[0x9E00] = bmRequestType
         self.hw.regs[0x9E01] = bRequest
         self.hw.regs[0x9E02] = wValue & 0xFF
@@ -444,7 +476,6 @@ class USBController:
         self.hw.regs[0x9E07] = (wLength >> 8) & 0xFF
 
         # Also populate usb_ep0_buf which is what _usb_ep0_buf_read returns
-        # Firmware reads setup packet from 0x9E00-0x9E07 via this buffer
         self.hw.usb_ep0_buf[0] = bmRequestType
         self.hw.usb_ep0_buf[1] = bRequest
         self.hw.usb_ep0_buf[2] = wValue & 0xFF
@@ -460,24 +491,41 @@ class USBController:
         self.hw.regs[0x9000] = 0x81  # Connected (bit 7), Active (bit 0)
         self.hw.regs[0xC802] = 0x01  # USB interrupt pending
 
+        # USB speed indicator - needed by 0xA4CC which returns 0x9100 & 0x03
+        # 0 = Full Speed, 1 = High Speed, 2 = SuperSpeed, 3 = SuperSpeed+
+        # At 0xB400: if speed == 2, sets R7=0 for descriptor DMA
+        # Use stored USB speed from connect() or default to HIGH speed (USB 2.0)
+        speed = getattr(self, 'usb_speed', 1)  # Default to High Speed if not set
+        self.hw.regs[0x9100] = speed
+
+        # USB mode indicators for descriptor handling at 0xA7E4-0xA7FF and 0x87A1
+        # These set bits in 0x0ACC that determine USB2 vs USB3 code paths
+        if speed >= 2:  # SuperSpeed or higher
+            self.hw.regs[0xCC91] = 0x02  # Bit 1 SET - USB3 mode
+            self.hw.regs[0x09F9] = 0x40  # Bit 6 SET - USB3 speed indicator
+        else:  # High Speed or Full Speed (USB 2.0)
+            self.hw.regs[0xCC91] = 0x00  # Bit 1 CLEAR - USB2 mode
+            self.hw.regs[0x09F9] = 0x00  # Bit 6 CLEAR - USB2 speed indicator
+
         # Mark control transfer as active for state machine timing
         # This affects the 0x92C2 read callback bit 6 timing
         self.hw.usb_control_transfer_active = True
         self.hw.usb_ep0_fifo.clear()
         self.hw.usb_92c2_read_count = 0  # Reset for ISR->main loop timing
         self.hw.usb_ce89_read_count = 0  # Reset DMA state machine for new transfer
+        self.hw._rom_dma_complete = False  # Reset ROM DMA flag for new transfer
 
         # Check if this is a standard request (bmRequestType bits 6:5 = 00)
         request_type = bmRequestType & 0x60
         if request_type == 0x00:
             # Standard USB request (GET_DESCRIPTOR, SET_ADDRESS, etc.)
-            # Path: 0x0E33 → 0x0f07 (when 0x9101 bit 5 CLEAR)
-            # At 0x0f07: checks 0x9101 bit 3 → if set, checks 0x9301 bit 6
-            # If 0x9301 bit 6 set → calls 0x0359 (device descriptor handler)
-            # CRITICAL: Bit 1 must be SET for main loop at 0x4E3A to call USB dispatch
-            self.hw.regs[0x9101] = 0x0B  # Bits 0, 1, 3 set, bit 5 CLEAR
-            # 0x9301: Bit 6 triggers interrupt dispatch and DMA
-            # Use write() to trigger the callback which handles descriptor DMA
+            # ISR path for GET_DESCRIPTOR (traced from original firmware):
+            #   0x0E5E: checks 0x9101 bit 5 → if CLEAR, jumps to 0x0F07
+            #   0x0F0B: checks 0x9101 bit 3 → if SET, goes to ISR dispatch (wrong path!)
+            #   0x0F4A: if bit 3 CLEAR, reaches here
+            #   0x0F4E: checks 0x9101 bit 0 → if CLEAR, jumps to 0x0F91
+            #   0x0F91-0x0F95: checks 0x9101 bit 1 → if SET, calls 0x033B (descriptor handler!)
+            # So for GET_DESCRIPTOR: need bit 3=0, bit 0=0, bit 1=1 → 0x02
             if bRequest == 0x06:  # GET_DESCRIPTOR
                 desc_type = (wValue >> 8) & 0xFF
                 desc_index = wValue & 0xFF
@@ -488,7 +536,15 @@ class USBController:
                     'index': desc_index,
                     'length': wLength
                 }
-            print(f"[{cycles:8d}] [USB_CTRL] Standard request - setting 0x9101=0x0B, 0x9301=0x40")
+                # For GET_DESCRIPTOR: bit 1 SET to trigger descriptor handler, bits 0,3 CLEAR
+                self.hw.regs[0x9101] = 0x02
+                print(f"[{cycles:8d}] [USB_CTRL] Standard request - setting 0x9101=0x02, 0x9301=0x40")
+            else:
+                # Other standard requests - use original behavior
+                self.hw.regs[0x9101] = 0x0B  # Bits 0, 1, 3 set, bit 5 CLEAR
+                print(f"[{cycles:8d}] [USB_CTRL] Standard request - setting 0x9101=0x0B, 0x9301=0x40")
+            # 0x9301: Bit 6 triggers interrupt dispatch and DMA
+            # Use write() to trigger the callback which handles descriptor DMA
             self.hw.write(0x9301, 0x40)  # Triggers _usb_9301_ep0_arm_write callback for DMA
         elif request_type == 0x20:
             # Class request (USB Mass Storage)
@@ -524,13 +580,18 @@ class USBController:
         #   - Subsequent reads: returns bit 6 SET (for main loop to call 0x0322)
         self.hw.regs[0x92F8] = 0x0C  # Bits 2-3 set
 
-        # CRITICAL: Main loop at 0xCE00-0xCE3C checks 0x9091 bits to dispatch USB handlers
-        # - Bit 1: triggers 0xD088 (checks 0x07E1 == 0x05 for device descriptor)
-        # - Bit 3: triggers 0xB286 (also checks 0x07E1 == 0x05)
-        # The interrupt handler sets 0x07E1 = 0x05, then main loop must call handler
-        # Also: 0x9002 bit 1 must be CLEAR to reach the 0x9091 check at 0xCE00
+        # CRITICAL: Main loop at 0xCDE7 checks 0x9091 bits for two-phase USB handling:
+        # Phase 1 - Bit 0: Setup packet handler at 0xA5A6
+        #   - Parses the USB request, sets 0x07E1 = 5 for GET_DESCRIPTOR
+        #   - Firmware loops writing 0x01, waiting for hardware to clear bit 0
+        # Phase 2 - Bit 1: DMA response handler at 0xD088
+        #   - Checks 0x07E1 == 5, triggers DMA if so
+        # 0x9002 bit 1 must be CLEAR to reach the 0x9091 check at 0xCDF5
         self.hw.regs[0x9002] = 0x00  # Bit 1 CLEAR to allow 0x9091 check
-        self.hw.regs[0x9091] = 0x02  # Bit 1 SET to trigger descriptor handler at 0xD088
+        self.hw.regs[0x9091] = 0x01  # Bit 0 SET to trigger setup handler at 0xA5A6
+        # Reset phase transition counters
+        self.hw._usb_9091_setup_writes = 0
+        self.hw._usb_9091_read_count = 0
 
         # CRITICAL: The main loop at 0xCDC6-0xCDD9 waits for state transition registers:
         # - Checks 0xE712 bit 0 or bit 1 to exit the polling loop
@@ -555,11 +616,12 @@ class USBController:
             # At 0x35D4-0x35DF: Firmware checks this and clears 0x0AF7 if state == 4
             self.hw.memory.xdata[0x05A3] = 0x00  # Port index = 0
             self.hw.memory.xdata[0x05B1] = 0x03  # Port 0 state = 3 (link up, not 4)
-            # USB descriptor handler state at 0x07E1
-            # Main loop at 0xD088 checks: if 0x07E1 == 0x05, calls 0xA57A (descriptor handler)
-            # This value is normally set by init_bda4 (0xBDA4), but we skip that during
-            # control transfers to preserve 0x0AF7. Set it directly here.
-            self.hw.memory.xdata[0x07E1] = 0x05
+            # USB speed mode at 0x0AD6 - used by 0xB3FC at 0xB465 to check descriptor mode
+            # At 0xB467: if 0x0AD6 >= 3, firmware returns R7=0x03 (wrong value for DMA)
+            # This value would normally be set by USB enumeration before control transfers
+            # Use stored USB speed from connect()
+            usb_speed = getattr(self, 'usb_speed', 1)  # Default to High Speed if not set
+            self.hw.memory.xdata[0x0AD6] = usb_speed  # USB speed mode
 
         # PCIe link state - 0xB480 bit 0 must be SET to prevent firmware at 0x20DA from
         # clearing XDATA[0x0AF7] to 0
@@ -961,6 +1023,14 @@ class HardwareState:
         # The actual source address for descriptor DMA is likely set via other registers
         self.write_callbacks[0x9092] = self._usb_ep0_dma_trigger_write
         self.read_callbacks[0x9092] = self._usb_ep0_dma_status_read
+
+        # USB control state register (0x9091)
+        # Two-phase control transfer handling:
+        #   Bit 0: Setup phase - triggers 0xA5A6 (setup packet handler)
+        #   Bit 1: Data phase - triggers 0xD088 (DMA for descriptor response)
+        # Firmware loops writing 0x01 waiting for hardware to clear bit 0
+        self.read_callbacks[0x9091] = self._usb_9091_read
+        self.write_callbacks[0x9091] = self._usb_9091_write
 
         # USB endpoint status (0x9301)
         # Bit 6 triggers interrupt dispatch to device descriptor handler
@@ -1857,6 +1927,11 @@ class HardwareState:
             #   0x9004 = transfer length
             # We DMA from the firmware-specified address to USB buffer at 0x8000
 
+            # Skip if ROM DMA was already done for this request (prevents overwriting)
+            if getattr(self, '_rom_dma_complete', False):
+                print(f"[{self.cycles:8d}] [USB] Skipping redundant DMA (ROM DMA already complete)")
+                return
+
             # Read DMA source address from firmware-configured registers
             dma_addr_hi = self.regs.get(0x905B, 0)
             dma_addr_lo = self.regs.get(0x905C, 0)
@@ -1865,7 +1940,17 @@ class HardwareState:
             # Read transfer length from firmware-configured register
             dma_len = self.regs.get(0x9004, 0)
             if dma_len == 0:
-                dma_len = 64  # Default max packet size
+                # Try to get wLength from the pending descriptor request
+                usb_ctrl = self.usb_controller
+                if usb_ctrl and hasattr(usb_ctrl, 'pending_descriptor_request') and usb_ctrl.pending_descriptor_request:
+                    dma_len = usb_ctrl.pending_descriptor_request.get('length', 64)
+                else:
+                    # Fallback: read wLength from setup packet at 0x9E06-0x9E07
+                    wlen_lo = self.regs.get(0x9E06, 0)
+                    wlen_hi = self.regs.get(0x9E07, 0)
+                    dma_len = (wlen_hi << 8) | wlen_lo
+                    if dma_len == 0:
+                        dma_len = 64  # Default max packet size
 
             print(f"[{self.cycles:8d}] [USB] Descriptor DMA trigger (0x9092=0x01): src=0x{dma_src_addr:04X} len={dma_len}")
 
@@ -1881,7 +1966,45 @@ class HardwareState:
                 else:
                     print(f"[{self.cycles:8d}] [USB] WARNING: No data at code ROM address 0x{dma_src_addr:04X}")
             elif dma_src_addr == 0:
-                print(f"[{self.cycles:8d}] [USB] WARNING: DMA source address not configured (0x905B/0x905C = 0)")
+                # Firmware didn't set 0x905B/0x905C - need to determine DMA source
+                # Check what type of descriptor was requested from the pending request
+                usb_ctrl = self.usb_controller
+                desc_type = None
+                if usb_ctrl and hasattr(usb_ctrl, 'pending_descriptor_request') and usb_ctrl.pending_descriptor_request:
+                    desc_type = usb_ctrl.pending_descriptor_request.get('type', None)
+
+                # Known descriptor ROM locations for large descriptors
+                # The firmware's 0x9E00 buffer can only hold ~64 bytes, but large descriptors
+                # like BOS (172 bytes) need to be DMA'd directly from ROM
+                # Use USB speed to select correct config descriptor:
+                usb_speed = getattr(usb_ctrl, 'usb_speed', 1) if usb_ctrl else 1
+                ROM_DESC_LOCATIONS = {
+                    0x0F: 0x59A1,  # BOS descriptor (172 bytes)
+                    0x02: 0x58CF if usb_speed >= 2 else 0x5948,  # SS config (44b) or HS config (32b)
+                }
+
+                # For large descriptors (> 64 bytes) or config descriptors (firmware doesn't populate), use ROM-based DMA
+                if desc_type in ROM_DESC_LOCATIONS and (dma_len > 64 or desc_type == 0x02):
+                    rom_addr = ROM_DESC_LOCATIONS[desc_type]
+                    desc_data = bytes(self.memory.code[rom_addr:rom_addr + dma_len])
+                    for i, b in enumerate(desc_data):
+                        self.memory.xdata[0x8000 + i] = b
+                    print(f"[{self.cycles:8d}] [USB] DMA'd {dma_len} bytes from ROM 0x{rom_addr:04X} to 0x8000 (type=0x{desc_type:02X}): {desc_data[:min(32, dma_len)].hex()}")
+                    # Mark ROM DMA complete to prevent subsequent DMA from 0x9E00 overwriting
+                    self._rom_dma_complete = True
+                else:
+                    # DMA from USB EP0 buffer at 0x9E00
+                    # The firmware copies descriptor data to 0x9E00 via the 0xB3FC function
+                    desc_data = bytes([self.regs.get(0x9E00 + i, 0) for i in range(dma_len)])
+
+                    # Check if there's valid descriptor data at 0x9E00 (first byte is length)
+                    if desc_data[0] > 0 and desc_data[0] <= dma_len:
+                        # Copy to USB buffer at 0x8000
+                        for i, b in enumerate(desc_data):
+                            self.memory.xdata[0x8000 + i] = b
+                        print(f"[{self.cycles:8d}] [USB] DMA'd {dma_len} bytes from EP0 buffer 0x9E00 to 0x8000: {desc_data[:min(32, dma_len)].hex()}")
+                    else:
+                        print(f"[{self.cycles:8d}] [USB] WARNING: No valid descriptor at 0x9E00 (first byte=0x{desc_data[0]:02X})")
 
             # Clear the pending request if there is one
             usb_ctrl = self.usb_controller
@@ -1934,6 +2057,51 @@ class HardwareState:
 
         return value
 
+    def _usb_9091_read(self, hw: 'HardwareState', addr: int) -> int:
+        """
+        USB control state register read (0x9091).
+
+        Two-phase control transfer handling:
+          Phase 1 (bit 0): Setup packet handler at 0xA5A6
+          Phase 2 (bit 1): DMA response handler at 0xD088
+
+        The firmware loops at 0xA5E2-0xA60B writing 0x01 and waiting for bit 0 to clear.
+        When bit 0 clears and bit 1 is set, 0xD088 is called for DMA response.
+        """
+        value = self.regs.get(addr, 0)
+
+        # Track read count for phase transition
+        count = getattr(self, '_usb_9091_read_count', 0)
+        self._usb_9091_read_count = count + 1
+
+        # Phase transition: after setup handler has processed the request,
+        # clear bit 0 and set bit 1 to trigger data phase
+        # The setup handler writes 0x01 repeatedly, so we detect that pattern
+        if getattr(self, '_usb_9091_setup_writes', 0) >= 3 and (value & 0x01):
+            value = 0x02  # Clear bit 0, set bit 1 for data phase
+            self.regs[addr] = value
+            self._usb_9091_setup_writes = 0  # Reset for next transfer
+            print(f"[{self.cycles:8d}] [USB] 0x9091 phase transition: setup→data (0x01→0x02)")
+
+        return value
+
+    def _usb_9091_write(self, hw: 'HardwareState', addr: int, value: int):
+        """
+        USB control state register write (0x9091).
+
+        The firmware writes 0x01 to 0x9091 in a loop at 0xA5E2-0xA60B, waiting
+        for hardware to complete the setup phase. After enough writes, we
+        transition to the data phase by modifying the read value.
+        """
+        self.regs[addr] = value
+
+        # Count writes of 0x01 (setup phase polling)
+        if value == 0x01:
+            count = getattr(self, '_usb_9091_setup_writes', 0)
+            self._usb_9091_setup_writes = count + 1
+            if self.log_writes:
+                print(f"[{self.cycles:8d}] [USB] 0x9091 write 0x01 (setup poll #{count + 1})")
+
     def _usb_9301_status_read(self, hw: 'HardwareState', addr: int) -> int:
         """
         USB endpoint status read (0x9301).
@@ -1980,13 +2148,14 @@ class HardwareState:
                 # The firmware reads descriptors from its code ROM and sets up DMA.
                 # If descriptors aren't appearing, fix the firmware DMA path, not here.
 
-            # Mark control transfer complete
-            # - IN transfers (bit 7 set): Complete when EP0 armed for data stage
+            # Mark control transfer completion status
+            # - IN transfers (bit 7 set): Stay active until DMA completes (at 0x9092 write)
             # - OUT transfers (bit 7 clear): Complete when EP0 armed for status stage
             wLength = self.regs.get(0x9E06, 0) | (self.regs.get(0x9E07, 0) << 8)
             if bmRequestType & 0x80:
-                # IN transfer - complete
-                self.usb_control_transfer_active = False
+                # IN transfer (GET_DESCRIPTOR etc.) - stay active until DMA completes
+                # The flag will be cleared by _usb_ep0_dma_trigger_write when DMA finishes
+                pass
             else:
                 # OUT transfer - complete if no data stage (wLength=0)
                 # or firmware has processed the data
@@ -2456,4 +2625,16 @@ def create_hardware_hooks(memory: 'Memory', hw: HardwareState):
     # Debug hooks for XDATA can be added here when needed
     # Example: Trace reads/writes to specific addresses
     # memory.xdata_write_hooks[0x0AF7] = make_debug_hook(hw, memory)
+
+    # USB3 mode hook for 0x0ACC
+    # During GET_DESCRIPTOR handling at 0x87A0, firmware reads 0x0ACC to determine
+    # USB2 vs USB3 mode. Bit 1 SET = USB3 mode, which uses R7=5 for descriptors.
+    # Without bit 1 SET, firmware takes USB2 path with R7=3.
+    # This hook returns USB3 mode when a control transfer is active.
+    def usb3_mode_read_hook(addr):
+        if hw.usb_control_transfer_active:
+            # USB3 mode: bit 1 SET for GET_DESCRIPTOR to set R7=5
+            return 0x02
+        return memory.xdata[addr]
+    memory.xdata_read_hooks[0x0ACC] = usb3_mode_read_hook
 

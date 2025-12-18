@@ -1,3 +1,10 @@
+**CRITICAL: ORIGINAL FIRMWARE (fw.bin) IS THE GOLDEN MASTER**
+- The original firmware behavior is ALWAYS correct
+- If our firmware does something different from original firmware, OUR FIRMWARE IS WRONG
+- The emulator must be tested and working with the ORIGINAL firmware FIRST
+- Never update the emulator to make our firmware work - only to match original firmware behavior
+- When tracing or debugging, always verify against original firmware behavior
+
 **CRITICAL: USB EMULATION MUST BE PURE DMA - ZERO PYTHON PROCESSING**
 - The emulator must NOT parse, process, or understand USB control messages
 - USB hardware DMAs in the request (setup packet) to MMIO registers

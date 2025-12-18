@@ -28,7 +28,7 @@ USB descriptors are provided by firmware, not hardcoded in Python.
 
 Setup:
   sudo modprobe dummy_hcd raw_gadget
-  sudo python emulate/usb_device.py fw.bin
+  sudo python emulate/usb_device.py
 """
 
 import os
@@ -159,6 +159,9 @@ class USBDevicePassthrough:
         self._bulk_thread: Optional[threading.Thread] = None
         self._bulk_running = False
 
+        # USB speed for emulator (0=Full, 1=High, 2=Super, 3=Super+)
+        self._emu_speed = 1  # Default to High Speed
+
     def start(self, driver: str = "dummy_udc", device: str = "dummy_udc.0",
               speed: USBSpeed = USBSpeed.USB_SPEED_HIGH):
         """Start the USB device passthrough."""
@@ -166,13 +169,27 @@ class USBDevicePassthrough:
         if not available:
             raise RuntimeError(f"raw-gadget not available: {msg}")
 
+        # Map USBSpeed enum to our internal speed values for emulator
+        # Linux kernel: LOW=1, FULL=2, HIGH=3, SUPER=5, SUPER_PLUS=6
+        # Our internal: Full=0, High=1, Super=2, Super+=3
+        speed_map = {
+            USBSpeed.USB_SPEED_LOW: 0,    # Treat low as full speed
+            USBSpeed.USB_SPEED_FULL: 0,
+            USBSpeed.USB_SPEED_HIGH: 1,
+            USBSpeed.USB_SPEED_SUPER: 2,
+        }
+        # Handle SUPER_PLUS if it exists in the enum
+        if hasattr(USBSpeed, 'USB_SPEED_SUPER_PLUS'):
+            speed_map[USBSpeed.USB_SPEED_SUPER_PLUS] = 3
+        self._emu_speed = speed_map.get(speed, 1)  # Default to High Speed
+
         self.gadget = RawGadget()
         self.gadget.open()
         self.gadget.init(driver, device, speed)  # driver_name, device_name, speed
         self.gadget.run()
 
         self.running = True
-        print(f"[USB_PASS] Started on {driver}/{device} at {speed.name}")
+        print(f"[USB_PASS] Started on {driver}/{device} at {speed.name} (emu_speed={self._emu_speed})")
 
     def stop(self):
         """Stop the USB device passthrough."""
@@ -296,6 +313,7 @@ class USBDevicePassthrough:
         import time as _time
         remaining_cycles = 50000
         chunk_size = 5000  # Run in smaller chunks
+        is_get_descriptor = (setup.bmRequestType == 0x80 and setup.bRequest == USB_REQ_GET_DESCRIPTOR)
         while remaining_cycles > 0:
             try:
                 self.run_firmware_cycles(max_cycles=min(chunk_size, remaining_cycles))
@@ -305,10 +323,25 @@ class USBDevicePassthrough:
                 traceback.print_exc()
                 break
             remaining_cycles -= chunk_size
+            # For GET_DESCRIPTOR, re-set main loop conditions after each chunk
+            # The ISR may have run but main loop handler not reached yet
+            if is_get_descriptor and remaining_cycles > 0:
+                hw.regs[0x9002] = 0x00  # Bit 1 CLEAR
+                hw.regs[0x9091] = 0x02  # Bit 1 SET
+                if self.emu.memory:
+                    self.emu.memory.xdata[0x07E1] = 0x05
             _time.sleep(0)  # Explicit GIL release to let bulk thread run
 
         # For IN transfers, read response from buffer
         if setup.bmRequestType & 0x80:  # Device-to-host
+            # Debug: check DMA configuration after running firmware
+            if is_get_descriptor:
+                dma_hi = hw.regs.get(0x905B, 0)
+                dma_lo = hw.regs.get(0x905C, 0)
+                dma_addr = (dma_hi << 8) | dma_lo
+                ep0_buf = bytes(hw.usb_ep0_buf[:8])
+                xdata_07e1 = self.emu.memory.xdata[0x07E1] if self.emu.memory else 0
+                print(f"[USB_PASS] DEBUG: DMA addr=0x{dma_addr:04X}, ep0_buf={ep0_buf.hex()}, 0x07E1=0x{xdata_07e1:02X}")
             # Check if the control transfer was handled
             # If usb_control_transfer_active is still True, firmware didn't handle it
             if hw.usb_control_transfer_active:
@@ -322,7 +355,12 @@ class USBDevicePassthrough:
             # Check if we got a valid response (not all zeros)
             if any(b != 0 for b in response):
                 return response
-            # Firmware didn't produce response - may need more cycles
+            # Firmware didn't produce response - re-set conditions and retry
+            # Main loop conditions may have been cleared during first run
+            hw.regs[0x9002] = 0x00  # Bit 1 CLEAR to allow 0x9091 check
+            hw.regs[0x9091] = 0x02  # Bit 1 SET to trigger descriptor handler
+            if self.emu.memory:
+                self.emu.memory.xdata[0x07E1] = 0x05  # Descriptor request pending
             self.run_firmware_cycles(max_cycles=50000)
             return self.read_response(setup.wLength)
 
@@ -399,10 +437,10 @@ class USBDevicePassthrough:
             return
 
         if event.type == USBRawEventType.CONNECT:
-            speed = event.data[0] if event.data else 0
-            print(f"[USB_PASS] Connect event (speed={speed})")
-            # Initialize emulator USB state
-            self.emu.hw.usb_controller.connect()
+            raw_speed = event.data[0] if event.data else 0
+            print(f"[USB_PASS] Connect event (raw_speed={raw_speed}, emu_speed={self._emu_speed})")
+            # Initialize emulator USB state with our configured speed
+            self.emu.hw.usb_controller.connect(speed=self._emu_speed)
             # Run firmware boot sequence
             self.emu.run(max_cycles=100000)
 
@@ -501,6 +539,11 @@ class USBDevicePassthrough:
         self.ep_stat_in = None
         self.ep_cmd_out = None
 
+        # Use correct max packet size based on USB speed
+        # SuperSpeed/SuperSpeed+ (emu_speed >= 2) uses 1024, High Speed uses 512
+        bulk_max_packet = 1024 if self._emu_speed >= 2 else 512
+        print(f"[USB_PASS] Using bulk max packet size: {bulk_max_packet} (speed={self._emu_speed})")
+
         # Query available endpoints from UDC for debugging
         try:
             eps = self.gadget.eps_info()
@@ -548,7 +591,7 @@ class USBDevicePassthrough:
             addr = ep.addr | 0x80
             print(f"[USB_PASS] Trying bulk IN {ep.name} with addr=0x{addr:02X}")
             try:
-                self.ep_data_in = self.gadget.ep_enable(addr, 0x02, 512)
+                self.ep_data_in = self.gadget.ep_enable(addr, 0x02, bulk_max_packet)
                 print(f"[USB_PASS] Enabled bulk IN (0x{addr:02X}): handle={self.ep_data_in}")
                 break
             except RawGadgetError as e:
@@ -560,7 +603,7 @@ class USBDevicePassthrough:
             addr = ep.addr & 0x7F
             print(f"[USB_PASS] Trying bulk OUT {ep.name} with addr=0x{addr:02X}")
             try:
-                self.ep_data_out = self.gadget.ep_enable(addr, 0x02, 512)
+                self.ep_data_out = self.gadget.ep_enable(addr, 0x02, bulk_max_packet)
                 print(f"[USB_PASS] Enabled bulk OUT (0x{addr:02X}): handle={self.ep_data_out}")
                 break
             except RawGadgetError as e:
@@ -584,11 +627,14 @@ class USBDevicePassthrough:
         if not self.gadget:
             return
 
-        print("[USB_PASS] Enabling UAS endpoints...")
+        # Use correct max packet size based on USB speed
+        bulk_max_packet = 1024 if self._emu_speed >= 2 else 512
+
+        print(f"[USB_PASS] Enabling UAS endpoints (max_packet={bulk_max_packet})...")
 
         try:
             # EP1 IN (0x81) - Status pipe
-            self.ep_stat_in = self.gadget.ep_enable(0x81, 0x02, 512)
+            self.ep_stat_in = self.gadget.ep_enable(0x81, 0x02, bulk_max_packet)
             print(f"[USB_PASS] Enabled EP1 IN (status): handle={self.ep_stat_in}")
         except RawGadgetError as e:
             print(f"[USB_PASS] EP1 IN enable failed (non-fatal): {e}")
@@ -596,7 +642,7 @@ class USBDevicePassthrough:
 
         try:
             # EP2 OUT (0x02) - Command pipe
-            self.ep_cmd_out = self.gadget.ep_enable(0x02, 0x02, 512)
+            self.ep_cmd_out = self.gadget.ep_enable(0x02, 0x02, bulk_max_packet)
             print(f"[USB_PASS] Enabled EP2 OUT (command): handle={self.ep_cmd_out}")
         except RawGadgetError as e:
             print(f"[USB_PASS] EP2 OUT enable failed (non-fatal): {e}")
@@ -604,7 +650,7 @@ class USBDevicePassthrough:
 
         try:
             # EP3 IN (0x83) - Data-In pipe
-            self.ep_data_in = self.gadget.ep_enable(0x83, 0x02, 512)
+            self.ep_data_in = self.gadget.ep_enable(0x83, 0x02, bulk_max_packet)
             print(f"[USB_PASS] Enabled EP3 IN (data-in): handle={self.ep_data_in}")
         except RawGadgetError as e:
             print(f"[USB_PASS] EP3 IN enable failed (non-fatal): {e}")
@@ -612,7 +658,7 @@ class USBDevicePassthrough:
 
         try:
             # EP4 OUT (0x04) - Data-Out pipe
-            self.ep_data_out = self.gadget.ep_enable(0x04, 0x02, 512)
+            self.ep_data_out = self.gadget.ep_enable(0x04, 0x02, bulk_max_packet)
             print(f"[USB_PASS] Enabled EP4 OUT (data-out): handle={self.ep_data_out}")
         except RawGadgetError as e:
             print(f"[USB_PASS] EP4 OUT enable failed (non-fatal): {e}")
