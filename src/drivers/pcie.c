@@ -1999,7 +1999,7 @@ void pcie_tlp_handler_b28c(void)
                         break;
                     }
                     /* Check idata 0x6a */
-                    if (I_STATE_6A != 0) {
+                    if (I_USB_STATE != 0) {
                         usb_buffer_handler();
                         break;
                     }

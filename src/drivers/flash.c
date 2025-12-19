@@ -932,8 +932,8 @@ void system_init_from_flash(void)
 
         if (retry_count != 0) {
             /* Check header marker at 0x707E */
-            header_marker = G_FLASH_BUF_707E;
-            if (header_marker == 0xA5) {
+            header_marker = G_FLASH_MARKER;
+            if (header_marker == FLASH_MARKER_VALID) {
                 /* Compute checksum from 0x7004 to 0x707E */
                 computed_checksum = 0;
                 for (i = 4; i < 0x7F; i++) {
@@ -941,7 +941,7 @@ void system_init_from_flash(void)
                 }
 
                 /* Get stored checksum from 0x707F */
-                checksum = G_FLASH_BUF_707F;
+                checksum = G_FLASH_CHECKSUM;
 
                 /* Validate checksum */
                 if (checksum == computed_checksum) {
@@ -949,16 +949,16 @@ void system_init_from_flash(void)
                     G_FLASH_CONFIG_VALID = 1;
 
                     /* Parse vendor strings from 0x7004 if valid */
-                    if (G_FLASH_BUF_7004 != 0xFF) {
+                    if (G_FLASH_CFG_START != 0xFF) {
                         /* Copy vendor string data */
-                        for (i = 0; (&G_FLASH_BUF_7004)[i] != 0xFF && i < 0x28; i++) {
-                            (void)uart_write_byte_daeb((&G_FLASH_BUF_7004)[i]);
+                        for (i = 0; (&G_FLASH_CFG_START)[i] != 0xFF && i < 0x28; i++) {
+                            (void)uart_write_byte_daeb((&G_FLASH_CFG_START)[i]);
                         }
                     }
 
                     /* Parse serial strings from 0x702C if valid */
-                    if (G_FLASH_BUF_702C != 0xFF) {
-                        for (i = 0; (&G_FLASH_BUF_702C)[i] != 0xFF && i < 0x28; i++) {
+                    if (G_FLASH_SERIAL_BASE[0] != 0xFF) {
+                        for (i = 0; G_FLASH_SERIAL_BASE[i] != 0xFF && i < 0x28; i++) {
                             (void)uart_write_daff();
                         }
                     }
@@ -975,28 +975,28 @@ void system_init_from_flash(void)
                     }
 
                     /* Parse device IDs from 0x705C-0x705D */
-                    if (G_FLASH_BUF_705C != 0xFF || G_FLASH_BUF_705D != 0xFF) {
-                        G_FLASH_CFG_0A42 = G_FLASH_BUF_705C;
-                        G_FLASH_CFG_0A43 = G_FLASH_BUF_705D;
+                    if (G_FLASH_USB_MODE != 0xFF || G_FLASH_LANE_CFG != 0xFF) {
+                        G_FLASH_CFG_0A42 = G_FLASH_USB_MODE;
+                        G_FLASH_CFG_0A43 = G_FLASH_LANE_CFG;
                     }
 
                     /* Parse additional device info from 0x705E-0x705F */
-                    if (G_FLASH_BUF_705E == 0xFF && G_FLASH_BUF_705F == 0xFF) {
+                    if (G_FLASH_LINK_SPEED == 0xFF && G_FLASH_TUNNEL_FLAGS == 0xFF) {
                         /* Use defaults from 0x0A57-0x0A58 */
                         G_FLASH_CFG_0A44 = G_CMD_CTRL_PARAM;
                         G_FLASH_CFG_0A45 = G_CMD_TIMEOUT_PARAM;
                     } else {
-                        G_FLASH_CFG_0A44 = G_FLASH_BUF_705E;
-                        G_FLASH_CFG_0A45 = G_FLASH_BUF_705F;
+                        G_FLASH_CFG_0A44 = G_FLASH_LINK_SPEED;
+                        G_FLASH_CFG_0A45 = G_FLASH_TUNNEL_FLAGS;
                     }
 
                     /* Parse mode configuration from 0x7059-0x705A */
-                    tmp = G_FLASH_BUF_7059;
+                    tmp = G_FLASH_PD_MODE;
                     G_FLASH_MODE_1 = (tmp >> 4) & 0x03;  /* Bits 5:4 */
                     G_FLASH_MODE_2 = (tmp >> 6) & 0x01;  /* Bit 6 */
                     G_FLASH_MODE_3 = tmp >> 7;          /* Bit 7 */
 
-                    tmp = G_FLASH_BUF_705A;
+                    tmp = G_FLASH_PD_SRC_CAP;
                     G_FLASH_MODE_4 = tmp & 0x03;        /* Bits 1:0 */
                     G_FLASH_MODE_5 = (tmp >> 2) & 0x01; /* Bit 2 */
 

@@ -744,7 +744,7 @@ uint8_t reg_extract_bit6(__xdata uint8_t *dest, uint8_t val)
     /* Extract bit 6 by shifting right twice (with carry) and masking */
     val = (val >> 6) & 0x01;
     *dest = val;
-    return G_FLASH_BUF_707D;
+    return G_FLASH_CFG_FLAGS;
 }
 
 /*
@@ -791,7 +791,7 @@ uint8_t reg_extract_bit7(__xdata uint8_t *dest, uint8_t val)
 {
     val = (val >> 7) & 0x01;
     *dest = val;
-    return G_FLASH_BUF_707D;
+    return G_FLASH_CFG_FLAGS;
 }
 
 /* reg_clear_bit3_link_ctrl moved to drivers/nvme.c as nvme_clear_bit3_link_ctrl */
@@ -820,7 +820,7 @@ uint8_t reg_extract_bits_6_7(__xdata uint8_t *dest, uint8_t val)
 {
     val = (val >> 6) & 0x03;
     *dest = val;
-    return G_FLASH_BUF_707B;
+    return G_FLASH_FAN_MODE;
 }
 
 /*
@@ -832,7 +832,7 @@ uint8_t reg_extract_bits_6_7(__xdata uint8_t *dest, uint8_t val)
 uint8_t reg_extract_bit0(__xdata uint8_t *dest, uint8_t val)
 {
     *dest = val & 0x01;
-    return G_FLASH_BUF_707D;
+    return G_FLASH_CFG_FLAGS;
 }
 
 /*
@@ -2333,10 +2333,10 @@ uint16_t core_state_read16(void)
 
 uint8_t flash_extract_bit_shift2(uint8_t val, __xdata uint8_t *dest)
 {
-    /* rrc a (x2), anl a, #0x01, movx @dptr, a, return G_FLASH_BUF_707D */
+    /* rrc a (x2), anl a, #0x01, movx @dptr, a, return G_FLASH_CFG_FLAGS */
     val = (val >> 2) & 0x01;
     *dest = val;
-    return G_FLASH_BUF_707D;
+    return G_FLASH_CFG_FLAGS;
 }
 
 void flash_set_bit2(__xdata uint8_t *dest)
@@ -2349,26 +2349,26 @@ void flash_set_bit2(__xdata uint8_t *dest)
 
 uint8_t flash_extract_bit_shift1(uint8_t val, __xdata uint8_t *dest)
 {
-    /* rrc a, anl a, #0x01, movx @dptr, a, return G_FLASH_BUF_707D */
+    /* rrc a, anl a, #0x01, movx @dptr, a, return G_FLASH_CFG_FLAGS */
     val = (val >> 1) & 0x01;
     *dest = val;
-    return G_FLASH_BUF_707D;
+    return G_FLASH_CFG_FLAGS;
 }
 
 uint8_t flash_extract_2bits_shift2(uint8_t val, __xdata uint8_t *dest)
 {
-    /* rrc a (x2), anl a, #0x03, movx @dptr, a, return G_FLASH_BUF_707B */
+    /* rrc a (x2), anl a, #0x03, movx @dptr, a, return G_FLASH_FAN_MODE */
     val = (val >> 2) & 0x03;
     *dest = val;
-    return G_FLASH_BUF_707B;
+    return G_FLASH_FAN_MODE;
 }
 
 uint8_t flash_extract_bit0(uint8_t val, __xdata uint8_t *dest)
 {
-    /* anl a, #0x01, movx @dptr, a, return G_FLASH_BUF_707D */
+    /* anl a, #0x01, movx @dptr, a, return G_FLASH_CFG_FLAGS */
     val = val & 0x01;
     *dest = val;
-    return G_FLASH_BUF_707D;
+    return G_FLASH_CFG_FLAGS;
 }
 
 void flash_set_bit3(__xdata uint8_t *dest)

@@ -226,7 +226,7 @@ void scsi_process_transfer(uint8_t param_lo, uint8_t param_hi)
  */
 void scsi_state_dispatch(void)
 {
-    uint8_t state = I_STATE_6A;
+    uint8_t state = I_USB_STATE;
     uint8_t offset;
     uint8_t result;
 
@@ -1044,7 +1044,7 @@ static void scsi_cmd_state_machine(void)
 void scsi_ep_init_handler(void)
 {
     G_USB_TRANSFER_FLAG = 0;
-    I_STATE_6A = 0;
+    I_USB_STATE = 0;
     G_STATE_FLAG_06E6 = 0;
     handler_039a_buffer_dispatch();
 }
@@ -1386,7 +1386,7 @@ void scsi_endpoint_queue_process(void)
  * scsi_state_handler - State-based command handler
  * Address: 0x4d44-0x4d91 (78 bytes)
  *
- * Dispatches handling based on I_STATE_6A value.
+ * Dispatches handling based on I_USB_STATE value.
  * Handles states 1, 8, and default.
  */
 void scsi_state_handler(void)
@@ -1394,7 +1394,7 @@ void scsi_state_handler(void)
     uint8_t state;
     uint8_t usb_status;
 
-    state = I_STATE_6A;
+    state = I_USB_STATE;
 
     /* State 1: Call 0x4013 - setup transfer */
     if (state == 1) {
@@ -1422,7 +1422,7 @@ void scsi_state_handler(void)
         nvme_call_and_signal_3219();
     }
 
-    I_STATE_6A = 5;
+    I_USB_STATE = 5;
 }
 
 /*
@@ -1828,7 +1828,7 @@ void scsi_slot_config_46f8(uint8_t r7_val, uint8_t r5_val)
  * scsi_state_switch_4784 - State-based command switch
  * Address: 0x4784-0x480b (136 bytes)
  *
- * Handles state machine transitions based on I_STATE_6A value.
+ * Handles state machine transitions based on I_USB_STATE value.
  * Processes different command types (0x03, 0x04, 0x05).
  */
 extern void helper_3133(void);
@@ -1842,7 +1842,7 @@ void scsi_state_switch_4784(void)
     uint8_t state;
     uint8_t cmd_type;
 
-    state = I_STATE_6A;
+    state = I_USB_STATE;
 
     /* Check state value (add 0xFD = check if state == 3) */
     if (state == 0x03) {
@@ -1886,7 +1886,7 @@ check_usb_status:
     }
 
     /* Set state to 5 */
-    I_STATE_6A = 0x05;
+    I_USB_STATE = 0x05;
 }
 
 /*
@@ -2901,7 +2901,7 @@ void scsi_csw_ext_build(void)
  */
 void nvme_queue_cfg_by_state(void)
 {
-    uint8_t state = I_STATE_6A;
+    uint8_t state = I_USB_STATE;
 
     if (state == 3) {
         REG_NVME_QUEUE_CFG = (REG_NVME_QUEUE_CFG & 0xF7) | 0x08;

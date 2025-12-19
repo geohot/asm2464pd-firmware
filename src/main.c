@@ -149,8 +149,8 @@ void startup_0016(void)
     boot_mode = G_XFER_STATE_0AF3;
 
     if (boot_mode == 0x80) {
-        /* Boot mode 0x80 - check I_STATE_6A */
-        state_6a = I_STATE_6A;
+        /* Boot mode 0x80 - check I_USB_STATE */
+        state_6a = I_USB_STATE;
 
         switch (state_6a) {
         case 1:
@@ -175,7 +175,7 @@ void startup_0016(void)
         }
     } else {
         /* Boot mode != 0x80 - different handling */
-        state_6a = I_STATE_6A;
+        state_6a = I_USB_STATE;
 
         switch (state_6a) {
         case 1:
@@ -390,7 +390,7 @@ void main(void)
     G_EP_CONFIG_05F8 = 0x04;
 
     /* Initialize system flags */
-    G_SYS_FLAGS_07EC = 0x01;
+    G_USB_CMD_CONFIG = 0x01;
     G_SYS_FLAGS_07ED = 0x00;
     G_SYS_FLAGS_07EE = 0x00;
     G_SYS_FLAGS_07EF = 0x00;
@@ -662,11 +662,11 @@ state_ready:
             EA = 1;
         }
 
-        /* Check I_STATE_6A loop condition (0x30b2-0x30b9) */
-        if (I_STATE_6A == 0x0B) {
+        /* Check I_USB_STATE loop condition (0x30b2-0x30b9) */
+        if (I_USB_STATE == 0x0B) {
             /* Exit condition met - continue with shutdown sequence */
             EA = 0;
-            G_LOOP_STATE_0A5A = I_STATE_6A;
+            G_LOOP_STATE_0A5A = I_USB_STATE;
 
             /* Check power init flag (0x30c2-0x30c8) */
             if (G_POWER_INIT_FLAG != 0) {
@@ -705,7 +705,7 @@ state_ready:
 loop_end:
         /* Final USB status check (0x3107-0x3125) */
         if (G_LOOP_STATE_0A5A != 0) {
-            I_STATE_6A = 0x00;
+            I_USB_STATE = 0x00;
 
             /* Check REG_USB_STATUS (0x9000) bit 0 (0x3111-0x3122) */
             if (REG_USB_STATUS & USB_STATUS_ACTIVE) {
@@ -910,7 +910,7 @@ void main_polling_handler(void)
  *   4bd8: movx @dptr, a        ; clear
  *   4bd9: mov dptr, #0x07e4    ; G_SYS_FLAGS_BASE
  *   4bdc: movx @dptr, a        ; clear
- *   4bdd: mov dptr, #0x05a5    ; G_STATE_05A5
+ *   4bdd: mov dptr, #0x05a5    ; G_CMD_INDEX_SRC
  *   4be0: movx @dptr, a        ; clear
  *   4be1: inc dptr             ; 0x05A6
  *   4be2: movx @dptr, a        ; clear
@@ -931,7 +931,7 @@ static void state_init_4bd4(void)
     /* Clear initial state variables */
     G_TLP_BASE_LO = 0;          /* 0x0AE1 */
     G_SYS_FLAGS_BASE = 0;       /* 0x07E4 */
-    G_STATE_05A5 = 0;           /* 0x05A5 */
+    G_CMD_INDEX_SRC = 0;           /* 0x05A5 */
     G_PCIE_TXN_COUNT_LO = 0;    /* 0x05A6 */
 
     /* Clear range 0x05B0-0x06E0 (loop in original) */
@@ -945,7 +945,7 @@ static void state_init_4bd4(void)
     G_STATE_0B39 = 0;           /* 0x0B39 */
     G_TLP_BLOCK_SIZE_0ACC = 0;  /* 0x0ACC */
     G_USB_DESC_FLAG_0ACD = 0x0F; /* 0x0ACD = 0x0F */
-    G_SYS_FLAGS_07EC = 0;       /* 0x07EC */
+    G_USB_CMD_CONFIG = 0;       /* 0x07EC */
     G_PD_FLAG_07B6 = 0;         /* 0x07B6 */
     G_CMD_SLOT_INDEX = 0;       /* 0x07B7 */
     G_FLASH_CMD_FLAG = 0;       /* 0x07B8 */

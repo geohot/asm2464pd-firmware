@@ -271,7 +271,7 @@ void isr_buffer_handler_17db(uint8_t param);
  *   5476: clr a
  *   5477: mov dptr, #0x0b2d   ; G_USB_TRANSFER_FLAG
  *   547a: movx @dptr, a       ; Write 0
- *   547b: mov r0, #0x6a       ; IDATA 0x6A (I_STATE_6A)
+ *   547b: mov r0, #0x6a       ; IDATA 0x6A (I_USB_STATE)
  *   547d: mov @r0, a          ; Write 0
  *   547e: mov dptr, #0x06e3   ; G_USB_STATE_CLEAR_06E3
  *   5481: movx @dptr, a       ; Write 0
@@ -280,7 +280,7 @@ void isr_buffer_handler_17db(uint8_t param);
 void isr_usb_ep_clear_state(void)
 {
     G_USB_TRANSFER_FLAG = 0;
-    I_STATE_6A = 0;
+    I_USB_STATE = 0;
     G_USB_STATE_CLEAR_06E3 = 0;
     usb_poll_wait();
 }

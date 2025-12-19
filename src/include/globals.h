@@ -82,7 +82,20 @@ __idata __at(0x5A) uint8_t I_WORK_5A;         /* Work variable 0x5A - vendor CDB
 __idata __at(0x63) uint8_t I_WORK_63;         /* Work variable 0x63 - EP config high byte */
 __idata __at(0x64) uint8_t I_WORK_64;         /* Work variable 0x64 - EP config low byte */
 __idata __at(0x65) uint8_t I_WORK_65;         /* Work variable 0x65 - EP mode */
-__idata __at(0x6A) uint8_t I_STATE_6A;        /* State machine variable */
+/*
+ * USB State Machine (IDATA 0x6A)
+ * Tracks current USB device state per USB 2.0 specification.
+ * State transitions occur in ISR at 0x0E68 and main loop at 0x202A.
+ */
+__idata __at(0x6A) uint8_t I_USB_STATE;       /* USB device state machine */
+
+/* USB Device State Values */
+#define USB_STATE_DISCONNECTED  0   /* No USB connection */
+#define USB_STATE_ATTACHED      1   /* Cable connected, not powered */
+#define USB_STATE_POWERED       2   /* Bus powered, no address */
+#define USB_STATE_DEFAULT       3   /* Default address assigned */
+#define USB_STATE_ADDRESS       4   /* Device address assigned */
+#define USB_STATE_CONFIGURED    5   /* Configuration set, ready for commands */
 __idata __at(0x6B) uint8_t I_TRANSFER_6B;     /* Transfer pending byte 0 */
 __idata __at(0x6C) uint8_t I_TRANSFER_6C;     /* Transfer pending byte 1 */
 __idata __at(0x6D) uint8_t I_TRANSFER_6D;     /* Transfer pending byte 2 */
@@ -217,15 +230,39 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_EP_QUEUE_IDATA3       XDATA_VAR8(0x056B)  /* Endpoint queue IDATA byte 3 */
 #define G_LOG_PROCESS_STATE     XDATA_VAR8(0x0574)  /* Log processing state */
 #define G_LOG_ENTRY_VALUE       XDATA_VAR8(0x0575)  /* Log entry value */
-#define G_STATE_05A5            XDATA_VAR8(0x05A5)  /* State variable 0x05A5 - cleared in state init */
+/*
+ * Vendor Command Index Tracking (0x05A3-0x05A5)
+ * Used by E4/E5 command processing to track current command slot.
+ */
+#define G_CMD_SLOT_INDEX        XDATA_VAR8(0x05A3)  /* Current command slot index (0-9) */
+#define G_CMD_INDEX_SRC         XDATA_VAR8(0x05A5)  /* Command index source/copy */
 #define G_PCIE_TXN_COUNT_LO     XDATA_VAR8(0x05A6)  /* PCIe transaction count low */
 #define G_PCIE_TXN_COUNT_HI     XDATA_VAR8(0x05A7)  /* PCIe transaction count high */
 #define G_EP_CONFIG_05A8        XDATA_VAR8(0x05A8)  /* EP config 0x05A8 */
 #define G_PCIE_DIRECTION        XDATA_VAR8(0x05AE)  /* PCIe direction (bit 0: 0=read, 1=write) */
 #define G_PCIE_ADDR_0           XDATA_VAR8(0x05AF)  /* PCIe target address byte 0 */
 #define G_PCIE_ADDR_1           XDATA_VAR8(0x05B0)  /* PCIe target address byte 1 */
-#define G_PCIE_ADDR_2           XDATA_VAR8(0x05B1)  /* PCIe target address byte 2 */
-#define G_PCIE_ADDR_3           XDATA_VAR8(0x05B2)  /* PCIe target address byte 3 */
+
+/*
+ * Command Table (0x05B1-0x06CF)
+ * Array of 10 command slots, each 34 (0x22) bytes.
+ * Used for tracking pending E4/E5 vendor commands.
+ *
+ * Table entry structure (34 bytes per entry):
+ *   Offset 0x00: Command type/status
+ *   Offset 0x01: Command parameter 1
+ *   Offset 0x02: Command parameter 2
+ *   ... (additional fields vary by command type)
+ *
+ * Entry addresses: 0x05B1, 0x05D3, 0x05F5, 0x0617, 0x0639, ...
+ */
+#define G_CMD_TABLE_BASE        ((__xdata uint8_t *)0x05B1)  /* Command table base */
+#define G_CMD_TABLE_ENTRY_SIZE  0x22                /* 34 bytes per entry */
+#define G_CMD_TABLE_MAX_ENTRIES 10                  /* Maximum 10 command slots */
+
+/* Legacy PCIe address aliases (overlap with command table) */
+#define G_PCIE_ADDR_2           XDATA_VAR8(0x05B1)  /* PCIe target address byte 2 / CMD_TABLE[0] */
+#define G_PCIE_ADDR_3           XDATA_VAR8(0x05B2)  /* PCIe target address byte 3 / CMD_TABLE[1] */
 #define G_PCIE_TXN_TABLE        ((__xdata uint8_t *)0x05B7) /* PCIe transaction table (34-byte entries) */
 #define G_PCIE_TXN_ENTRY_SIZE   34                  /* Size of each table entry */
 #define G_EP_LOOKUP_TABLE       XDATA_VAR8(0x057A)  /* EP lookup table index */
@@ -271,7 +308,7 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_USB_CTRL_STATE_07E1   XDATA_VAR8(0x07E1)  /* USB control transfer state (5=ready to send) */
 #define G_XFER_FLAG_07EA        XDATA_VAR8(0x07EA)  /* Transfer flag 0x07EA (set in SCSI DMA) */
 #define G_SYS_FLAGS_07EB        XDATA_VAR8(0x07EB)  /* System flags 0x07EB */
-#define G_SYS_FLAGS_07EC        XDATA_VAR8(0x07EC)  /* System flags 0x07EC */
+#define G_USB_CMD_CONFIG        XDATA_VAR8(0x07EC)  /* USB command configuration (vendor cmd state) */
 #define G_SYS_FLAGS_07ED        XDATA_VAR8(0x07ED)  /* System flags 0x07ED */
 #define G_SYS_FLAGS_07EE        XDATA_VAR8(0x07EE)  /* System flags 0x07EE */
 #define G_SYS_FLAGS_07EF        XDATA_VAR8(0x07EF)  /* System flags 0x07EF */
@@ -354,6 +391,13 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_EP_DISPATCH_VAL3      XDATA_VAR8(0x0A7D)  /* Endpoint dispatch value 3 */
 #define G_USB_EP_MODE           G_EP_DISPATCH_VAL3  /* Alias: USB endpoint mode flag */
 #define G_EP_DISPATCH_VAL4      XDATA_VAR8(0x0A7E)  /* Endpoint dispatch value 4 */
+/*
+ * DMA Status Register (0x0AA0)
+ * Tracks DMA transfer state for E4/E5 vendor commands.
+ * Checked by firmware at 0x3601 after PCIe transfer.
+ */
+#define G_DMA_XFER_STATUS       XDATA_VAR8(0x0AA0)  /* DMA transfer status for vendor cmds */
+
 #define G_STATE_COUNTER_HI      XDATA_VAR8(0x0AA3)  /* State counter high */
 #define G_STATE_COUNTER_LO      XDATA_VAR8(0x0AA4)  /* State counter low */
 #define G_STATE_COUNTER_0AA5    XDATA_VAR8(0x0AA5)  /* State counter byte 2 */
@@ -440,30 +484,135 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_STATE_WORK_002D       XDATA_VAR8(0x002D)  /* System work byte 0x2D */
 
 //=============================================================================
-// Flash Buffer Area Control (0x7000-0x7FFF)
+// Flash Buffer Area (0x7000-0x7FFF) - 4 KB SPI Flash Configuration Cache
 //=============================================================================
-#define G_FLASH_BUF_BASE        XDATA_VAR8(0x7000)  /* Flash buffer base */
-#define G_FLASH_BUF_7004        XDATA_VAR8(0x7004)  /* Flash buffer config start */
-#define G_FLASH_BUF_702C        XDATA_VAR8(0x702C)  /* Flash buffer serial start */
-#define G_FLASH_BUF_7059        XDATA_VAR8(0x7059)  /* Flash buffer byte */
-#define G_FLASH_BUF_705A        XDATA_VAR8(0x705A)  /* Flash buffer byte */
-#define G_FLASH_BUF_705C        XDATA_VAR8(0x705C)  /* Flash buffer data 1 */
-#define G_FLASH_BUF_705D        XDATA_VAR8(0x705D)  /* Flash buffer data 2 */
-#define G_FLASH_BUF_705E        XDATA_VAR8(0x705E)  /* Flash buffer data 3 */
-#define G_FLASH_BUF_705F        XDATA_VAR8(0x705F)  /* Flash buffer data 4 */
-#define G_FLASH_BUF_7064        XDATA_VAR8(0x7064)  /* Flash buffer array 3 start */
-#define G_FLASH_BUF_7074        XDATA_VAR8(0x7074)  /* Flash config byte 0x7074 */
-#define G_FLASH_BUF_7075        XDATA_VAR8(0x7075)  /* Flash config byte 0x7075 */
-#define G_FLASH_BUF_7076        XDATA_VAR8(0x7076)  /* Flash config source byte 0 */
-#define G_FLASH_BUF_7077        XDATA_VAR8(0x7077)  /* Flash config source byte 1 */
-#define G_FLASH_BUF_7078        XDATA_VAR8(0x7078)  /* Flash config source byte 2 */
-#define G_FLASH_BUF_7079        XDATA_VAR8(0x7079)  /* Flash config source byte 3 */
-#define G_FLASH_BUF_707A        XDATA_VAR8(0x707A)  /* Flash config source byte 4 */
-#define G_FLASH_BUF_707B        XDATA_VAR8(0x707B)  /* Flash buffer byte 0x707B */
-#define G_FLASH_BUF_707C        XDATA_VAR8(0x707C)  /* Flash buffer byte 0x707C */
-#define G_FLASH_BUF_707D        XDATA_VAR8(0x707D)  /* Flash buffer byte 0x707D */
-#define G_FLASH_BUF_707E        XDATA_VAR8(0x707E)  /* Flash header marker */
-#define G_FLASH_BUF_707F        XDATA_VAR8(0x707F)  /* Flash checksum */
+/*
+ * FLASH BUFFER STRUCTURE
+ *
+ * This 4 KB region is loaded from SPI flash during boot and contains
+ * device configuration, USB descriptors, and hardware settings.
+ *
+ * MEMORY MAP:
+ *   0x7000-0x7003: Header (4 bytes)
+ *   0x7004-0x702B: Device Configuration Block (40 bytes)
+ *   0x702C-0x7058: Serial Number String (45 bytes, null-terminated)
+ *   0x7059-0x705B: PD Configuration Flags (3 bytes)
+ *   0x705C-0x7063: USB Mode Configuration (8 bytes)
+ *   0x7064-0x7073: PCIe/NVMe Settings (16 bytes)
+ *   0x7074-0x707D: Power Configuration (10 bytes)
+ *   0x707E:        Header Marker (0xA5 = valid config)
+ *   0x707F:        Checksum (XOR of 0x7000-0x707E)
+ *   0x7080-0x7FFF: Reserved / USB Descriptor Templates
+ *
+ * DEVICE CONFIGURATION BLOCK (0x7004-0x702B):
+ *   0x7004-0x7005: USB Vendor ID (little-endian)
+ *   0x7006-0x7007: USB Product ID (little-endian)
+ *   0x7008:        Device Revision
+ *   0x7009-0x700A: Max Power (mA, little-endian)
+ *   0x700B:        USB Attributes (self-powered, remote wakeup)
+ *   0x700C-0x702B: Reserved for expansion
+ *
+ * PD CONFIGURATION FLAGS (0x7059-0x705B):
+ *   0x7059:        PD Mode Enable (bit 0 = PD 3.0, bit 1 = EPR)
+ *   0x705A:        PD Source Capabilities Index
+ *   0x705B:        PD Sink Capabilities Index
+ *
+ * USB MODE CONFIGURATION (0x705C-0x7063):
+ *   0x705C:        USB Mode (0=USB2, 1=USB3, 2=USB4)
+ *   0x705D:        Lane Configuration
+ *   0x705E:        Max Link Speed (0=5G, 1=10G, 2=20G, 3=40G)
+ *   0x705F:        Tunnel Mode Flags
+ *   0x7060-0x7063: Reserved
+ *
+ * PCIE/NVME SETTINGS (0x7064-0x7073):
+ *   0x7064:        PCIe Link Width (1, 2, or 4 lanes)
+ *   0x7065:        PCIe Gen (1=2.5G, 2=5G, 3=8G, 4=16G)
+ *   0x7066:        NVMe Queue Depth
+ *   0x7067:        NVMe Admin Queue Timeout (ms/10)
+ *   0x7068-0x7073: Reserved
+ *
+ * POWER CONFIGURATION (0x7074-0x707D):
+ *   0x7074:        Power Profile Index
+ *   0x7075:        Voltage Reporting Mode
+ *   0x7076-0x7079: Power Source PDOs (4 bytes)
+ *   0x707A:        Thermal Threshold (°C)
+ *   0x707B:        Fan Control Mode
+ *   0x707C:        LED Mode
+ *   0x707D:        Bit 0: Flash config enable, Bit 3: Link config override
+ *
+ * VALIDATION:
+ *   - 0x707E must be 0xA5 for configuration to be valid
+ *   - Checksum at 0x707F must match XOR of bytes 0x7000-0x707E
+ *   - If invalid, firmware uses hardcoded defaults
+ *
+ * INITIALIZATION FLOW:
+ *   1. flash_load_config() reads 128 bytes from SPI flash sector 0
+ *   2. Validates header marker (0x707E == 0xA5) and checksum (0x707F)
+ *   3. If valid, copies settings to working area (0x0860-0x08FF)
+ *   4. If invalid, uses ROM defaults
+ *   5. config_apply() applies settings to hardware registers
+ */
+#define G_FLASH_BUF_PTR         ((__xdata uint8_t *)0x7000)  /* Flash buffer base pointer */
+#define G_FLASH_BUF_SIZE        0x1000              /* 4 KB flash buffer */
+#define G_FLASH_BUF_BASE        XDATA_VAR8(0x7000)  /* Flash buffer byte 0 (for byte access) */
+
+/* Header Region (0x7000-0x7003) */
+#define G_FLASH_HEADER_0        XDATA_VAR8(0x7000)  /* Header byte 0 (magic 'A') */
+#define G_FLASH_HEADER_1        XDATA_VAR8(0x7001)  /* Header byte 1 (magic 'S') */
+#define G_FLASH_HEADER_2        XDATA_VAR8(0x7002)  /* Header byte 2 (magic 'M') */
+#define G_FLASH_HEADER_3        XDATA_VAR8(0x7003)  /* Header byte 3 (version) */
+
+/* Device Configuration Block (0x7004-0x702B) */
+#define G_FLASH_CFG_START       XDATA_VAR8(0x7004)  /* Config block start */
+#define G_FLASH_VID_LO          XDATA_VAR8(0x7004)  /* USB Vendor ID low */
+#define G_FLASH_VID_HI          XDATA_VAR8(0x7005)  /* USB Vendor ID high */
+#define G_FLASH_PID_LO          XDATA_VAR8(0x7006)  /* USB Product ID low */
+#define G_FLASH_PID_HI          XDATA_VAR8(0x7007)  /* USB Product ID high */
+
+/* Serial Number String (0x702C-0x7058) */
+#define G_FLASH_SERIAL_BASE     ((__xdata uint8_t *)0x702C)  /* Serial string base */
+#define G_FLASH_SERIAL_MAX_LEN  45                  /* Max serial length */
+
+/* PD Configuration Flags (0x7059-0x705B) */
+#define G_FLASH_PD_MODE         XDATA_VAR8(0x7059)  /* PD mode enable flags */
+#define   FLASH_PD_MODE_30        0x01              /* Bit 0: PD 3.0 enabled */
+#define   FLASH_PD_MODE_EPR       0x02              /* Bit 1: Extended Power Range */
+#define G_FLASH_PD_SRC_CAP      XDATA_VAR8(0x705A)  /* PD source capabilities index */
+#define G_FLASH_PD_SNK_CAP      XDATA_VAR8(0x705B)  /* PD sink capabilities index */
+
+/* USB Mode Configuration (0x705C-0x7063) */
+#define G_FLASH_USB_MODE        XDATA_VAR8(0x705C)  /* USB mode (0=USB2, 1=USB3, 2=USB4) */
+#define G_FLASH_LANE_CFG        XDATA_VAR8(0x705D)  /* Lane configuration */
+#define G_FLASH_LINK_SPEED      XDATA_VAR8(0x705E)  /* Max link speed */
+#define G_FLASH_TUNNEL_FLAGS    XDATA_VAR8(0x705F)  /* USB4 tunnel mode flags */
+
+/* PCIe/NVMe Settings (0x7064-0x7073) */
+#define G_FLASH_PCIE_ARRAY      ((__xdata uint8_t *)0x7064)  /* PCIe settings base */
+#define G_FLASH_PCIE_WIDTH      XDATA_VAR8(0x7064)  /* PCIe link width (1/2/4) */
+#define G_FLASH_PCIE_GEN        XDATA_VAR8(0x7065)  /* PCIe generation (1-4) */
+#define G_FLASH_NVME_QDEPTH     XDATA_VAR8(0x7066)  /* NVMe queue depth */
+#define G_FLASH_NVME_TIMEOUT    XDATA_VAR8(0x7067)  /* NVMe admin timeout (ms/10) */
+
+/* Power Configuration (0x7074-0x707D) */
+#define G_FLASH_PWR_PROFILE     XDATA_VAR8(0x7074)  /* Power profile index */
+#define G_FLASH_VOLT_MODE       XDATA_VAR8(0x7075)  /* Voltage reporting mode */
+#define G_FLASH_PWR_PDO_BASE    ((__xdata uint8_t *)0x7076)  /* Power PDOs (4 bytes) */
+#define G_FLASH_PWR_PDO_0       XDATA_VAR8(0x7076)  /* Power PDO byte 0 */
+#define G_FLASH_PWR_PDO_1       XDATA_VAR8(0x7077)  /* Power PDO byte 1 */
+#define G_FLASH_PWR_PDO_2       XDATA_VAR8(0x7078)  /* Power PDO byte 2 */
+#define G_FLASH_PWR_PDO_3       XDATA_VAR8(0x7079)  /* Power PDO byte 3 */
+#define G_FLASH_THERMAL_THRESH  XDATA_VAR8(0x707A)  /* Thermal threshold (°C) */
+#define G_FLASH_FAN_MODE        XDATA_VAR8(0x707B)  /* Fan control mode */
+#define G_FLASH_LED_MODE        XDATA_VAR8(0x707C)  /* LED mode */
+#define G_FLASH_CFG_FLAGS       XDATA_VAR8(0x707D)  /* Configuration flags */
+#define   FLASH_CFG_ENABLE        0x01              /* Bit 0: Flash config enabled */
+#define   FLASH_CFG_LINK_OVRD     0x08              /* Bit 3: Link config override */
+
+/* Validation (0x707E-0x707F) */
+#define G_FLASH_MARKER          XDATA_VAR8(0x707E)  /* Header marker (0xA5 = valid) */
+#define   FLASH_MARKER_VALID      0xA5              /* Valid configuration marker */
+#define G_FLASH_CHECKSUM        XDATA_VAR8(0x707F)  /* XOR checksum of 0x7000-0x707E */
+
 
 //=============================================================================
 // Work Variables 0x0A5x-0x0A9x
@@ -530,7 +679,7 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 //=============================================================================
 // Command Engine Work Area (0x07B0-0x07FF)
 //=============================================================================
-#define G_CMD_SLOT_INDEX        XDATA_VAR8(0x07B7)  /* Command slot index (3-bit) */
+#define G_CMD_ENGINE_SLOT       XDATA_VAR8(0x07B7)  /* Command engine slot index (3-bit) */
 #define G_CMD_PENDING_07BB      XDATA_VAR8(0x07BB)  /* Command pending flag */
 /* NOTE: G_CMD_STATE_07BC removed - use G_FLASH_CMD_TYPE (same address) */
 /* NOTE: G_CMD_OP_COUNTER removed - use G_FLASH_OP_COUNTER (same address) */

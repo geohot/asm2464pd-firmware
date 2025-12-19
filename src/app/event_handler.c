@@ -2338,7 +2338,7 @@ void flash_config_init_9388(void)
     }
 
     /* Check if 0x7064 area is valid (not 0xFF) */
-    val = G_FLASH_BUF_7064;
+    val = G_FLASH_PCIE_WIDTH;
     if ((uint8_t)~val != 0) {  /* If not 0xFF */
         /* Loop 3: Copy 0x7064-0x7073 -> 0x01C5-0x01D4 (16 bytes) */
         /* If source byte is 0xFF, use default 0x20 */
@@ -2354,10 +2354,10 @@ void flash_config_init_9388(void)
     }
 
     /* Check and copy 0x7074/0x7075 -> 0x086C/0x086D if valid */
-    val = G_FLASH_BUF_7074;
-    if (val != 0xFF || (uint8_t)~G_FLASH_BUF_7075 != 0) {
-        G_FLASH_CFG_086C = G_FLASH_BUF_7074;
-        G_FLASH_CFG_086D = G_FLASH_BUF_7075;
+    val = G_FLASH_PWR_PROFILE;
+    if (val != 0xFF || (uint8_t)~G_FLASH_VOLT_MODE != 0) {
+        G_FLASH_CFG_086C = G_FLASH_PWR_PROFILE;
+        G_FLASH_CFG_086D = G_FLASH_VOLT_MODE;
     }
 
     /* Continue with flash_config_copy_9403 behavior */
@@ -2397,57 +2397,57 @@ void flash_config_copy_9403(void)
     uint8_t r7_ae6;
 
     /* Check if flash block 0x7076-0x7077 is valid (not both 0xFF) */
-    val = G_FLASH_BUF_7076;
-    if (val != 0xFF || (uint8_t)~G_FLASH_BUF_7077 != 0) {
+    val = G_FLASH_PWR_PDO_0;
+    if (val != 0xFF || (uint8_t)~G_FLASH_PWR_PDO_1 != 0) {
         /* Valid - copy 0x7076 -> 0x086E, 0x7077 -> 0x086F */
-        G_FLASH_CFG_086E = G_FLASH_BUF_7076;
-        G_FLASH_CFG_086F = G_FLASH_BUF_7077;
+        G_FLASH_CFG_086E = G_FLASH_PWR_PDO_0;
+        G_FLASH_CFG_086F = G_FLASH_PWR_PDO_1;
     }
 
     /* Check if flash block 0x7078-0x7079 is valid (not both 0xFF) */
-    val = G_FLASH_BUF_7078;
-    if (val != 0xFF || (uint8_t)~G_FLASH_BUF_7079 != 0) {
+    val = G_FLASH_PWR_PDO_2;
+    if (val != 0xFF || (uint8_t)~G_FLASH_PWR_PDO_3 != 0) {
         /* Valid - copy 0x7078 -> 0x0870, 0x7079 -> 0x0871 */
-        G_FLASH_CFG_0870 = G_FLASH_BUF_7078;
-        G_FLASH_CFG_0871 = G_FLASH_BUF_7079;
+        G_FLASH_CFG_0870 = G_FLASH_PWR_PDO_2;
+        G_FLASH_CFG_0871 = G_FLASH_PWR_PDO_3;
     }
 
     /* Read config byte from 0x707D and extract bitfields */
-    cfg_707d = G_FLASH_BUF_707D;
+    cfg_707d = G_FLASH_CFG_FLAGS;
 
     /* Bit 0 -> 0x0AEA (flash config flag) */
-    G_FLASH_CFG_0AEA = cfg_707d & 0x01;
+    G_FLASH_CFG_0AEA = cfg_707d & FLASH_CFG_ENABLE;
 
     /* Bit 1 (shifted to bit 0) -> 0x0AE3 (state flag) */
-    cfg_707d = G_FLASH_BUF_707D;  /* Re-read for helper chain */
+    cfg_707d = G_FLASH_CFG_FLAGS;  /* Re-read for helper chain */
     G_STATE_FLAG_0AE3 = (cfg_707d >> 1) & 0x01;
 
     /* Bit 2 (shifted) -> 0x0AE4 (PHY lane config) */
-    cfg_707d = G_FLASH_BUF_707D;
+    cfg_707d = G_FLASH_CFG_FLAGS;
     G_PHY_LANE_CFG_0AE4 = (cfg_707d >> 2) & 0x01;
 
     /* Bit 3 -> 0x0AF0 (flash config) */
-    cfg_707d = G_FLASH_BUF_707D;
-    G_FLASH_CFG_0AF0 = (cfg_707d >> 3) & 0x01;
+    cfg_707d = G_FLASH_CFG_FLAGS;
+    G_FLASH_CFG_0AF0 = (cfg_707d >> 3) & FLASH_CFG_ENABLE;
 
     /* Bit 4 (from swap) -> 0x0AE5 (TLP init flag) */
-    cfg_707d = G_FLASH_BUF_707D;
+    cfg_707d = G_FLASH_CFG_FLAGS;
     G_TLP_INIT_FLAG_0AE5 = (cfg_707d >> 4) & 0x01;
 
     /* Bit 5 (from swap + shift) -> 0x0AE6 (link speed mode) */
-    cfg_707d = G_FLASH_BUF_707D;
+    cfg_707d = G_FLASH_CFG_FLAGS;
     G_LINK_SPEED_MODE_0AE6 = r7_ae6 = (cfg_707d >> 5) & 0x01;
 
     /* Bit 6 (from swap/rrc/rrc) -> 0x0AE7 (link config bit) */
-    cfg_707d = G_FLASH_BUF_707D;
+    cfg_707d = G_FLASH_CFG_FLAGS;
     G_LINK_CFG_BIT_0AE7 = (cfg_707d >> 6) & 0x01;
 
     /* Bit 7 -> 0x0AE8 (state) */
-    cfg_707d = G_FLASH_BUF_707D;
+    cfg_707d = G_FLASH_CFG_FLAGS;
     G_STATE_0AE8 = (cfg_707d >> 7) & 0x01;
 
     /* Read config byte from 0x707A and extract bitfields */
-    cfg_707a = G_FLASH_BUF_707A;
+    cfg_707a = G_FLASH_THERMAL_THRESH;
 
     /* Low nibble -> 0x0AE9 (state) */
     G_STATE_0AE9 = cfg_707a & 0x0F;
@@ -2456,11 +2456,11 @@ void flash_config_copy_9403(void)
     G_STATE_CHECK_0AEE = (cfg_707a >> 4) & 0x03;
 
     /* Process 0x707A upper bits with flash_extract_2bits_shift2 pattern -> 0x0AEF */
-    cfg_707a = G_FLASH_BUF_707A;
+    cfg_707a = G_FLASH_THERMAL_THRESH;
     G_LINK_CFG_0AEF = (cfg_707a >> 6) & 0x03;
 
     /* Read config byte from 0x707B */
-    cfg_707b = G_FLASH_BUF_707B;
+    cfg_707b = G_FLASH_FAN_MODE;
 
     /* Bits 0-1 -> 0x0AEB (link config) */
     G_LINK_CFG_0AEB = cfg_707b & 0x03;

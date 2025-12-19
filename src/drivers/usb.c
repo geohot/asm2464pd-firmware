@@ -4985,7 +4985,7 @@ void pcie_vendor_handler_35b7(uint8_t param)
  */
 void usb_vendor_command_processor(void)
 {
-    uint8_t state = I_STATE_6A;
+    uint8_t state = I_USB_STATE;
 
     if (state != 5) {
         /* State != 5: Setup transfer flags and return */

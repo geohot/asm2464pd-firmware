@@ -15,13 +15,18 @@ if TYPE_CHECKING:
 
 
 class USBState(IntEnum):
-    """USB state machine states (matches firmware IDATA[0x6A])."""
-    DISCONNECTED = 0
-    ATTACHED = 1
-    POWERED = 2
-    DEFAULT = 3
-    ADDRESS = 4
-    CONFIGURED = 5  # Ready for vendor commands
+    """
+    USB state machine states.
+
+    Matches firmware I_USB_STATE (IDATA[0x6A]) and USB_STATE_* constants in globals.h.
+    State transitions occur in ISR at 0x0E68 and main loop at 0x202A.
+    """
+    DISCONNECTED = 0  # USB_STATE_DISCONNECTED - No USB connection
+    ATTACHED = 1      # USB_STATE_ATTACHED - Cable connected
+    POWERED = 2       # USB_STATE_POWERED - Bus powered
+    DEFAULT = 3       # USB_STATE_DEFAULT - Default address assigned
+    ADDRESS = 4       # USB_STATE_ADDRESS - Device address assigned
+    CONFIGURED = 5    # USB_STATE_CONFIGURED - Ready for vendor commands
 
 
 @dataclass
@@ -43,16 +48,24 @@ class USBController:
     through its USB state machine.
 
     The firmware's USB state machine:
-    - IDATA[0x6A] contains current USB state (0-5)
-    - State 5 = CONFIGURED, ready for vendor commands
+    - I_USB_STATE (IDATA[0x6A]) contains current USB state (0-5)
+    - State 5 = USB_STATE_CONFIGURED, ready for vendor commands
     - Firmware transitions states by reading MMIO and updating its own RAM
 
-    Key MMIO registers for USB:
-    - 0x9000: USB connection status (bit 7=connected, bit 0=active)
-    - 0x9101: USB interrupt flags (bit 5 triggers command handler path)
-    - 0xC802: Interrupt status (bit 0=USB interrupt pending)
-    - 0xCE89: USB/DMA status (bits control state transitions)
-    - 0x910D-0x9112: CDB data registers
+    Key MMIO registers for USB (see registers.h for full definitions):
+    - REG_USB_STATUS (0x9000): Connection status (bit 7=connected, bit 0=active)
+    - REG_USB_PERIPH_STATUS (0x9101): Interrupt flags (bit 5 triggers cmd handler)
+    - REG_USB_CTRL_PHASE (0x9091): Control transfer phase (bit 0=setup, bit 1=data)
+    - REG_USB_DMA_TRIGGER (0x9092): Trigger DMA for descriptor transfer
+    - REG_USB_DMA_STATE (0xCE89): DMA state machine (bits control transitions)
+    - REG_USB_SETUP_* (0x9E00-0x9E07): USB setup packet buffer
+    - REG_USB_EP0_COMPLETE (0xE712): EP0 transfer complete status
+
+    Key globals for USB (see globals.h):
+    - G_CMD_SLOT_INDEX (0x05A3): Current command slot index
+    - G_CMD_TABLE_BASE (0x05B1): Command table (10 x 34-byte entries)
+    - G_USB_CMD_CONFIG (0x07EC): USB command configuration
+    - G_DMA_XFER_STATUS (0x0AA0): DMA transfer status
     """
 
     def __init__(self, hw: 'HardwareState'):
@@ -150,13 +163,13 @@ class USBController:
         if self.hw.memory:
             self.hw.memory.xdata[0x0AF7] = 0x01  # PCIe enumeration complete flag
             self.hw.memory.xdata[0x053F] = 0x01  # PCIe link state (port 0)
-            # CRITICAL: Port state at 0x05B1 + port_index*0x22 must NOT be 4
-            # At 0x35D4-0x35DF: Firmware calls 0x1551 which reads XDATA[0x05A3] as port index,
-            # then calculates XDATA[0x05B1 + index*0x22] and if that value equals 4,
+            # CRITICAL: Command table state at G_CMD_TABLE_BASE + index*0x22 must NOT be 4
+            # At 0x35D4-0x35DF: Firmware calls 0x1551 which reads G_CMD_SLOT_INDEX (0x05A3),
+            # then calculates G_CMD_TABLE_BASE[index] and if that value equals 4,
             # it calls 0x54BB which clears XDATA[0x0AF7] to 0.
-            # Set port 0 state to 3 (link up) instead of 4 (error/reset).
-            self.hw.memory.xdata[0x05A3] = 0x00  # Port index = 0
-            self.hw.memory.xdata[0x05B1] = 0x03  # Port 0 state = 3 (link up, not 4)
+            # Set slot 0 state to 3 (ready) instead of 4 (error/reset).
+            self.hw.memory.xdata[0x05A3] = 0x00  # G_CMD_SLOT_INDEX = 0
+            self.hw.memory.xdata[0x05B1] = 0x03  # G_CMD_TABLE_BASE[0] = 3 (ready)
 
         print(f"[{self.hw.cycles:8d}] [USB_CTRL] Connected - MMIO set for enumeration")
 
@@ -1075,28 +1088,29 @@ class HardwareState:
         self.read_callbacks[0xCA0D] = self._pd_interrupt_read
         self.read_callbacks[0xCA0E] = self._pd_interrupt_read
 
-        # USB state machine MMIO registers
-        # 0xCE89: USB/DMA status - controls state transitions
-        #   Bit 0: Must be set to exit initial wait loop (0x348C)
-        #   Bit 1: Checked at 0x3493 for branch path
-        #   Bit 2: Controls state 3→4 transition (0x3588)
+        # USB state machine MMIO registers (see registers.h for definitions)
+        # REG_USB_DMA_STATE (0xCE89): USB/DMA status - controls state transitions
+        #   USB_DMA_STATE_READY (bit 0): Must be set to exit wait loop (0x348C)
+        #   USB_DMA_STATE_SUCCESS (bit 1): Checked at 0x3493 for branch path
+        #   USB_DMA_STATE_COMPLETE (bit 2): Controls state 3→4 transition (0x3588)
         self.read_callbacks[0xCE89] = self._usb_ce89_read
-        # 0xCE86: USB status - bit 4 checked at 0x349D
+        # REG_XFER_STATUS_CE86 (0xCE86): USB status - bit 4 checked at 0x349D
         self.read_callbacks[0xCE86] = self._usb_ce86_read
-        # 0xCE6C: USB controller ready - bit 7 must be set for transfers
+        # REG_XFER_STATUS_CE6C (0xCE6C): USB controller ready - bit 7 must be set
         self.read_callbacks[0xCE6C] = self._usb_ce6c_read
-        # 0xCE00: DMA control register - returns 0 after DMA completion
-        # Firmware writes 0x03 to start DMA at 0x3531-0x3533, then polls at 0x3534-0x3538
+        # REG_SCSI_DMA_CTRL (0xCE00): DMA control register - returns 0 after completion
+        # Firmware writes 0x03 to start DMA at 0x3531-0x3533, polls at 0x3534-0x3538
         self.read_callbacks[0xCE00] = self._usb_ce00_read
         self.write_callbacks[0xCE00] = self._usb_ce00_write
-        # 0xCE55: Transfer slot count - determines outer loop iterations at 0x34F8
-        # Read at 0x34B9 and stored to XDATA[0x009F] as loop limit
+        # REG_SCSI_TAG_VALUE (0xCE55): Transfer slot count for loop iterations
+        # Read at 0x34B9 and stored to G_USB_WORK_009F as loop limit
         self.read_callbacks[0xCE55] = self._usb_ce55_read
-        # 0xCE88: DMA trigger register - write resets state for new transfer
-        # At 0x1806: firmware writes to CE88 before polling CE89 at 0x1807
+        # REG_XFER_CTRL_CE88 (0xCE88): DMA trigger - write resets state
+        # At 0x1806: firmware writes to CE88 before polling REG_USB_DMA_STATE
         self.write_callbacks[0xCE88] = self._usb_ce88_write
 
-        # USB Endpoint 0 buffer (0x9E00-0x9E3F)
+        # USB Setup Packet buffer (REG_USB_SETUP_* at 0x9E00-0x9E07)
+        # Hardware writes 8-byte setup packet here when received from host
         for addr in range(0x9E00, 0x9E40):
             self.read_callbacks[addr] = self._usb_ep0_buf_read
             self.write_callbacks[addr] = self._usb_ep0_buf_write
@@ -1263,25 +1277,26 @@ class HardwareState:
         Add trace points for vendor command related XDATA addresses.
 
         These cover the key RAM locations used in E4/E5 command processing.
+        Names match definitions in globals.h.
         """
         self.xdata_trace_addrs.update({
-            0x0002: "CDB[0]",
-            0x0003: "VENDOR_FLAG",
-            0x0004: "CDB[2]",
-            0x05A3: "CMD_INDEX",
-            0x05A5: "CMD_INDEX_SRC",
-            0x05B1: "CMD_TABLE[0]",
-            0x05B2: "CMD_TABLE[1]",
-            0x05B3: "CMD_TABLE[2]",
-            0x05D3: "CMD_TABLE_ENTRY1",
-            0x07EC: "USB_CONFIG",
-            0x0AA0: "DMA_STATUS",
+            0x0002: "G_IO_CMD_STATE",           # CDB[0]
+            0x0003: "G_EP_STATUS_CTRL",         # Vendor flag
+            0x0004: "G_WORK_0004",              # CDB[2]
+            0x05A3: "G_CMD_SLOT_INDEX",         # Current command slot (0-9)
+            0x05A5: "G_CMD_INDEX_SRC",          # Command index source
+            0x05B1: "G_CMD_TABLE_BASE[0]",      # Command table entry 0
+            0x05B2: "G_CMD_TABLE_BASE[0]+1",    # Command table entry 0, byte 1
+            0x05B3: "G_CMD_TABLE_BASE[0]+2",    # Command table entry 0, byte 2
+            0x05D3: "G_CMD_TABLE_BASE[1]",      # Command table entry 1
+            0x07EC: "G_USB_CMD_CONFIG",         # USB command configuration
+            0x0AA0: "G_DMA_XFER_STATUS",        # DMA transfer status
         })
-        # Also trace command table range
+        # Also trace command table range (10 entries x 34 bytes each)
         for i in range(10):
-            base = 0x05B1 + i * 0x22
+            base = 0x05B1 + i * 0x22  # G_CMD_TABLE_ENTRY_SIZE = 0x22
             if base not in self.xdata_trace_addrs:
-                self.xdata_trace_addrs[base] = f"CMD_TABLE[{i}].type"
+                self.xdata_trace_addrs[base] = f"G_CMD_TABLE_BASE[{i}]"
         self.xdata_trace_enabled = True
 
     def trace_xdata_write(self, addr: int, value: int, pc: int = 0):

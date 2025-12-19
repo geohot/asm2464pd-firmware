@@ -16,21 +16,78 @@
  *       │                                               │
  *       <───── SCSI Status <── NVMe Completion <── Completion Queue
  *
+ * ===========================================================================
  * QUEUE ARCHITECTURE
- *   - Admin Queue (QID 0): Controller management commands
- *   - I/O Queues (QID 1+): Read/Write/Flush commands
- *   - Hardware doorbells trigger queue processing
- *   - Circular buffer with head/tail pointers and phase bit
- *   - Maximum 32 outstanding commands (5-bit counter)
+ * ===========================================================================
  *
+ * NVMe uses paired Submission Queues (SQ) and Completion Queues (CQ):
+ *
+ *   Admin Queue Pair (QID 0):
+ *   - For controller management: Identify, Create I/O Queue, Set Features
+ *   - Single pair, always exists
+ *   - Queue depth from flash config (G_FLASH_NVME_QDEPTH)
+ *
+ *   I/O Queue Pairs (QID 1+):
+ *   - For Read/Write/Flush commands to NVMe namespace
+ *   - Created during initialization via Admin Create I/O Queue command
+ *   - Support up to 32 outstanding commands (5-bit CID counter)
+ *
+ * QUEUE ENTRY STRUCTURES:
+ *
+ *   Submission Queue Entry (SQE) - 64 bytes:
+ *   +--------+--------+--------+--------+
+ *   | Opcode | Flags  | CID    | NSID   |  Bytes 0-7
+ *   +--------+--------+--------+--------+
+ *   | MPTR (metadata pointer)           |  Bytes 8-15
+ *   +--------+--------+--------+--------+
+ *   | PRP1 (data buffer address)        |  Bytes 16-23
+ *   +--------+--------+--------+--------+
+ *   | PRP2 (continued or PRP list)      |  Bytes 24-31
+ *   +--------+--------+--------+--------+
+ *   | Command-specific dwords           |  Bytes 32-63
+ *   +--------+--------+--------+--------+
+ *
+ *   Completion Queue Entry (CQE) - 16 bytes:
+ *   +--------+--------+--------+--------+
+ *   | Command Specific Result           |  Bytes 0-3
+ *   +--------+--------+--------+--------+
+ *   | Reserved                          |  Bytes 4-7
+ *   +--------+--------+--------+--------+
+ *   | SQ Head | SQ ID  | CID    | Status |  Bytes 8-15
+ *   +--------+--------+--------+--------+
+ *
+ * QUEUE POINTERS (stored in XDATA):
+ *   - G_NVME_SQ_HEAD: Submission Queue head (consumer, updated by controller)
+ *   - G_NVME_SQ_TAIL: Submission Queue tail (producer, updated by firmware)
+ *   - G_NVME_CQ_HEAD: Completion Queue head (consumer, updated by firmware)
+ *   - G_NVME_CQ_TAIL: Completion Queue tail (producer, updated by controller)
+ *
+ * PHASE BIT:
+ *   - Used to detect new completion entries
+ *   - Toggles when queue wraps around
+ *   - Stored in CQE status field (bit 0)
+ *
+ * COMMAND ID (CID) TRACKING:
+ *   - 16-bit unique ID per outstanding command
+ *   - Low 5 bits used as slot index (max 32 commands)
+ *   - Tracked in I_TRANSFER_6B-6E (queue state variables)
+ *
+ * ===========================================================================
  * SCSI-TO-NVME TRANSLATION
- *   SCSI READ(10/12/16)  → NVMe Read command
- *   SCSI WRITE(10/12/16) → NVMe Write command
- *   SCSI SYNC CACHE      → NVMe Flush command
+ * ===========================================================================
+ *
+ *   SCSI READ(10/12/16)  → NVMe Read (opcode 0x02)
+ *   SCSI WRITE(10/12/16) → NVMe Write (opcode 0x01)
+ *   SCSI SYNC CACHE      → NVMe Flush (opcode 0x00)
  *   SCSI INQUIRY         → NVMe Identify (cached)
  *   SCSI READ CAPACITY   → From Identify Namespace data
+ *   SCSI TEST UNIT READY → Check controller status
  *
- * REGISTER MAP (0xC400-0xC5FF)
+ * ===========================================================================
+ * REGISTER MAP
+ * ===========================================================================
+ *
+ * NVMe Command Registers (0xC400-0xC47F):
  *   0xC400  NVME_CTRL         Control register
  *   0xC401  NVME_STATUS       Status register
  *   0xC412  NVME_CTRL_STATUS  Control/status combined
@@ -39,34 +96,71 @@
  *   0xC415  NVME_DEV_STATUS   Device presence/ready status
  *   0xC420  NVME_CMD          Command register
  *   0xC421  NVME_CMD_OPCODE   NVMe opcode
- *   0xC422-24 NVME_LBA_0/1/2  LBA bytes 0-2
- *   0xC425-26 NVME_COUNT      Transfer count
+ *   0xC422  NVME_LBA_0        LBA byte 0 (bits 0-7)
+ *   0xC423  NVME_LBA_1        LBA byte 1 (bits 8-15)
+ *   0xC424  NVME_LBA_2        LBA byte 2 (bits 16-23)
+ *   0xC425  NVME_COUNT_LO     Transfer count low
+ *   0xC426  NVME_COUNT_HI     Transfer count high
  *   0xC427  NVME_ERROR        Error code
  *   0xC428  NVME_QUEUE_CFG    Queue configuration
  *   0xC429  NVME_CMD_PARAM    Command parameters
  *   0xC42A  NVME_DOORBELL     Queue doorbell
- *   0xC440-45 Queue head/tail pointers
- *   0xC446  NVME_LBA_3        LBA byte 3
+ *   0xC440  NVME_SQ_HEAD_LO   Submission queue head low
+ *   0xC441  NVME_SQ_HEAD_HI   Submission queue head high
+ *   0xC442  NVME_SQ_TAIL_LO   Submission queue tail low
+ *   0xC443  NVME_SQ_TAIL_HI   Submission queue tail high
+ *   0xC444  NVME_CQ_HEAD_LO   Completion queue head low
+ *   0xC445  NVME_CQ_HEAD_HI   Completion queue head high
+ *   0xC446  NVME_LBA_3        LBA byte 3 (bits 24-31)
  *   0xC462  DMA_ENTRY         DMA entry point
- *   0xC470-7F Command queue directory
+ *   0xC470-7F                 Command queue directory (16 entries)
  *
- * NVME EVENT REGISTERS (0xEC00-0xEC0F)
+ * NVMe Event Registers (0xEC00-0xEC0F):
  *   0xEC04  NVME_EVENT_ACK    Event acknowledge
  *   0xEC06  NVME_EVENT_STATUS Event status
  *
- * SCSI DMA REGISTERS (0xCE40-0xCEFF)
- *   0xCE88-89  SCSI DMA control/status
- *   0xCEB0     Transfer status
+ * Command Engine Registers (0xCC88-0xCC8A):
+ *   0xCC88  CMD_ENGINE_CTRL   Command engine control
+ *   0xCC89  CMD_ENGINE_STATE  Command state (bit patterns control flow)
+ *   0xCC8A  CMD_ENGINE_PARAM  Command parameter
  *
- * KEY DATA STRUCTURES (IDATA)
- *   0x09-0x0D: Current command parameters
- *   0x16-0x17: Transfer length (16-bit)
- *   0x6B-0x6F: Queue state variables
+ * SCSI DMA Registers (0xCE40-0xCEFF):
+ *   0xCE88  SCSI_DMA_CTRL     DMA control register
+ *   0xCE89  SCSI_DMA_STATUS   DMA status (REG_USB_DMA_STATE)
+ *   0xCEB0  XFER_STATUS       Transfer status
  *
- * KEY REGISTERS
- *   0xCC88-0xCC8A: Command engine control
- *   0xCC89: Command state (bit patterns control flow)
- *   0xE400-0xE42F: NVMe command configuration
+ * NVMe Command Configuration (0xE400-0xE42F):
+ *   0xE400  NVME_CFG_FLAGS    NVMe configuration flags
+ *   0xE405  NVME_CFG_CTRL     NVMe control configuration
+ *   0xE41C  NVME_CFG_STATUS   NVMe status configuration
+ *
+ * ===========================================================================
+ * KEY DATA STRUCTURES
+ * ===========================================================================
+ *
+ * IDATA Queue Variables:
+ *   0x09-0x0D: Current command parameters (boot sig reused as cmd buf)
+ *   0x16-0x17: Transfer length (16-bit, I_CORE_STATE_L/H)
+ *   0x6B-0x6F: Queue state variables (I_TRANSFER_6B-6E, I_BUF_FLOW_CTRL)
+ *
+ * XDATA Command Table (0x05B1-0x06CF):
+ *   - 10 entries × 34 bytes = 340 bytes
+ *   - Tracks pending commands for vendor E4/E5 and NVMe
+ *   - See G_CMD_TABLE_BASE in globals.h
+ *
+ * ===========================================================================
+ * COMMAND FLOW
+ * ===========================================================================
+ *
+ *   1. SCSI command received via USB bulk endpoint
+ *   2. scsi_dispatch() translates to NVMe command
+ *   3. nvme_build_cmd() constructs SQE in XDATA buffer
+ *   4. nvme_submit_cmd() writes SQE to submission queue
+ *   5. Doorbell write triggers NVMe controller
+ *   6. Controller processes command, writes CQE
+ *   7. Interrupt signals completion
+ *   8. nvme_check_completion() reads CQE, updates status
+ *   9. SCSI status returned to host via CSW
  */
 #ifndef _NVME_H_
 #define _NVME_H_

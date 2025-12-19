@@ -209,7 +209,7 @@ void protocol_state_machine(void)
     state_action_dispatch(action_code);
 
     /* Store result to IDATA[0x6A] */
-    I_STATE_6A = 0;  /* Cleared by original code at 0x4951 */
+    I_USB_STATE = 0;  /* Cleared by original code at 0x4951 */
 }
 
 /*
@@ -298,7 +298,7 @@ void nvme_completion_handler(uint8_t param)
         if (G_FLASH_RESET_0AAA != 0) {
             computed_val += 0x04;
         }
-        I_STATE_6A = computed_val;
+        I_USB_STATE = computed_val;
 
         flash_func_1679();
         G_FLASH_RESET_0AAA = 0x01;
@@ -307,7 +307,7 @@ void nvme_completion_handler(uint8_t param)
         computed_val = state_helper_15af();
         computed_val = (computed_val >> 1) & 0x07;
 
-        usb_calc_queue_addr(I_STATE_6A);
+        usb_calc_queue_addr(I_USB_STATE);
         G_FLASH_RESET_0AAA = computed_val;
 
         /* Flash function does not return */
@@ -729,7 +729,7 @@ static void queue_state_cleanup(void)
 {
     /* Clear state variables */
     G_USB_TRANSFER_FLAG = 0;
-    I_STATE_6A = 0;
+    I_USB_STATE = 0;
     G_STATE_FLAG_06E6 = 0;
 
     /* Call cleanup handler */
@@ -2587,7 +2587,7 @@ uint8_t helper_313a_check_nonzero(void)
  *
  * Algorithm:
  * 1. If G_USB_STATE_0B41 != 0, call parse_descriptor(1)
- * 2. If I_STATE_6A != 0, skip to continuation at 0x3577
+ * 2. If I_USB_STATE != 0, skip to continuation at 0x3577
  * 3. Clear state variables: 0x0B01, 0x053B, 0x00C2, 0x0517, 0x014E, 0x00E5
  * 4. Clear REG_XFER_CTRL_CE88
  * 5. Wait for REG_USB_DMA_STATE bit 0 to be set
@@ -2615,8 +2615,8 @@ void usb_ep_loop_3419(void)
         parse_descriptor(0x01);
     }
 
-    /* Step 2: Check I_STATE_6A */
-    val = I_STATE_6A;
+    /* Step 2: Check I_USB_STATE */
+    val = I_USB_STATE;
     if (val != 0) {
         /* Skip to continuation at 0x3577 - just return */
         return;
@@ -2761,12 +2761,12 @@ void usb_ep_loop_3419(void)
     if (val & 0x04) {
         /* Bit 2 set */
         G_USB_INIT_STATE_0108 = 0x30;
-        I_STATE_6A = 4;
+        I_USB_STATE = 4;
         G_XFER_FLAG_07EA = 1;
     } else {
         /* Bit 2 clear */
         G_USB_INIT_STATE_0108 = 0x20;
-        I_STATE_6A = 3;
+        I_USB_STATE = 3;
     }
     return;
 
