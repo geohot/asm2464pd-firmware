@@ -67,9 +67,65 @@
 #define REG_USB_BUF_CTRL_800A   XDATA_REG8(0x800A)  /* USB buffer control (power check: ==0x02) */
 #define REG_USB_BUF_STATUS_800D XDATA_REG8(0x800D)  /* USB buffer status (mask 0x7F != 0 check) */
 
+/*
+ * USB Setup Packet Buffer (0x9E00-0x9E07)
+ * Hardware writes the 8-byte USB setup packet here when received.
+ * Firmware reads these registers in ISR at 0xA5EA-0xA604 to process request.
+ *
+ * Standard USB Setup Packet Format:
+ *   Byte 0 (bmRequestType): Request characteristics
+ *     Bit 7: Direction (0=Host-to-device, 1=Device-to-host)
+ *     Bits 6-5: Type (0=Standard, 1=Class, 2=Vendor)
+ *     Bits 4-0: Recipient (0=Device, 1=Interface, 2=Endpoint)
+ *   Byte 1 (bRequest): Specific request code
+ *     0x00=GET_STATUS, 0x01=CLEAR_FEATURE, 0x05=SET_ADDRESS
+ *     0x06=GET_DESCRIPTOR, 0x09=SET_CONFIGURATION
+ *   Bytes 2-3 (wValue): Request-specific value
+ *   Bytes 4-5 (wIndex): Request-specific index
+ *   Bytes 6-7 (wLength): Number of bytes to transfer
+ */
 #define USB_CTRL_BUF_BASE       0x9E00
 #define USB_CTRL_BUF_SIZE       0x0200
-#define REG_USB_CTRL_BUF_9E00   XDATA_REG8(0x9E00)  /* USB control buffer first byte */
+
+// USB Setup Packet Registers
+#define REG_USB_SETUP_TYPE      XDATA_REG8(0x9E00)  /* bmRequestType (direction/type/recipient) */
+#define REG_USB_SETUP_REQUEST   XDATA_REG8(0x9E01)  /* bRequest (request code) */
+#define REG_USB_SETUP_VALUE_L   XDATA_REG8(0x9E02)  /* wValue low byte (descriptor index) */
+#define REG_USB_SETUP_VALUE_H   XDATA_REG8(0x9E03)  /* wValue high byte (descriptor type) */
+#define REG_USB_SETUP_INDEX_L   XDATA_REG8(0x9E04)  /* wIndex low byte */
+#define REG_USB_SETUP_INDEX_H   XDATA_REG8(0x9E05)  /* wIndex high byte */
+#define REG_USB_SETUP_LENGTH_L  XDATA_REG8(0x9E06)  /* wLength low byte */
+#define REG_USB_SETUP_LENGTH_H  XDATA_REG8(0x9E07)  /* wLength high byte */
+
+// bmRequestType bit definitions
+#define   USB_SETUP_DIR_HOST_TO_DEV  0x00  // Direction: Host to Device
+#define   USB_SETUP_DIR_DEV_TO_HOST  0x80  // Direction: Device to Host
+#define   USB_SETUP_TYPE_STANDARD    0x00  // Type: Standard request
+#define   USB_SETUP_TYPE_CLASS       0x20  // Type: Class request
+#define   USB_SETUP_TYPE_VENDOR      0x40  // Type: Vendor request
+#define   USB_SETUP_RECIP_DEVICE     0x00  // Recipient: Device
+#define   USB_SETUP_RECIP_INTERFACE  0x01  // Recipient: Interface
+#define   USB_SETUP_RECIP_ENDPOINT   0x02  // Recipient: Endpoint
+
+// Standard bRequest codes
+#define   USB_REQ_GET_STATUS         0x00
+#define   USB_REQ_CLEAR_FEATURE      0x01
+#define   USB_REQ_SET_FEATURE        0x03
+#define   USB_REQ_SET_ADDRESS        0x05
+#define   USB_REQ_GET_DESCRIPTOR     0x06
+#define   USB_REQ_SET_DESCRIPTOR     0x07
+#define   USB_REQ_GET_CONFIGURATION  0x08
+#define   USB_REQ_SET_CONFIGURATION  0x09
+
+// Descriptor types (for wValue high byte in GET_DESCRIPTOR)
+#define   USB_DESC_TYPE_DEVICE       0x01
+#define   USB_DESC_TYPE_CONFIG       0x02
+#define   USB_DESC_TYPE_STRING       0x03
+#define   USB_DESC_TYPE_INTERFACE    0x04
+#define   USB_DESC_TYPE_ENDPOINT     0x05
+#define   USB_DESC_TYPE_BOS          0x0F  // Binary Object Store (USB 3.0)
+
+// Additional USB control buffer registers
 #define REG_USB_CTRL_BUF_9E16   XDATA_REG8(0x9E16)  /* USB control buffer descriptor 1 hi */
 #define REG_USB_CTRL_BUF_9E17   XDATA_REG8(0x9E17)  /* USB control buffer descriptor 1 lo */
 #define REG_USB_CTRL_BUF_9E1D   XDATA_REG8(0x9E1D)  /* USB control buffer descriptor 2 hi */
@@ -91,20 +147,41 @@
 //=============================================================================
 // USB Interface Registers (0x9000-0x93FF)
 //=============================================================================
+/*
+ * USB Controller Overview:
+ * The USB controller handles USB 2.0 and USB 3.0 (SuperSpeed) connections.
+ *
+ * USB State Machine (IDATA[0x6A]):
+ *   0 = DISCONNECTED  - No USB connection
+ *   1 = ATTACHED      - Cable connected
+ *   2 = POWERED       - Bus powered
+ *   3 = DEFAULT       - Default address assigned
+ *   4 = ADDRESS       - Device address assigned
+ *   5 = CONFIGURED    - Ready for vendor commands
+ *
+ * Key MMIO registers for USB:
+ *   0x9000: Connection status (bit 7=connected, bit 0=active)
+ *   0x9091: Control transfer phase (bit 0=setup, bit 1=data)
+ *   0x9092: DMA trigger for descriptor transfers
+ *   0x9101: Interrupt flags (bit 5 triggers command handler)
+ *   0x9E00-0x9E07: USB setup packet buffer
+ *   0xCE89: USB/DMA status (state machine control)
+ */
+
 // Core USB registers (0x9000-0x901F)
 #define REG_USB_STATUS          XDATA_REG8(0x9000)
-#define   USB_STATUS_ACTIVE       0x01  // Bit 0: USB active/pending
+#define   USB_STATUS_ACTIVE       0x01  // Bit 0: USB active - SET for enumeration at ISR 0x0E68
 #define   USB_STATUS_BIT2         0x04  // Bit 2: USB status flag
 #define   USB_STATUS_INDICATOR    0x10  // Bit 4: USB status indicator
-#define   USB_STATUS_CONNECTED    0x80  // Bit 7: USB ready/connected
+#define   USB_STATUS_CONNECTED    0x80  // Bit 7: USB cable connected
 #define REG_USB_CONTROL         XDATA_REG8(0x9001)
 #define REG_USB_CONFIG          XDATA_REG8(0x9002)
-#define   USB_CONFIG_MASK        0x0F  // Bits 0-3: USB configuration
+#define   USB_CONFIG_MASK        0x0F  // Bits 0-3: USB configuration value
+#define   USB_CONFIG_BIT1        0x02  // Bit 1: Must be CLEAR to reach 0x9091 check at 0xCDF5
 #define REG_USB_EP0_STATUS      XDATA_REG8(0x9003)
-#define REG_USB_EP0_LEN_L       XDATA_REG8(0x9004)
-#define REG_USB_EP0_LEN_H       XDATA_REG8(0x9005)
+#define REG_USB_EP0_LEN_L       XDATA_REG8(0x9004)  /* EP0 transfer length low byte */
+#define REG_USB_EP0_LEN_H       XDATA_REG8(0x9005)  /* EP0 transfer length high byte */
 #define REG_USB_EP0_CONFIG      XDATA_REG8(0x9006)
-// REG_USB_STATUS2 removed (alias)
 #define   USB_EP0_CONFIG_ENABLE   0x01  // Bit 0: EP0 config enable
 #define   USB_EP0_CONFIG_READY    0x80  // Bit 7: EP0 ready/valid
 #define REG_USB_SCSI_BUF_LEN    XDATA_REG16(0x9007)
@@ -121,9 +198,9 @@
 #define REG_USB_MSC_LENGTH      XDATA_REG8(0x901A)
 
 // USB endpoint registers (0x905A-0x90FF)
-#define REG_USB_EP_CFG_905A     XDATA_REG8(0x905A)  // USB endpoint config
-#define REG_USB_EP_BUF_HI       XDATA_REG8(0x905B)  // USB endpoint buffer high byte
-#define REG_USB_EP_BUF_LO       XDATA_REG8(0x905C)  // USB endpoint buffer low byte
+#define REG_USB_EP_CFG_905A     XDATA_REG8(0x905A)  /* USB endpoint config */
+#define REG_USB_EP_BUF_HI       XDATA_REG8(0x905B)  /* DMA source address high (descriptor ROM) */
+#define REG_USB_EP_BUF_LO       XDATA_REG8(0x905C)  /* DMA source address low (descriptor ROM) */
 #define REG_USB_EP_CTRL_905D    XDATA_REG8(0x905D)  /* USB endpoint control 1 */
 #define REG_USB_EP_MGMT         XDATA_REG8(0x905E)
 #define REG_USB_EP_CTRL_905F    XDATA_REG8(0x905F)  /* USB endpoint control 2 */
@@ -131,8 +208,30 @@
 #define   USB_EP_CTRL_905F_BIT4   0x10  // Bit 4: Endpoint control flag
 #define REG_USB_INT_MASK_9090   XDATA_REG8(0x9090)  /* USB interrupt mask */
 #define   USB_INT_MASK_GLOBAL     0x80  // Bit 7: Global interrupt mask
-#define REG_INT_FLAGS_EX0       XDATA_REG8(0x9091)
-#define REG_TLP_CMD_TRIGGER     XDATA_REG8(0x9092)  /* TLP command trigger/status */
+
+/*
+ * USB Control Transfer Phase Register (0x9091)
+ * Two-phase control transfer handling at ISR 0xCDE7:
+ *   Bit 0 (SETUP): Setup packet received - triggers 0xA5A6 (setup handler)
+ *   Bit 1 (DATA):  Data phase - triggers 0xD088 (DMA descriptor response)
+ * Firmware loops writing 0x01, hardware clears bit 0 when ready for data phase.
+ * Bit 1 is then SET to indicate data phase, firmware calls DMA trigger.
+ */
+#define REG_USB_CTRL_PHASE      XDATA_REG8(0x9091)
+#define   USB_CTRL_PHASE_SETUP    0x01  // Bit 0: Setup phase active (triggers 0xA5A6)
+#define   USB_CTRL_PHASE_DATA     0x02  // Bit 1: Data phase active (triggers 0xD088)
+#define   USB_CTRL_PHASE_STATUS   0x04  // Bit 2: Status phase active
+#define   USB_CTRL_PHASE_STALL    0x08  // Bit 3: Endpoint stalled
+#define   USB_CTRL_PHASE_NAK      0x10  // Bit 4: NAK status
+
+/*
+ * USB DMA Trigger Register (0x9092)
+ * Write 0x01 to trigger DMA transfer of descriptor from ROM to USB buffer.
+ * The source address is set via REG_USB_EP_BUF_HI/LO (0x905B/0x905C).
+ * The length is set via REG_USB_EP0_LEN_L (0x9004).
+ */
+#define REG_USB_DMA_TRIGGER     XDATA_REG8(0x9092)
+#define   USB_DMA_TRIGGER_START   0x01  // Bit 0: Start DMA transfer
 #define REG_USB_EP_CFG1         XDATA_REG8(0x9093)
 #define REG_USB_EP_CFG2         XDATA_REG8(0x9094)
 #define REG_USB_EP_READY        XDATA_REG8(0x9096)
@@ -146,11 +245,28 @@
 #define REG_USB_MODE            XDATA_REG8(0x90E2)
 #define REG_USB_EP_STATUS_90E3  XDATA_REG8(0x90E3)
 
-// USB link/status registers (0x9100-0x912F)
+/*
+ * USB Link Status and Speed Registers (0x9100-0x912F)
+ * These indicate current USB connection state and speed mode.
+ */
 #define REG_USB_LINK_STATUS     XDATA_REG8(0x9100)
-#define   USB_LINK_STATUS_MASK    0x03  // Bits 0-1: Link status
+#define   USB_LINK_STATUS_MASK    0x03  // Bits 0-1: USB speed mode
+#define   USB_SPEED_FULL          0x00  // Full Speed (USB 1.x, 12 Mbps)
+#define   USB_SPEED_HIGH          0x01  // High Speed (USB 2.0, 480 Mbps)
+#define   USB_SPEED_SUPER         0x02  // SuperSpeed (USB 3.0, 5 Gbps)
+#define   USB_SPEED_SUPER_PLUS    0x03  // SuperSpeed+ (USB 3.1+, 10+ Gbps)
+
+/*
+ * USB Interrupt/Event Status (0x9101)
+ * Controls which USB handler path is taken in ISR.
+ * Different bits trigger different code paths in the interrupt handler.
+ */
 #define REG_USB_PERIPH_STATUS   XDATA_REG8(0x9101)
-#define   USB_PERIPH_SUSPENDED    0x40  // Bit 6: Peripheral suspended
+#define   USB_PERIPH_EP0_ACTIVE   0x01  // Bit 0: EP0 control transfer active
+#define   USB_PERIPH_DESC_REQ     0x02  // Bit 1: Descriptor request pending (triggers 0x033B)
+#define   USB_PERIPH_BULK_REQ     0x08  // Bit 3: Bulk transfer request (vendor cmd path)
+#define   USB_PERIPH_VENDOR_CMD   0x20  // Bit 5: Vendor command handler path
+#define   USB_PERIPH_SUSPENDED    0x40  // Bit 6: Peripheral suspended / USB init
 #define REG_USB_PHY_STATUS_9105 XDATA_REG8(0x9105)  /* USB PHY status check (0xFF = active) */
 #define REG_USB_STAT_EXT_L      XDATA_REG8(0x910D)
 #define REG_USB_STAT_EXT_H      XDATA_REG8(0x910E)
@@ -202,7 +318,15 @@
 #define REG_USB_PHY_CONFIG_9241 XDATA_REG8(0x9241)
 #define REG_USB_CTRL_924C       XDATA_REG8(0x924C)  // USB control (bit 0: endpoint ready)
 
-// Power Management registers (0x92C0-0x92E0)
+/*
+ * Power Management Registers (0x92C0-0x92E0)
+ * Control power domains, clocks, and device power state.
+ *
+ * REG_POWER_STATUS (0x92C2) is particularly important for USB:
+ *   Bit 6 controls ISR vs main loop execution paths.
+ *   When CLEAR: ISR calls 0xBDA4 for descriptor init
+ *   When SET: Main loop calls 0x0322 for transfer
+ */
 #define REG_POWER_ENABLE        XDATA_REG8(0x92C0)
 #define   POWER_ENABLE_BIT        0x01  // Bit 0: Main power enable
 #define   POWER_ENABLE_MAIN       0x80  // Bit 7: Main power on
@@ -210,7 +334,8 @@
 #define   CLOCK_ENABLE_BIT        0x01  // Bit 0: Clock enable
 #define   CLOCK_ENABLE_BIT1       0x02  // Bit 1: Secondary clock
 #define REG_POWER_STATUS        XDATA_REG8(0x92C2)
-#define   POWER_STATUS_SUSPENDED  0x40  // Bit 6: Device suspended
+#define   POWER_STATUS_READY      0x02  // Bit 1: Power ready
+#define   POWER_STATUS_USB_PATH   0x40  // Bit 6: Controls ISR/main loop USB path
 #define REG_POWER_MISC_CTRL     XDATA_REG8(0x92C4)
 #define REG_PHY_POWER           XDATA_REG8(0x92C5)
 #define   PHY_POWER_ENABLE        0x04  // Bit 2: PHY power enable
@@ -338,10 +463,18 @@
 #define   PCIE_LANE_CFG_LO_MASK   0x0F  // Bits 0-3: Low config
 #define   PCIE_LANE_CFG_HI_MASK   0xF0  // Bits 4-7: High config
 
-// PCIe Tunnel Link Control (0xB480-0xB482)
-#define REG_TUNNEL_LINK_CTRL    XDATA_REG8(0xB480)  // Tunnel link control (bit 0 = link up)
-#define   TUNNEL_LINK_UP          0x01  // Bit 0: Tunnel link is up
-#define REG_TUNNEL_ADAPTER_MODE XDATA_REG8(0xB482)  // Tunnel adapter mode
+/*
+ * PCIe Tunnel Link Control (0xB480-0xB482)
+ * Controls USB4/Thunderbolt PCIe tunnel state.
+ *
+ * REG_TUNNEL_LINK_CTRL (0xB480) is critical for USB descriptor DMA:
+ *   Bit 0 must be SET to prevent firmware at 0x20DA from clearing
+ *   XDATA[0x0AF7] which would disable the descriptor DMA path.
+ */
+#define REG_TUNNEL_LINK_CTRL    XDATA_REG8(0xB480)  /* PCIe link state - must be SET for USB DMA */
+#define   TUNNEL_LINK_UP          0x01  // Bit 0: PCIe tunnel link is up
+#define   TUNNEL_LINK_ACTIVE      0x02  // Bit 1: Tunnel active
+#define REG_TUNNEL_ADAPTER_MODE XDATA_REG8(0xB482)  /* Tunnel adapter mode */
 #define   TUNNEL_MODE_MASK        0xF0  // Bits 4-7: Tunnel mode
 #define   TUNNEL_MODE_ENABLED     0xF0  // High nibble 0xF0 = tunnel mode enabled
 
@@ -771,11 +904,21 @@
 #define REG_SCSI_DMA_STATUS     XDATA_REG16(0xCE6E)
 #define REG_SCSI_DMA_STATUS_L   XDATA_REG8(0xCE6E)   /* SCSI DMA status low byte */
 #define REG_SCSI_DMA_STATUS_H   XDATA_REG8(0xCE6F)   /* SCSI DMA status high byte */
-#define REG_XFER_STATUS_CE86    XDATA_REG8(0xCE86)
-#define REG_XFER_CTRL_CE88      XDATA_REG8(0xCE88)
-#define REG_XFER_READY          XDATA_REG8(0xCE89)
-#define   XFER_READY_BIT          0x01  // Bit 0: Transfer ready
-#define   XFER_READY_DONE         0x02  // Bit 1: Transfer done
+/*
+ * USB/DMA State Machine Control (0xCE86-0xCE89)
+ * These registers control USB enumeration and command state transitions.
+ *
+ * REG_USB_DMA_STATE (0xCE89) is the key state machine control register:
+ *   Bit 0: Must be SET to exit initial wait loop (0x348C)
+ *   Bit 1: Checked at 0x3493 for successful enumeration path
+ *   Bit 2: Controls state 3→4→5 transitions (0x3588)
+ */
+#define REG_XFER_STATUS_CE86    XDATA_REG8(0xCE86)  /* Transfer status (bit 4 checked at 0x349D) */
+#define REG_XFER_CTRL_CE88      XDATA_REG8(0xCE88)  /* DMA trigger - write resets state for new transfer */
+#define REG_USB_DMA_STATE       XDATA_REG8(0xCE89)  /* USB/DMA state machine control */
+#define   USB_DMA_STATE_READY     0x01  // Bit 0: Exit wait loop, ready for next phase
+#define   USB_DMA_STATE_SUCCESS   0x02  // Bit 1: Enumeration/transfer successful
+#define   USB_DMA_STATE_COMPLETE  0x04  // Bit 2: State machine complete
 #define REG_XFER_CTRL_CE8A      XDATA_REG8(0xCE8A)   /* Transfer control CE8A */
 #define REG_XFER_MODE_CE95      XDATA_REG8(0xCE95)
 #define REG_SCSI_DMA_CMD_REG    XDATA_REG8(0xCE96)
@@ -896,7 +1039,17 @@
 #define REG_LINK_WIDTH_E710     XDATA_REG8(0xE710)  /* Link width status (bits 5-7) */
 #define   LINK_WIDTH_MASK         0xE0  // Bits 5-7: Link width
 #define   LINK_WIDTH_LANES_MASK   0x1F  // Bits 0-4: Lane configuration
-#define REG_LINK_STATUS_E712    XDATA_REG8(0xE712)
+
+/*
+ * USB EP0 Transfer Complete Status (0xE712)
+ * The main loop at 0xCDC6-0xCDD9 polls this register waiting for
+ * bits 0 or 1 to be SET to exit the polling loop and process USB events.
+ * Without these bits, firmware never reaches USB dispatch at 0xCDE7.
+ */
+#define REG_USB_EP0_COMPLETE    XDATA_REG8(0xE712)
+#define   USB_EP0_COMPLETE_BIT0   0x01  // Bit 0: EP0 transfer complete
+#define   USB_EP0_COMPLETE_BIT1   0x02  // Bit 1: EP0 status phase complete
+
 #define REG_LINK_STATUS_E716    XDATA_REG8(0xE716)
 #define   LINK_STATUS_E716_MASK  0x03  // Bits 0-1: Link status
 #define REG_LINK_CTRL_E717      XDATA_REG8(0xE717)  /* Link control (bit 0 = enable) */

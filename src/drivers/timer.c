@@ -431,7 +431,7 @@ void timer_link_status_handler(void)
 
     /* Polling loop: wait for status bits in link status and timer */
     do {
-        status = REG_LINK_STATUS_E712;
+        status = REG_USB_EP0_COMPLETE;
         /* Check bit 0 - if set, call helper and exit */
         if (status & 0x01) {
             break;

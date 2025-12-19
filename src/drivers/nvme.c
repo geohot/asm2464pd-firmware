@@ -1284,12 +1284,12 @@ void nvme_init_registers(void)
 
     /* Wait for bit 0 of 0xCE89 to be set */
     do {
-        val = REG_XFER_READY;
-    } while ((val & XFER_READY_BIT) == 0);
+        val = REG_USB_DMA_STATE;
+    } while ((val & USB_DMA_STATE_READY) == 0);
 
     /* Check bit 1 for error/abort condition */
-    val = REG_XFER_READY;
-    if (val & XFER_READY_DONE) {
+    val = REG_USB_DMA_STATE;
+    if (val & USB_DMA_STATE_SUCCESS) {
         /* Error condition, abort initialization */
         return;
     }
@@ -3660,7 +3660,7 @@ uint8_t check_nvme_ready_e03c(void)
     /* All checks passed - initialize NVMe registers */
     REG_USB_EP0_STATUS = 0x00;
     REG_USB_EP0_LEN_L = 0x01;
-    REG_USB_CTRL_BUF_9E00 = 0x00;
+    REG_USB_SETUP_TYPE = 0x00;
 
     return 3;  /* Ready */
 }

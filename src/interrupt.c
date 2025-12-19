@@ -481,7 +481,7 @@ void isr_buffer_handler_17db(uint8_t param)
     REG_XFER_CTRL_CE88 = I_WORK_38;
 
     /* Poll CE89 bit 0 until set */
-    while (!(REG_XFER_READY & 0x01)) {
+    while (!(REG_USB_DMA_STATE & 0x01)) {
         /* Wait for bit 0 */
     }
 

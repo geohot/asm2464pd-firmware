@@ -693,7 +693,7 @@ void scsi_nvme_queue_process(void)
     status = REG_USB_FIFO_STATUS;
     if ((status & USB_FIFO_STATUS_READY) == 0) {
         /* USB not ready */
-        status = REG_XFER_READY;
+        status = REG_USB_DMA_STATE;
         if ((status >> 2) & 0x01) {
             nvme_util_advance_queue();
         }
@@ -1292,7 +1292,7 @@ uint8_t scsi_dma_dispatch_helper(void)
     uint8_t status;
 
     usb_buf_ptr_0108(0);
-    status = REG_XFER_READY;  /* Check some status via 0x1bd5 */
+    status = REG_USB_DMA_STATE;  /* Check some status via 0x1bd5 */
     I_WORK_3C = status & 0x01;
 
     /* Call DMA dispatch with param 0x22 */
@@ -1525,7 +1525,7 @@ uint8_t scsi_transfer_start_alt(void)
 
     /* Call 0x1b23, 0x1bd5 */
     usb_buf_ptr_0108(0);
-    status = REG_XFER_READY;
+    status = REG_USB_DMA_STATE;
     I_WORK_3C = status & 0x02;
 
     if (I_WORK_3C != 0) {
@@ -2042,7 +2042,7 @@ void scsi_queue_setup_4b25(uint8_t param)
     REG_XFER_CTRL_CE88 = (val & 0xC0) | I_WORK_3B;
 
     /* Wait for CE89 bit 0 */
-    while ((REG_XFER_READY & 0x01) == 0) {
+    while ((REG_USB_DMA_STATE & 0x01) == 0) {
         /* Wait */
     }
 
@@ -3140,7 +3140,7 @@ void scsi_dma_transfer_state(void)
     I_WORK_3C = I_QUEUE_IDX;
 
     /* Read transfer ready status and extract bit 2 */
-    ready_status = REG_XFER_READY;
+    ready_status = REG_USB_DMA_STATE;
     bit_flag = (ready_status >> 2) & 0x01;
 
     /* Read status CE6C and check bit 7 */

@@ -898,7 +898,7 @@ uint8_t flash_read_execute(uint8_t addr_hi, uint8_t addr_lo) __naked
  *   0xcfcb: lcall 0xb6cf               ; bit 4 handler
  *   0xcfd4: ret
  *
- * State bits in REG_INT_FLAGS_EX0 (0x9091):
+ * State bits in REG_USB_CTRL_PHASE (0x9091):
  *   Bit 0: Initial state check
  *   Bit 1: Write pending
  *   Bit 2: Erase pending
@@ -910,7 +910,7 @@ void vendor_cmd_e3_fw_write_dispatch(void)
     uint8_t state;
 
     /* Read current state from interrupt flags register */
-    state = REG_INT_FLAGS_EX0;
+    state = REG_USB_CTRL_PHASE;
 
     /* Bit 0 check - initial state */
     if ((state & 0x01) == 0) {
@@ -925,28 +925,28 @@ void vendor_cmd_e3_fw_write_dispatch(void)
     if (state & 0x02) {
         /* Call handler 0xd21e */
         /* helper_d21e(); */
-        REG_INT_FLAGS_EX0 = 0x02;  /* Acknowledge bit 1 */
+        REG_USB_CTRL_PHASE = 0x02;  /* Acknowledge bit 1 */
     }
 
     /* Bit 2 check - erase pending */
     if (state & 0x04) {
         /* Call handler 0xdeb1 */
         /* helper_deb1(); */
-        REG_INT_FLAGS_EX0 = 0x04;  /* Acknowledge bit 2 */
+        REG_USB_CTRL_PHASE = 0x04;  /* Acknowledge bit 2 */
     }
 
     /* Bit 3 check - verify pending */
     if (state & 0x08) {
         /* Call handler 0xb28c */
         /* helper_b28c(); */
-        REG_INT_FLAGS_EX0 = 0x08;  /* Acknowledge bit 3 */
+        REG_USB_CTRL_PHASE = 0x08;  /* Acknowledge bit 3 */
     }
 
     /* Bit 4 check - commit pending */
     if (state & 0x10) {
         /* Call handler 0xb6cf */
         /* helper_b6cf(); */
-        REG_INT_FLAGS_EX0 = 0x10;  /* Acknowledge bit 4 */
+        REG_USB_CTRL_PHASE = 0x10;  /* Acknowledge bit 4 */
     }
 }
 

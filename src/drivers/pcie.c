@@ -1937,7 +1937,7 @@ void pcie_tlp_handler_b28c(void)
     state = G_SYS_FLAGS_BASE;
     if (state == 0x05) {
         /* Write 0x9092 = 1 and return */
-        REG_TLP_CMD_TRIGGER = 1;
+        REG_USB_DMA_TRIGGER = 1;
         return;
     }
 
@@ -1952,11 +1952,11 @@ void pcie_tlp_handler_b28c(void)
             state = G_SYS_FLAGS_BASE;
             if (state == 0x03) {
                 /* State is 3: write 4 to 0x9092 and 4 to 0x07e4 */
-                REG_TLP_CMD_TRIGGER = 4;
+                REG_USB_DMA_TRIGGER = 4;
                 G_SYS_FLAGS_BASE = 4;
             } else {
                 /* Default: write 1 to 0x9092 */
-                REG_TLP_CMD_TRIGGER = 1;
+                REG_USB_DMA_TRIGGER = 1;
             }
             /* Fall through to call d810 */
             usb_buffer_handler();
@@ -2011,7 +2011,7 @@ void pcie_tlp_handler_b28c(void)
                 return;
             }
             /* Default: write 1 to 0x9092 */
-            REG_TLP_CMD_TRIGGER = 1;
+            REG_USB_DMA_TRIGGER = 1;
             usb_buffer_handler();
             break;
 
@@ -2026,12 +2026,12 @@ void pcie_tlp_handler_b28c(void)
 
         case 0x05:
             /* State 5: Already handled above, but for completeness */
-            REG_TLP_CMD_TRIGGER = 1;
+            REG_USB_DMA_TRIGGER = 1;
             break;
 
         default:
             /* Other states: write 1 to 0x9092 and return via d810 */
-            REG_TLP_CMD_TRIGGER = 1;
+            REG_USB_DMA_TRIGGER = 1;
             usb_buffer_handler();
             break;
     }
@@ -4517,7 +4517,7 @@ uint8_t check_pcie_status_e239(void)
 
     /* Copy bit 0 of USB status to USB control buffer */
     val = REG_USB_STATUS & 0x01;
-    REG_USB_CTRL_BUF_9E00 = val;
+    REG_USB_SETUP_TYPE = val;
 
     return 3;  /* Success */
 }

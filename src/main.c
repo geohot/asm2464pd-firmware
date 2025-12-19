@@ -601,7 +601,7 @@ state_ready:
                     G_USB_CTRL_STATE_07E1 = 0x05;
 
                     /* Trigger USB DMA to send descriptor (0xA57A) */
-                    REG_TLP_CMD_TRIGGER = 0x01;
+                    REG_USB_DMA_TRIGGER = 0x01;
 
                     /* Clear descriptor ready state after triggering */
                     G_USB_CTRL_STATE_07E1 = 0x00;

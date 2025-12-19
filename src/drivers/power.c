@@ -37,7 +37,7 @@ extern void timer_config_update(uint8_t param);              /* timer.c - 0xe3b7
 void power_set_suspended(void)
 {
     uint8_t val = REG_POWER_STATUS;
-    val = (val & ~POWER_STATUS_SUSPENDED) | POWER_STATUS_SUSPENDED;
+    val = (val & ~POWER_STATUS_USB_PATH) | POWER_STATUS_USB_PATH;
     REG_POWER_STATUS = val;
 }
 
@@ -61,7 +61,7 @@ void power_set_suspended(void)
 uint8_t power_get_status_bit6(void)
 {
     uint8_t val = REG_POWER_STATUS;
-    val &= POWER_STATUS_SUSPENDED;
+    val &= POWER_STATUS_USB_PATH;
     return val;
 }
 
@@ -261,7 +261,7 @@ void power_set_state(void)
 void power_clear_suspended(void)
 {
     uint8_t val = REG_POWER_STATUS;
-    val &= ~POWER_STATUS_SUSPENDED;
+    val &= ~POWER_STATUS_USB_PATH;
     REG_POWER_STATUS = val;
 }
 
@@ -677,7 +677,7 @@ void usb_power_init(void)
     REG_BUF_CFG_9302 = 0xBF;
 
     /* Set interrupt flags */
-    REG_INT_FLAGS_EX0 = 0x1F;
+    REG_USB_CTRL_PHASE = 0x1F;
 
     /* Configure endpoint */
     REG_USB_EP_CFG1 = 0x0F;

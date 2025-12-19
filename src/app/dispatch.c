@@ -163,7 +163,7 @@ void dispatch_0336(void) { jump_bank_0(0xBF0F); }
  * usb_dma_trigger_a57a - Trigger USB DMA transfer
  * Address: 0xA57A-0xA580 (7 bytes)
  *
- * Writes 0x01 to REG_TLP_CMD_TRIGGER (0x9092) to start USB DMA.
+ * Writes 0x01 to REG_USB_DMA_TRIGGER (0x9092) to start USB DMA.
  *
  * Original disassembly:
  *   a57a: mov dptr, #0x9092
@@ -173,7 +173,7 @@ void dispatch_0336(void) { jump_bank_0(0xBF0F); }
  */
 static void usb_dma_trigger_a57a(void)
 {
-    REG_TLP_CMD_TRIGGER = 0x01;
+    REG_USB_DMA_TRIGGER = 0x01;
 }
 
 /*
@@ -282,7 +282,7 @@ static void usb_setup_phase_a5a6(void)
     G_TLP_ADDR_OFFSET_LO = 0;
 
     /* Acknowledge setup phase by writing 0x01 to 0x9091 */
-    REG_INT_FLAGS_EX0 = 0x01;
+    REG_USB_CTRL_PHASE = 0x01;
 }
 
 /*
@@ -292,7 +292,7 @@ static void usb_setup_phase_a5a6(void)
  * Main USB control transfer state machine. Called via dispatch_033b from
  * the external interrupt handler when USB peripheral status bit 1 is set.
  *
- * Checks REG_INT_FLAGS_EX0 (0x9091) bits and calls appropriate handlers:
+ * Checks REG_USB_CTRL_PHASE (0x9091) bits and calls appropriate handlers:
  *   - Bit 0 set AND bit 2 clear: Setup phase - call usb_setup_phase_a5a6
  *   - Bit 1 set (with 0x9002 bit 1 clear): Data phase - call usb_dma_phase_d088
  *   - Bit 2 set: Status phase - call 0xDCD5 handler
@@ -324,41 +324,41 @@ static void handler_cde7(void)
     uint8_t flags;
 
     /* Check for setup phase: bit 0 set AND bit 2 clear */
-    flags = REG_INT_FLAGS_EX0;
+    flags = REG_USB_CTRL_PHASE;
     if ((flags & 0x01) && !(flags & 0x04)) {
         usb_setup_phase_a5a6();
     }
 
     /* Check for data phase: 0x9002 bit 1 clear AND 0x9091 bit 1 set */
     if (!(REG_USB_CONFIG & 0x02)) {
-        flags = REG_INT_FLAGS_EX0;
+        flags = REG_USB_CTRL_PHASE;
         if (flags & 0x02) {
             usb_dma_phase_d088();
             /* Acknowledge data phase */
-            REG_INT_FLAGS_EX0 = 0x02;
+            REG_USB_CTRL_PHASE = 0x02;
         }
     }
 
     /* Check for status phase: bit 2 set */
-    flags = REG_INT_FLAGS_EX0;
+    flags = REG_USB_CTRL_PHASE;
     if (flags & 0x04) {
         /* TODO: Call status phase handler at 0xDCD5 */
         /* For now, just acknowledge */
-        REG_INT_FLAGS_EX0 = 0x04;
+        REG_USB_CTRL_PHASE = 0x04;
     }
 
     /* Check bit 3 */
-    flags = REG_INT_FLAGS_EX0;
+    flags = REG_USB_CTRL_PHASE;
     if (flags & 0x08) {
         /* TODO: Call handler at 0xB286 */
-        REG_INT_FLAGS_EX0 = 0x08;
+        REG_USB_CTRL_PHASE = 0x08;
     }
 
     /* Check bit 4 */
-    flags = REG_INT_FLAGS_EX0;
+    flags = REG_USB_CTRL_PHASE;
     if (flags & 0x10) {
         /* TODO: Call handler at 0xB612 */
-        REG_INT_FLAGS_EX0 = 0x10;
+        REG_USB_CTRL_PHASE = 0x10;
     }
 }
 

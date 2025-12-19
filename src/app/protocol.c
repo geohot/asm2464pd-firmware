@@ -2590,7 +2590,7 @@ uint8_t helper_313a_check_nonzero(void)
  * 2. If I_STATE_6A != 0, skip to continuation at 0x3577
  * 3. Clear state variables: 0x0B01, 0x053B, 0x00C2, 0x0517, 0x014E, 0x00E5
  * 4. Clear REG_XFER_CTRL_CE88
- * 5. Wait for REG_XFER_READY bit 0 to be set
+ * 5. Wait for REG_USB_DMA_STATE bit 0 to be set
  * 6. Check abort conditions (bit 1 of CE89, bit 4 of CE86, AF8 != 1)
  * 7. Call usb_state_setup_4c98
  * 8. Read REG_SCSI_TAG_VALUE and set up tag loop
@@ -2633,14 +2633,14 @@ void usb_ep_loop_3419(void)
     /* Step 4: Clear REG_XFER_CTRL_CE88 */
     REG_XFER_CTRL_CE88 = 0;
 
-    /* Step 5: Wait for REG_XFER_READY bit 0 */
+    /* Step 5: Wait for REG_USB_DMA_STATE bit 0 */
     do {
-        val = REG_XFER_READY;
-    } while ((val & XFER_READY_BIT) == 0);
+        val = REG_USB_DMA_STATE;
+    } while ((val & USB_DMA_STATE_READY) == 0);
 
     /* Step 6a: Check bit 1 of CE89 for abort */
-    val = REG_XFER_READY;
-    if (val & XFER_READY_DONE) {
+    val = REG_USB_DMA_STATE;
+    if (val & USB_DMA_STATE_SUCCESS) {
         goto abort_path;
     }
 
@@ -2728,7 +2728,7 @@ void usb_ep_loop_3419(void)
         G_USB_PARAM_0B00 = (usb_param + 1) & 0x1F;
 
         /* Check if CE89 bit 2 is clear, then call power_check_status */
-        val = REG_XFER_READY;
+        val = REG_USB_DMA_STATE;
         if ((val & 0x04) == 0) {
             usb_param = G_USB_PARAM_0B00;
             power_check_status(usb_param);
@@ -2757,7 +2757,7 @@ void usb_ep_loop_3419(void)
     I_BUF_CTRL_GLOBAL = 0; /* 0x72 */
 
     /* Check CE89 bit 2 for final state */
-    val = REG_XFER_READY;
+    val = REG_USB_DMA_STATE;
     if (val & 0x04) {
         /* Bit 2 set */
         G_USB_INIT_STATE_0108 = 0x30;
