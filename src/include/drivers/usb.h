@@ -355,7 +355,14 @@ void usb_vendor_command_processor(void);                /* 0x5333-0x5352 */
 void usb_setup_transfer_flag_3169(void);                /* 0x3169-0x3178 */
 void usb_set_ep0_bit7_320d(void);                       /* 0x320D-0x3213 */
 void vendor_dispatch_4583(void);                        /* 0x4583-0x45C5 */
-void pcie_vendor_handler_35b7(uint8_t param);           /* 0x35B7-0x36E3 */
+void pcie_vendor_handler_35b7(uint8_t param);           /* 0x35B7-0x36E4 */
+
+/* Vendor command helper functions */
+void vendor_copy_slot_index(void);                      /* 0x17b1-0x17ba */
+__xdata uint8_t *vendor_get_cmd_table_ptr(void);        /* 0x1551-0x155b */
+void vendor_clear_enum_flag(void);                      /* 0x54bb-0x54c0 */
+uint8_t vendor_wait_dma_complete(uint8_t param);        /* 0x3c1e-0x3c6c */
+void vendor_set_complete_flag(void);                    /* 0x1741-0x1747 */
 
 /* USB descriptor handling */
 void usb_get_descriptor_length(uint8_t param);          /* 0xa637-0xa650 */

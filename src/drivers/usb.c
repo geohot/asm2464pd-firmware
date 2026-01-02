@@ -4877,80 +4877,312 @@ void usb_set_ep0_bit7_320d(void)
 
 /*
  * vendor_dispatch_4583 - Vendor command dispatch based on flag bits
- * Address: 0x4583-0x45C5 (67 bytes)
+ * Address: 0x4583-0x4620 (158 bytes)
  *
  * Reads G_EP_STATUS_CTRL (0x0003) and dispatches based on bits:
- *   - Bit 7: USB transfer setup path
- *   - Bit 4: Alternative USB path
- *   - Bit 3: Calls pcie_vendor_handler_35b7 with r7=0x81 (E4 handler)
- *   - Bit 1: Calls 0x04da
+ *   - Bit 7: USB transfer setup (lcall 0x0502, 0x039a, writes 0x0B2E, lcall 0x04e9)
+ *   - Bit 4: Alternative USB path (lcall 0x0502)
+ *   - Bit 3: Calls pcie_vendor_handler_35b7 with r7=0x81 (E4/E5 handler)
+ *   - Bit 1: Calls 0x04da (banked function)
+ *   - Bit 5: Controls REG 0xCA06 bit 0
+ *   - Bit 6: Infinite loop after 0x3172 call (halt)
+ *   - Bit 2: SCSI/USB control transfer setup
  *
  * Original disassembly:
  *   4583: mov dptr, #0x0003    ; G_EP_STATUS_CTRL
  *   4586: movx a, @dptr        ; Read vendor flag
  *   4587: mov 0x3a, a          ; Store in IDATA[0x3A]
+ *   4589: mov a, 0x3a
+ *   458b: jnb acc.7, 0x45a5    ; Check bit 7
  *   ...
- *   45b5: jnb acc.3, 0x45bd    ; If bit 3 clear, skip
+ *   45b5: jnb acc.3, 0x45bd    ; Check bit 3
  *   45b8: mov r7, #0x81
  *   45ba: lcall 0x35b7         ; Call pcie_vendor_handler
  *   ...
+ *   4620: ret
  */
 void vendor_dispatch_4583(void)
 {
     uint8_t flags = G_EP_STATUS_CTRL;
+    uint8_t r7_val;
     I_WORK_3A = flags;
 
-    /* Bit 7 handling - USB transfer setup */
+    /* 458b-45a2: Bit 7 handling - USB transfer setup */
     if (flags & 0x80) {
-        /* Complex setup path - calls 0x0502, 0x039a, etc. */
-        /* For simplicity, not fully implemented here */
+        /* lcall 0x0502 with r4=0x00, r5=0x13, r7=0x05 */
+        /* lcall 0x039a with r7=0 */
+        /* Write 1 to G_USB_TRANSFER_FLAG */
+        G_USB_TRANSFER_FLAG = 0x01;
+        /* lcall 0x04e9 */
     }
 
-    /* Bit 4 handling */
+    /* 45a7-45b0: Bit 4 handling */
     if (flags & 0x10) {
-        /* Alternative path - calls 0x0502 with different params */
+        /* lcall 0x0502 with r4=0x01, r5=0x8f, r7=0x05 */
     }
 
-    /* Bit 3 handling - E4/E5 vendor commands */
+    /* 45b5-45ba: Bit 3 handling - E4/E5 vendor commands */
     if (flags & 0x08) {
         pcie_vendor_handler_35b7(0x81);
     }
 
-    /* Bit 1 handling */
+    /* 45bf-45c2: Bit 1 handling */
     if (flags & 0x02) {
-        /* calls 0x04da */
+        /* lcall 0x04da - banked function */
+    }
+
+    /* 45c5-45d5: Bit 5 handling - update REG_CPU_MODE_NEXT bit 0 */
+    r7_val = (flags & 0x20) ? 0x00 : 0x01;
+    {
+        uint8_t reg = REG_CPU_MODE_NEXT;
+        reg = (reg & 0xFE) | r7_val;
+        REG_CPU_MODE_NEXT = reg;
+    }
+
+    /* 45d8-45e1: Bit 6 handling - halt loop */
+    if (flags & 0x40) {
+        /* lcall 0x3172 with dptr=0xcc31 */
+        /* Then infinite loop: sjmp 0x45e1 */
+        /* This is intentional halt - not implemented */
+    }
+
+    /* 45e5-461d: Bit 2 handling - SCSI/USB control transfer */
+    if (flags & 0x04) {
+        /* Write 0x04 to REG_BUF_CFG_9300 */
+        REG_BUF_CFG_9300 = 0x04;
+        /* Write 0x02 to REG_USB_PHY_CTRL_91D1 */
+        REG_USB_PHY_CTRL_91D1 = 0x02;
+        /* Write 0x40 then 0x80 to REG_BUF_CFG_9301 */
+        REG_BUF_CFG_9301 = 0x40;
+        REG_BUF_CFG_9301 = 0x80;
+        /* Write 0x08 then 0x01 to REG_USB_PHY_CTRL_91D1 */
+        REG_USB_PHY_CTRL_91D1 = 0x08;
+        REG_USB_PHY_CTRL_91D1 = 0x01;
+        /* Write 0 to G_USB_WORK_01B6 */
+        G_USB_WORK_01B6 = 0;
+        /* lcall 0x3172 with dptr=0xcc30 */
+        /* Write 1 to G_USB_STATE_CLEAR_06E3 */
+        G_USB_STATE_CLEAR_06E3 = 0x01;
+        /* lcall 0x032c, 0x0340, 0x0327 */
     }
 }
 
 /*
- * pcie_vendor_handler_35b7 - PCIe vendor command handler with DMA trigger
- * Address: 0x35B7-0x36E3 (301 bytes)
+ * vendor_copy_slot_index - Copy command slot index
+ * Address: 0x17b1-0x17ba (10 bytes)
  *
- * Handles E4 read commands by triggering PCIe DMA.
- * Called from vendor_dispatch_4583 with r7 parameter.
+ * Reads G_CMD_INDEX_SRC (0x05A5) and copies to G_CMD_SLOT_INDEX (0x05A3).
+ * Returns the slot index in R7.
  *
- * Key sequence at 0x35E2-0x35F6 (DMA trigger):
- *   35e2: mov dptr, #0xb455
- *   35e5: mov a, #0x02
- *   35e7: movx @dptr, a        ; Write 0x02 to 0xB455
- *   35e8: mov a, #0x04
- *   35ea: movx @dptr, a        ; Write 0x04 to 0xB455
- *   35eb: mov dptr, #0xb2d5
- *   35ee: mov a, #0x01
- *   35f0: movx @dptr, a        ; Write 0x01 to 0xB2D5
- *   35f1: mov dptr, #0xb296
- *   35f4: mov a, #0x08
- *   35f6: movx @dptr, a        ; Write 0x08 to 0xB296 (triggers DMA!)
+ * Original disassembly:
+ *   17b1: mov dptr, #0x05a5
+ *   17b4: movx a, @dptr         ; Read slot index source
+ *   17b5: mov r7, a             ; Return in R7
+ *   17b6: mov dptr, #0x05a3
+ *   17b9: movx @dptr, a         ; Copy to current slot index
+ *   17ba: ret
+ */
+void vendor_copy_slot_index(void)
+{
+    uint8_t idx = G_CMD_INDEX_SRC;
+    G_CMD_SLOT_INDEX = idx;
+}
+
+/*
+ * vendor_get_cmd_table_ptr - Get pointer to current command table entry
+ * Address: 0x1551-0x155b (11 bytes)
+ *
+ * Computes DPTR = 0x05B1 + (G_CMD_SLOT_INDEX * 0x22).
+ * Returns pointer to the 34-byte command table entry.
+ *
+ * Original disassembly:
+ *   1551: mov dptr, #0x05a3
+ *   1554: movx a, @dptr         ; A = slot index
+ *   1555: mov dptr, #0x05b1     ; Base of command table
+ *   1558: mov 0xf0, #0x22       ; B = 34 (entry size)
+ *   155b: ljmp 0x0da9           ; Call mul_add_dptr (DPTR = DPTR + A*B)
+ */
+__xdata uint8_t *vendor_get_cmd_table_ptr(void)
+{
+    uint8_t idx = G_CMD_SLOT_INDEX;
+    return G_CMD_TABLE_BASE + ((uint16_t)idx * G_CMD_TABLE_ENTRY_SIZE);
+}
+
+/*
+ * vendor_clear_enum_flag - Clear PCIe enumeration flag
+ * Address: 0x54bb-0x54c0 (6 bytes)
+ *
+ * Clears G_XFER_CTRL_0AF7 to indicate DMA setup.
+ *
+ * Original disassembly:
+ *   54bb: clr a
+ *   54bc: mov dptr, #0x0af7
+ *   54bf: movx @dptr, a         ; Write 0 to 0x0AF7
+ *   54c0: ret
+ */
+void vendor_clear_enum_flag(void)
+{
+    G_XFER_CTRL_0AF7 = 0;
+}
+
+/*
+ * vendor_set_complete_flag - Set vendor command complete flag
+ * Address: 0x1741-0x1747 (7 bytes)
+ *
+ * Sets G_USB_STATE_CLEAR_06E3 to 1 to indicate completion.
+ *
+ * Original disassembly:
+ *   1741: mov dptr, #0x06e3
+ *   1744: mov a, #0x01
+ *   1746: movx @dptr, a         ; Write 1 to 0x06E3
+ *   1747: ret
+ */
+void vendor_set_complete_flag(void)
+{
+    G_USB_STATE_CLEAR_06E3 = 1;
+}
+
+/*
+ * pcie_vendor_handler_35b7 - PCIe vendor command handler for E4/E5
+ * Address: 0x35B7-0x36E4 (302 bytes)
+ *
+ * Main handler for E4 read and E5 write vendor commands.
+ * Called from vendor_dispatch_4583 with param=0x81.
+ *
+ * Flow:
+ *   1. Store param to G_VENDOR_HANDLER_STATE (0x0AA0)
+ *   2. Check G_USB_CMD_CONFIG (0x07EC) - if non-zero, exit
+ *   3. Call vendor_copy_slot_index to get current slot
+ *   4. Call banked functions 0x0458, 0x043f for setup
+ *   5. Get command table entry via vendor_get_cmd_table_ptr
+ *   6. Check if command type is 0x04 (E4 read)
+ *   7. For E4: trigger DMA and wait for completion
+ *   8. Update command table entry with result status
+ *
+ * Original disassembly (key sections):
+ *   35b7: mov dptr, #0x0aa0
+ *   35ba: mov a, r7
+ *   35bb: movx @dptr, a          ; Store param to handler state
+ *   35bc: mov dptr, #0x07ec
+ *   35bf: movx a, @dptr          ; Check USB cmd config
+ *   35c0: jz 0x35c5              ; If zero, continue
+ *   35c2: ljmp 0x36e4            ; Else exit
+ *   ...
+ *   35df: lcall 0x54bb           ; Clear enum flag
+ *   35e2-35f6: DMA trigger sequence
+ *   ...
  */
 void pcie_vendor_handler_35b7(uint8_t param)
 {
-    (void)param;  /* r7 parameter, used in full implementation */
+    __xdata uint8_t *cmd_entry;
+    uint8_t status;
 
-    /* DMA trigger sequence from original firmware 0x35E2-0x35F6 */
+    /* 35b7-35bb: Store param to handler state */
+    G_VENDOR_HANDLER_STATE = param;
+
+    /* 35bc-35c2: Check USB command config - if non-zero, exit */
+    if (G_USB_CMD_CONFIG != 0) {
+        return;
+    }
+
+    /* 35c5: Call vendor_copy_slot_index (0x17b1) */
+    vendor_copy_slot_index();
+
+    /* 35c8-35cb: Call banked setup functions (stubs - need bank calls) */
+    /* lcall 0x0458 -> bank 0 call to 0xe4e0 */
+    /* lcall 0x043f -> bank 0 call to 0xe091 */
+
+    /* 35ce-35d1: Check R7 result - if zero, exit */
+    /* For now we continue (R7 from setup functions) */
+
+    /* 35d4: Get command table entry pointer */
+    cmd_entry = vendor_get_cmd_table_ptr();
+
+    /* 35d7-35dc: Check if command type is 0x04 (E4 read) */
+    status = *cmd_entry;
+    if ((status ^ 0x04) != 0) {
+        /* Not an E4 command, exit */
+        return;
+    }
+
+    /* 35df: Clear enum flag for DMA */
+    vendor_clear_enum_flag();
+
+    /* 35e2-35f6: DMA trigger sequence */
     REG_POWER_CTRL_B455 = 0x02;
     REG_POWER_CTRL_B455 = 0x04;
     REG_PCIE_CTRL_B2D5 = 0x01;
     REG_PCIE_STATUS = 0x08;  /* Triggers DMA */
+
+    /* 35f7-35f9: Call DMA wait with param=0 */
+    /* lcall 0x3c1e - vendor_wait_dma_complete */
+
+    /* 35fc-35ff: Check result, branch on success/failure */
+    /* For now, assume success path */
+
+    /* 3601-3607: Check handler state again */
+    if (G_VENDOR_HANDLER_STATE == 0) {
+        return;
+    }
+
+    /* 360a-361b: Complex DMA completion handling */
+    /* Get command table entry again */
+    cmd_entry = vendor_get_cmd_table_ptr();
+
+    /* Check bit 2 of entry+0x20 */
+    if (!(cmd_entry[0x20] & 0x04)) {
+        return;
+    }
+
+    /* 361e-3631: Extended setup sequence */
+    /* Multiple banked calls and register setup */
+
+    /* 3634-3647: DMA polling loop */
+    /* Poll REG_POWER_CTRL_B455 bit 1 */
+    while ((REG_POWER_CTRL_B455 & 0x02) == 0) {
+        /* Wait for DMA complete */
+    }
+
+    /* 3675-367a: Clear DMA status */
+    REG_POWER_CTRL_B455 = 0x02;
+
+    /* 367b-3688: Check handler state for completion type */
+    if (G_VENDOR_HANDLER_STATE == 0x03) {
+        /* E4 read complete - set status 0x80 in entry */
+        cmd_entry = vendor_get_cmd_table_ptr();
+        *cmd_entry = 0x80;
+        return;
+    }
+
+    /* 3689-36be: Alternate completion path */
+    /* Write to 0xB2D5, 0xB296, update handler result */
+    G_VENDOR_HANDLER_RESULT = (REG_PCIE_CTRL_B2D5 & 0x01) ? 0x01 : 0x00;
+    REG_PCIE_STATUS = 0x08;
+
+    /* 36ae-36be: Check for E5 write completion */
+    if (G_VENDOR_HANDLER_STATE == 0x01) {
+        /* E5 write complete */
+        /* lcall 0x04da */
+        cmd_entry = vendor_get_cmd_table_ptr();
+        *cmd_entry = 0x82;
+        return;
+    }
+
+    /* 36bf-36e4: Final cleanup path */
+    vendor_set_complete_flag();
+    G_LOG_COUNTER_044B = 0;
+
+    if (G_VENDOR_HANDLER_RESULT != 0) {
+        /* Error - set status 0x81 */
+        cmd_entry = vendor_get_cmd_table_ptr();
+        *cmd_entry = 0x81;
+        return;
+    }
+
+    /* Success - set status 0x0F */
+    /* lcall 0x0471, 0x047b */
+    cmd_entry = vendor_get_cmd_table_ptr();
+    *cmd_entry = 0x0F;
 }
 
 /*

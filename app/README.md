@@ -2,6 +2,29 @@
 
 Tools for interacting with the ASM2464PD USB-to-PCIe bridge chip.
 
+## probe_dma.py
+
+Tests GPU DMA access to the ASM2464's internal SRAM buffer.
+
+### Usage
+
+```bash
+# Basic DMA test - write via USB, read via GPU SDMA
+sudo PYTHONPATH=~/tinygrad AMD_IFACE=USB python app/probe_dma.py
+
+# Probe accessible region size
+sudo PYTHONPATH=~/tinygrad AMD_IFACE=USB python app/probe_dma.py --probe-size
+```
+
+### What it tests
+
+1. Writes test pattern to ASM2464 SRAM via USB (scsi_write to 0xF000)
+2. Boots AMD GPU via tinygrad with USB interface
+3. Uses GPU SDMA to copy data from PCIe address 0x200000 to GPU VRAM
+4. Verifies the GPU read the correct data
+
+This validates the DMA path: `USB -> ASM2464 SRAM <- GPU SDMA (PCIe 0x200000)`
+
 ## scan_pcie.py
 
 Scans for PCIe devices connected via the ASM2464PD USB enclosure.
@@ -38,22 +61,35 @@ Bus 04:
 
 The ASM2464PD has several memory regions accessible via different paths:
 
-### 1. Internal SRAM (6-8 MB)
+### 1. GPU-Accessible PCIe Regions (DMA Buffer)
 
-Large internal buffer used for USB bulk transfers and NVMe data.
+These regions are accessible by the GPU via PCIe DMA (SDMA engine). The GPU's page
+tables map virtual addresses to these PCIe physical addresses with `AddrSpace.SYS`.
 
-**NOT directly accessible via PCIe TLP** - only the firmware can access it via DMA engines.
+| PCIe Address Range      | Size   | Purpose                    |
+|------------------------|--------|----------------------------|
+| 0x200000 - 0x27FFFF    | 512 KB | Copy buffer (USB bulk DMA) |
+| 0x800000 - 0x800FFF    |   4 KB | Queue page 0               |
+| 0x808000 - 0x808FFF    |   4 KB | Queue page 1               |
+| 0x820000 - 0x820FFF    |   4 KB | Sys buffer (tinygrad)      |
+| 0x828000 - 0x828FFF    |   4 KB | Queue page 3               |
 
-| PCI Address    | Size   | Purpose                    |
-|---------------|--------|----------------------------|
-| 0x00200000    | ~6 MB  | USB/SCSI data buffer       |
-| 0x00820000    | 128 KB | NVMe queue region          |
+**Total GPU-accessible**: 528 KB (512 KB contiguous + 4x4 KB pages)
 
-The 8051 CPU sees this through 4KB windows:
-- `0x8000-0x8FFF`: USB/SCSI buffer window
-- `0xF000-0xFFFF`: NVMe data buffer window
+The GPU can read/write these regions via SDMA. tinygrad maps them as:
+- `copy_bufs[0]`: 512KB at PCIe 0x200000 (ctrl_addr 0xF000)
+- `sys_buf`: 4KB at PCIe 0x820000 (ctrl_addr 0xA000)
 
-### 2. XDATA (E4/E5 Vendor Commands)
+### 2. USB-Accessible XDATA Windows
+
+The 8051 firmware exposes these regions to USB via E4/E5 vendor commands:
+- `0x8000-0x8FFF`: 4KB window (USB descriptor buffer)
+- `0xF000-0xFFFF`: 4KB window (maps to PCIe 0x200000, first 4KB only)
+
+**Note**: USB E4/E5 commands can only access the first ~4KB of the copy buffer.
+The full 512KB is only accessible via GPU SDMA or SCSI bulk write.
+
+### 3. XDATA (E4/E5 Vendor Commands)
 
 Firmware XDATA memory accessible via USB vendor commands:
 - **E4**: Read from XDATA address (up to 255 bytes)
@@ -70,7 +106,7 @@ data = usb.read(0x8000, 16)
 usb.write(0xF000, b'\xDE\xAD\xBE\xEF')
 ```
 
-### 3. SCSI Bulk DMA Path (Fast)
+### 4. SCSI Bulk DMA Path (Fast)
 
 High-speed path for bulk data transfers to internal SRAM:
 
@@ -84,7 +120,7 @@ This is the fast path used by tinygrad for GPU memory transfers:
 - Hardware DMA to internal SRAM
 - No CPU involvement for data bytes
 
-### 4. PCIe Memory (TLP Requests)
+### 5. PCIe Memory (TLP Requests)
 
 Direct PCIe memory read/write via TLP (Transaction Layer Packets):
 

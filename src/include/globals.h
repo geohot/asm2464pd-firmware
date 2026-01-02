@@ -381,6 +381,15 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 //=============================================================================
 #define G_LOOP_STATE            XDATA_VAR8(0x0A59)  /* Main loop state flag */
 #define G_LOOP_STATE_0A5A       XDATA_VAR8(0x0A5A)  /* Main loop state secondary */
+
+/*
+ * Vendor Command CDB Storage (0x0A81-0x0A82)
+ * Stores the parsed CDB bytes from USB vendor commands (E4/E5).
+ * Copied from USB registers 0x910D-0x910E by protocol handler at 0x33c1.
+ */
+#define G_VENDOR_CMD_TYPE       XDATA_VAR8(0x0A81)  /* CDB byte 0: Command type (0xE4=read, 0xE5=write) */
+#define G_VENDOR_CMD_SIZE       XDATA_VAR8(0x0A82)  /* CDB byte 1: Transfer size (0-255 bytes) */
+
 #define G_ACTION_CODE_0A83      XDATA_VAR8(0x0A83)  /* Action code storage for state_action_dispatch */
 #define   ACTION_CODE_EXTENDED    0x02  // Bit 1: Extended mode flag
 #define G_ACTION_PARAM_0A84     XDATA_VAR8(0x0A84)  /* Action parameter (byte after action code) */
@@ -392,16 +401,28 @@ __idata __at(0x72) uint8_t I_BUF_CTRL_GLOBAL; /* Buffer control global */
 #define G_USB_EP_MODE           G_EP_DISPATCH_VAL3  /* Alias: USB endpoint mode flag */
 #define G_EP_DISPATCH_VAL4      XDATA_VAR8(0x0A7E)  /* Endpoint dispatch value 4 */
 /*
- * DMA Status Register (0x0AA0)
- * Tracks DMA transfer state for E4/E5 vendor commands.
- * Checked by firmware at 0x3601 after PCIe transfer.
+ * Vendor Command Handler State (0x0AA0-0x0AA1)
+ * Used by pcie_vendor_handler_35b7 to track E4/E5 command state.
+ *
+ * 0x0AA0 values:
+ *   0x00: Idle / no command
+ *   0x01: E5 write command in progress
+ *   0x03: E4 read command complete (sets 0x80 in cmd table entry)
+ *   0x81: Passed as initial param from vendor_dispatch_4583
+ *
+ * 0x0AA1 values:
+ *   0x00: Normal completion
+ *   0x01: Error/retry needed (sets 0x81 in cmd table entry)
  */
-#define G_DMA_XFER_STATUS       XDATA_VAR8(0x0AA0)  /* DMA transfer status for vendor cmds */
+#define G_VENDOR_HANDLER_STATE  XDATA_VAR8(0x0AA0)  /* Vendor handler state (E4/E5) */
+#define G_VENDOR_HANDLER_RESULT XDATA_VAR8(0x0AA1)  /* Vendor handler result flag */
+/* Legacy aliases for compatibility */
+#define G_DMA_XFER_STATUS       G_VENDOR_HANDLER_STATE
 
 #define G_STATE_COUNTER_HI      XDATA_VAR8(0x0AA3)  /* State counter high */
 #define G_STATE_COUNTER_LO      XDATA_VAR8(0x0AA4)  /* State counter low */
 #define G_STATE_COUNTER_0AA5    XDATA_VAR8(0x0AA5)  /* State counter byte 2 */
-#define G_LOG_PROCESSED_INDEX   XDATA_VAR8(0x0AA1)  /* Current processed log index */
+#define G_LOG_PROCESSED_INDEX   XDATA_VAR8(0x0AA2)  /* Current processed log index (was 0x0AA1) */
 #define G_STATE_PARAM_0AA2      XDATA_VAR8(0x0AA2)  /* State machine parameter */
 /* NOTE: G_STATE_RESULT_0AA3 removed - use G_STATE_COUNTER_HI (same address) */
 /* NOTE: G_STATE_WORK_0A84 removed - use G_ACTION_PARAM_0A84 (same address) */

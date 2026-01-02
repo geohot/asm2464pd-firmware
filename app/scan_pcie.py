@@ -14,7 +14,6 @@ Usage:
     python app/scan_pcie.py --verbose    # Show raw config space
     python app/scan_pcie.py --reset      # Reset buses before scan
     python app/scan_pcie.py --deep       # Deep scan with full bridge config (for GPUs)
-    python app/scan_pcie.py --probe-dma  # Test GPU DMA access to ASM2464 internal SRAM
 
 Requirements:
     - tinygrad (for USB communication library)
@@ -37,14 +36,6 @@ except ImportError:
     print("Error: Could not import ASM24Controller from tinygrad")
     print("Make sure tinygrad is installed or available at ~/tinygrad")
     sys.exit(1)
-
-# Try to import AMD GPU support for DMA probing
-try:
-    from tinygrad.runtime.ops_amd import AMDDevice
-
-    HAS_AMD_GPU = True
-except ImportError:
-    HAS_AMD_GPU = False
 
 # PCI Configuration Space offsets
 PCI_VENDOR_ID = 0x00
@@ -701,12 +692,6 @@ def main():
         metavar=("ADDR", "VALUE"),
         help="Write 32-bit value to PCIe memory address (hex)",
     )
-    parser.add_argument(
-        "--probe-dma",
-        action="store_true",
-        help="Boot GPU and probe if it can access PCIe address 0x200000 (ASM2464 internal SRAM)",
-    )
-
     args = parser.parse_args()
 
     print("=" * 60)
