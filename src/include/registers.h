@@ -232,8 +232,33 @@
  */
 #define REG_USB_DMA_TRIGGER     XDATA_REG8(0x9092)
 #define   USB_DMA_TRIGGER_START   0x01  // Bit 0: Start DMA transfer
+
+/*
+ * USB Endpoint Config 1 (0x9093)
+ * Controls endpoint transfer mode and triggers bulk operations.
+ *
+ * ISR bit handlers (when bit is set):
+ *   Bit 0: Calls cleanup (0x54b4 -> 0x3169, 0x320d)
+ *   Bit 1: Bulk data complete - calls 0x32e4
+ *   Bit 2: Calls cleanup (same as bit 0)
+ *   Bit 3: State machine handler - calls 0x4d3e
+ *
+ * Values written by firmware:
+ *   0x08: Bulk transfer mode (with 0x9094=0x02) - at 0x529c, 0x1cca
+ *   0x02: Interrupt transfer mode (with 0x9094=0x10) - at 0x1cd5
+ *   0x04: Event handler default action - at 0x1009
+ *   0x02: Clear bit 1 after ISR - at 0x0fac
+ */
 #define REG_USB_EP_CFG1         XDATA_REG8(0x9093)
+#define   USB_EP_CFG1_CLEANUP     0x01  // Bit 0: Cleanup pending
+#define   USB_EP_CFG1_BULK_DONE   0x02  // Bit 1: Bulk transfer complete
+#define   USB_EP_CFG1_CLEANUP2    0x04  // Bit 2: Cleanup pending (alt)
+#define   USB_EP_CFG1_STATE_MACH  0x08  // Bit 3: State machine event
+#define   USB_EP_CFG1_BULK_MODE   0x08  // Write: Configure bulk transfer mode
+#define   USB_EP_CFG1_INT_MODE    0x02  // Write: Configure interrupt mode
 #define REG_USB_EP_CFG2         XDATA_REG8(0x9094)
+#define   USB_EP_CFG2_BULK_MODE   0x02  // Write with CFG1=0x08 for bulk mode
+#define   USB_EP_CFG2_INT_MODE    0x10  // Write with CFG1=0x02 for int mode
 #define REG_USB_EP_READY        XDATA_REG8(0x9096)
 #define REG_USB_EP_CTRL_9097    XDATA_REG8(0x9097)  /* USB endpoint control */
 #define REG_USB_EP_MODE_9098    XDATA_REG8(0x9098)  /* USB endpoint mode */
