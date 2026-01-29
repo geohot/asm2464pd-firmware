@@ -190,5 +190,8 @@ debug:
 	@echo "OBJS: $(OBJS)"
 
 flash: $(BUILD_DIR)/firmware_wrapped.bin
+	@echo "Resetting to bootloader..."
+	@python3 ftdi_debug.py -bn
 	@echo "Flashing firmware to device..."
 	@python3 flash.py $<
+	@python3 ftdi_debug.py -r
